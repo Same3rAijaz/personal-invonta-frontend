@@ -13,11 +13,13 @@ import {
   Pie,
   Cell
 } from "recharts";
+import { useReceivablesReport } from "../hooks/useUdhaar";
 
 const palette = ["#0ea5e9", "#f97316", "#22c55e", "#e11d48", "#a855f7", "#14b8a6"];
 
 export default function Dashboard() {
   const reports = useReports();
+  const receivables = useReceivablesReport({});
 
   const stockRows = (reports.stockOnHand.data || []).slice(0, 8).map((row: any, idx: number) => ({
     name: row.productId?.slice(-6) || `P${idx + 1}`,
@@ -78,6 +80,22 @@ export default function Dashboard() {
             <Typography variant="subtitle2">Profit (All Time)</Typography>
             <Typography variant="h5" sx={{ fontWeight: 700 }}>
               {reports.profit.data?.totalProfit ?? 0}
+            </Typography>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} md={3}>
+          <Paper sx={{ p: 2, borderRadius: 3, boxShadow: "0 10px 24px rgba(15,23,42,0.08)" }}>
+            <Typography variant="subtitle2">Udhaar Receivable</Typography>
+            <Typography variant="h5" sx={{ fontWeight: 700 }}>
+              {receivables.data?.totalReceivable ?? 0}
+            </Typography>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} md={3}>
+          <Paper sx={{ p: 2, borderRadius: 3, boxShadow: "0 10px 24px rgba(15,23,42,0.08)" }}>
+            <Typography variant="subtitle2">Udhaar Payable</Typography>
+            <Typography variant="h5" sx={{ fontWeight: 700 }}>
+              {receivables.data?.totalPayable ?? 0}
             </Typography>
           </Paper>
         </Grid>

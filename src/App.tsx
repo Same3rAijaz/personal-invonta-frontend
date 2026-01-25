@@ -49,6 +49,9 @@ import Tutorial from "./pages/public/Tutorial";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Notifications from "./pages/Notifications";
+import UdhaarParties from "./pages/udhaar/Parties";
+import PartyDetail from "./pages/udhaar/PartyDetail";
+import UdhaarReports from "./pages/udhaar/Reports";
 
 export default function App() {
   return (
@@ -94,6 +97,9 @@ export default function App() {
           <Route path="/attendance/new" element={<AttendanceCreate />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/notifications" element={<Notifications />} />
+          <Route path="/udhaar/parties" element={<UdhaarParties />} />
+          <Route path="/udhaar/parties/:id" element={<PartyDetail />} />
+          <Route path="/udhaar/reports" element={<UdhaarReports />} />
           <Route path="/superadmin/markets" element={<Markets />} />
           <Route path="/superadmin/markets/new" element={<MarketCreate />} />
           <Route path="/superadmin/markets/:id/edit" element={<MarketEdit />} />
@@ -110,3 +116,5 @@ export default function App() {
     </Routes>
   );
 }
+
+
