@@ -8,6 +8,8 @@ import { useNavigate } from "react-router-dom";
 import { useToast } from "../../hooks/useToast";
 
 export default function Businesses() {
+  const [page, setPage] = React.useState(0);
+  const [rowsPerPage, setRowsPerPage] = React.useState(20);
   const navigate = useNavigate();
   const client = useQueryClient();
   const { notify } = useToast();
@@ -16,8 +18,8 @@ export default function Businesses() {
   const [blockReasonOther, setBlockReasonOther] = React.useState("");
   const [blockDays, setBlockDays] = React.useState("");
   const { data } = useQuery({
-    queryKey: ["businesses"],
-    queryFn: async () => (await api.get("/superadmin/businesses")).data.data
+    queryKey: ["businesses", page, rowsPerPage],
+    queryFn: async () => (await api.get("/superadmin/businesses", { params: { page: page + 1, limit: rowsPerPage } })).data.data
   });
   const deleteBusiness = useMutation({
     mutationFn: async (id: string) => (await api.delete(`/superadmin/businesses/${id}`)).data.data,
@@ -111,7 +113,15 @@ export default function Businesses() {
             )
           }
         ]}
-        rows={data || []}
+        rows={data?.items || []}
+        page={page}
+        rowsPerPage={rowsPerPage}
+        total={data?.total || 0}
+        onPageChange={setPage}
+        onRowsPerPageChange={(value) => {
+          setRowsPerPage(value);
+          setPage(0);
+        }}
       />
       <Dialog open={blockDialog.open} onClose={() => setBlockDialog({ open: false, id: null })} maxWidth="xs" fullWidth>
         <DialogTitle>Block Business</DialogTitle>

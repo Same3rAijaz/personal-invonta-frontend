@@ -11,9 +11,9 @@ import RemoveCircleOutline from "@mui/icons-material/RemoveCircleOutline";
 
 export default function SalesOrderEdit() {
   const { id } = useParams();
-  const { data } = useSalesOrders();
-  const { data: customers } = useCustomers();
-  const { data: products } = useProducts();
+  const { data } = useSalesOrders({ page: 1, limit: 1000 });
+  const { data: customers } = useCustomers({ page: 1, limit: 1000 });
+  const { data: products } = useProducts({ page: 1, limit: 1000 });
   const updateSO = useUpdateSalesOrder();
   const { notify } = useToast();
   const navigate = useNavigate();

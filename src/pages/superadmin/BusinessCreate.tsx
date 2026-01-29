@@ -11,7 +11,7 @@ export default function BusinessCreate() {
   const client = useQueryClient();
   const { data: markets } = useQuery({
     queryKey: ["markets"],
-    queryFn: async () => (await api.get("/superadmin/markets")).data.data
+    queryFn: async () => (await api.get("/superadmin/markets", { params: { page: 1, limit: 1000 } })).data.data
   });
   const { register, handleSubmit } = useForm({ defaultValues: { isActive: true } });
 
@@ -51,7 +51,7 @@ export default function BusinessCreate() {
           <Grid item xs={12} md={6}>
             <TextField select fullWidth label="Market (optional)" {...register("marketId")}>
               <MenuItem value="">None</MenuItem>
-              {(markets || []).map((m: any) => (
+              {(markets?.items || []).map((m: any) => (
                 <MenuItem key={m._id} value={m._id}>{m.name}</MenuItem>
               ))}
             </TextField>

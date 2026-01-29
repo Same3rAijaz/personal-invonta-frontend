@@ -1,10 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 
-export function useAttendance(employeeId?: string) {
+export function useAttendance(params?: { employeeId?: string; page?: number; limit?: number }) {
   return useQuery({
-    queryKey: ["attendance", employeeId],
-    queryFn: async () => (await api.get("/attendance", { params: { employeeId } })).data.data
+    queryKey: ["attendance", params?.employeeId, params?.page, params?.limit],
+    queryFn: async () => (await api.get("/attendance", { params })).data.data
   });
 }
 

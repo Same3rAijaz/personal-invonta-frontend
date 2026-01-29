@@ -1,10 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 
-export function usePurchaseOrders() {
+export function usePurchaseOrders(params?: { page?: number; limit?: number }) {
   return useQuery({
-    queryKey: ["pos"],
-    queryFn: async () => (await api.get("/purchasing/pos")).data.data
+    queryKey: ["pos", params?.page, params?.limit],
+    queryFn: async () => (await api.get("/purchasing/pos", { params })).data.data
   });
 }
 

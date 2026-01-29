@@ -1,4 +1,5 @@
 import { Box, Button } from "@mui/material";
+import React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import DataTable from "../../components/DataTable";
@@ -7,12 +8,14 @@ import { useNavigate } from "react-router-dom";
 import { useToast } from "../../hooks/useToast";
 
 export default function Markets() {
+  const [page, setPage] = React.useState(0);
+  const [rowsPerPage, setRowsPerPage] = React.useState(20);
   const navigate = useNavigate();
   const client = useQueryClient();
   const { notify } = useToast();
   const { data } = useQuery({
-    queryKey: ["markets"],
-    queryFn: async () => (await api.get("/superadmin/markets")).data.data
+    queryKey: ["markets", page, rowsPerPage],
+    queryFn: async () => (await api.get("/superadmin/markets", { params: { page: page + 1, limit: rowsPerPage } })).data.data
   });
   const deleteMarket = useMutation({
     mutationFn: async (id: string) => (await api.delete(`/superadmin/markets/${id}`)).data.data,
@@ -53,7 +56,15 @@ export default function Markets() {
             )
           }
         ]}
-        rows={data || []}
+        rows={data?.items || []}
+        page={page}
+        rowsPerPage={rowsPerPage}
+        total={data?.total || 0}
+        onPageChange={setPage}
+        onRowsPerPageChange={(value) => {
+          setRowsPerPage(value);
+          setPage(0);
+        }}
       />
     </Box>
   );

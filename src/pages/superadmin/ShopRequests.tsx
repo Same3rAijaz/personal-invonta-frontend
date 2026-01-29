@@ -7,11 +7,13 @@ import PageHeader from "../../components/PageHeader";
 import { useToast } from "../../hooks/useToast";
 
 export default function ShopRequests() {
+  const [page, setPage] = React.useState(0);
+  const [rowsPerPage, setRowsPerPage] = React.useState(20);
   const { notify } = useToast();
   const client = useQueryClient();
   const { data } = useQuery({
-    queryKey: ["shop-requests"],
-    queryFn: async () => (await api.get("/superadmin/requests")).data.data
+    queryKey: ["shop-requests", page, rowsPerPage],
+    queryFn: async () => (await api.get("/superadmin/requests", { params: { page: page + 1, limit: rowsPerPage } })).data.data
   });
   const approve = useMutation({
     mutationFn: async (id: string) => (await api.patch(`/superadmin/requests/${id}/approve`, {})).data.data,
@@ -48,14 +50,14 @@ export default function ShopRequests() {
     }
   };
 
-  const rows = (data || []).map((row: any) => ({
+  const rows = (data?.items || []).map((row: any) => ({
     ...row,
     modulesText: (row.requestedModules || []).join(", ")
   }));
 
   return (
     <Box>
-      <PageHeader title="Shop Requests" />
+      <PageHeader title="Approval Requests" />
       <DataTable
         columns={[
           { key: "businessName", label: "Business" },
@@ -83,6 +85,14 @@ export default function ShopRequests() {
           }
         ]}
         rows={rows}
+        page={page}
+        rowsPerPage={rowsPerPage}
+        total={data?.total || 0}
+        onPageChange={setPage}
+        onRowsPerPageChange={(value) => {
+          setRowsPerPage(value);
+          setPage(0);
+        }}
       />
 
       <Dialog open={rejectDialog.open} onClose={() => setRejectDialog({ open: false, id: null })} maxWidth="xs" fullWidth>

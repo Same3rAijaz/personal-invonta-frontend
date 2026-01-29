@@ -8,7 +8,7 @@ import { uploadImage } from "../../utils/upload";
 
 export default function ProductEdit() {
   const { id } = useParams();
-  const { data } = useProducts();
+  const { data } = useProducts({ page: 1, limit: 1000 });
   const updateProduct = useUpdateProduct();
   const { notify } = useToast();
   const navigate = useNavigate();

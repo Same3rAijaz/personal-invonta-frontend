@@ -1,4 +1,5 @@
 import { Box, Button } from "@mui/material";
+import React from "react";
 import { useDeleteProduct, useProducts } from "../hooks/useProducts";
 import DataTable from "../components/DataTable";
 import { useNavigate } from "react-router-dom";
@@ -6,7 +7,9 @@ import PageHeader from "../components/PageHeader";
 import { useToast } from "../hooks/useToast";
 
 export default function Products() {
-  const { data } = useProducts();
+  const [page, setPage] = React.useState(0);
+  const [rowsPerPage, setRowsPerPage] = React.useState(20);
+  const { data } = useProducts({ page: page + 1, limit: rowsPerPage });
   const deleteProduct = useDeleteProduct();
   const navigate = useNavigate();
   const { notify } = useToast();
@@ -62,6 +65,14 @@ export default function Products() {
           }
         ]}
         rows={data?.items || []}
+        page={page}
+        rowsPerPage={rowsPerPage}
+        total={data?.total || 0}
+        onPageChange={setPage}
+        onRowsPerPageChange={(value) => {
+          setRowsPerPage(value);
+          setPage(0);
+        }}
       />
     </Box>
   );

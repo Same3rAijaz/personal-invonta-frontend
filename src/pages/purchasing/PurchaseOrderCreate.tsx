@@ -12,8 +12,8 @@ export default function PurchaseOrderCreate() {
   const createPO = useCreatePurchaseOrder();
   const { notify } = useToast();
   const navigate = useNavigate();
-  const { data: vendors } = useVendors();
-  const { data: products } = useProducts();
+  const { data: vendors } = useVendors({ page: 1, limit: 1000 });
+  const { data: products } = useProducts({ page: 1, limit: 1000 });
   const { register, handleSubmit, control } = useForm({
     defaultValues: { status: "DRAFT", items: [{ productId: "", qty: 1, unitCost: 0 }] }
   });

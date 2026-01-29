@@ -8,6 +8,7 @@ type AuthState = {
   business: any | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
+  updateUser: (nextUser: any | null) => void;
 };
 
 const AuthContext = React.createContext<AuthState | undefined>(undefined);
@@ -60,8 +61,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setBusiness(null);
   };
 
+  const updateUser = (nextUser: any | null) => {
+    if (nextUser) {
+      localStorage.setItem("user", JSON.stringify(nextUser));
+    } else {
+      localStorage.removeItem("user");
+    }
+    setUser(nextUser);
+  };
+
   return (
-    <AuthContext.Provider value={{ token, user, business, login, logout }}>
+    <AuthContext.Provider value={{ token, user, business, login, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

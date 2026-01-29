@@ -1,4 +1,5 @@
 import { Box, Button } from "@mui/material";
+import React from "react";
 import { useCustomers, useDeleteCustomer } from "../hooks/useCustomers";
 import DataTable from "../components/DataTable";
 import { useNavigate } from "react-router-dom";
@@ -6,7 +7,9 @@ import PageHeader from "../components/PageHeader";
 import { useToast } from "../hooks/useToast";
 
 export default function Customers() {
-  const { data } = useCustomers();
+  const [page, setPage] = React.useState(0);
+  const [rowsPerPage, setRowsPerPage] = React.useState(20);
+  const { data } = useCustomers({ page: page + 1, limit: rowsPerPage });
   const deleteCustomer = useDeleteCustomer();
   const navigate = useNavigate();
   const { notify } = useToast();
@@ -48,6 +51,14 @@ export default function Customers() {
           }
         ]}
         rows={data?.items || []}
+        page={page}
+        rowsPerPage={rowsPerPage}
+        total={data?.total || 0}
+        onPageChange={setPage}
+        onRowsPerPageChange={(value) => {
+          setRowsPerPage(value);
+          setPage(0);
+        }}
       />
     </Box>
   );

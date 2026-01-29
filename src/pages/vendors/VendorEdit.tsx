@@ -7,7 +7,7 @@ import { useNavigate, useParams } from "react-router-dom";
 
 export default function VendorEdit() {
   const { id } = useParams();
-  const { data } = useVendors();
+  const { data } = useVendors({ page: 1, limit: 1000 });
   const updateVendor = useUpdateVendor();
   const { notify } = useToast();
   const navigate = useNavigate();

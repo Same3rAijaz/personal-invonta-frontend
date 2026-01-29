@@ -1,4 +1,5 @@
 import { Box, Button } from "@mui/material";
+import React from "react";
 import { useDeleteVendor, useVendors } from "../hooks/useVendors";
 import DataTable from "../components/DataTable";
 import { useNavigate } from "react-router-dom";
@@ -6,7 +7,9 @@ import PageHeader from "../components/PageHeader";
 import { useToast } from "../hooks/useToast";
 
 export default function Vendors() {
-  const { data } = useVendors();
+  const [page, setPage] = React.useState(0);
+  const [rowsPerPage, setRowsPerPage] = React.useState(20);
+  const { data } = useVendors({ page: page + 1, limit: rowsPerPage });
   const deleteVendor = useDeleteVendor();
   const navigate = useNavigate();
   const { notify } = useToast();
@@ -48,6 +51,14 @@ export default function Vendors() {
           }
         ]}
         rows={data?.items || []}
+        page={page}
+        rowsPerPage={rowsPerPage}
+        total={data?.total || 0}
+        onPageChange={setPage}
+        onRowsPerPageChange={(value) => {
+          setRowsPerPage(value);
+          setPage(0);
+        }}
       />
     </Box>
   );

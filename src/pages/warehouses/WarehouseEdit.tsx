@@ -7,7 +7,7 @@ import { useNavigate, useParams } from "react-router-dom";
 
 export default function WarehouseEdit() {
   const { id } = useParams();
-  const { data } = useWarehouses();
+  const { data } = useWarehouses({ page: 1, limit: 1000 });
   const updateWarehouse = useUpdateWarehouse();
   const { notify } = useToast();
   const navigate = useNavigate();

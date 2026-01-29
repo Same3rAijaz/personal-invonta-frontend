@@ -13,11 +13,11 @@ export default function MarketEdit() {
   const client = useQueryClient();
   const { data: markets } = useQuery({
     queryKey: ["markets"],
-    queryFn: async () => (await api.get("/superadmin/markets")).data.data
+    queryFn: async () => (await api.get("/superadmin/markets", { params: { page: 1, limit: 1000 } })).data.data
   });
   const { register, handleSubmit, reset } = useForm({ defaultValues: { isActive: true } });
 
-  const market = (markets || []).find((m: any) => m._id === id);
+  const market = (markets?.items || []).find((m: any) => m._id === id);
 
   useEffect(() => {
     if (market) {

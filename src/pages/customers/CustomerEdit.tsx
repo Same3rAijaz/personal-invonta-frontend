@@ -7,7 +7,7 @@ import { useNavigate, useParams } from "react-router-dom";
 
 export default function CustomerEdit() {
   const { id } = useParams();
-  const { data } = useCustomers();
+  const { data } = useCustomers({ page: 1, limit: 1000 });
   const updateCustomer = useUpdateCustomer();
   const { notify } = useToast();
   const navigate = useNavigate();

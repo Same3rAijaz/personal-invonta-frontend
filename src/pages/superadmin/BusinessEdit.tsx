@@ -16,15 +16,15 @@ export default function BusinessEdit() {
   const client = useQueryClient();
   const { data: markets } = useQuery({
     queryKey: ["markets"],
-    queryFn: async () => (await api.get("/superadmin/markets")).data.data
+    queryFn: async () => (await api.get("/superadmin/markets", { params: { page: 1, limit: 1000 } })).data.data
   });
   const { data: businesses } = useQuery({
     queryKey: ["businesses"],
-    queryFn: async () => (await api.get("/superadmin/businesses")).data.data
+    queryFn: async () => (await api.get("/superadmin/businesses", { params: { page: 1, limit: 1000 } })).data.data
   });
   const { register, handleSubmit, reset, control } = useForm({ defaultValues: { isActive: true, marketId: "" } });
 
-  const business = (businesses || []).find((b: any) => b._id === id);
+  const business = (businesses?.items || []).find((b: any) => b._id === id);
 
   useEffect(() => {
     if (business) {
@@ -90,7 +90,7 @@ export default function BusinessEdit() {
               render={({ field }) => (
                 <TextField select fullWidth label="Market (optional)" {...field} value={field.value || ""}>
                   <MenuItem value="">None</MenuItem>
-                  {(markets || []).map((m: any) => (
+                  {(markets?.items || []).map((m: any) => (
                     <MenuItem key={m._id} value={m._id}>{m.name}</MenuItem>
                   ))}
                 </TextField>

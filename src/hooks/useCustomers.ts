@@ -1,10 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 
-export function useCustomers() {
+export function useCustomers(params?: { page?: number; limit?: number; search?: string }) {
   return useQuery({
-    queryKey: ["customers"],
-    queryFn: async () => (await api.get("/customers")).data.data
+    queryKey: ["customers", params?.page, params?.limit, params?.search],
+    queryFn: async () => (await api.get("/customers", { params })).data.data
   });
 }
 

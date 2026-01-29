@@ -11,9 +11,9 @@ import RemoveCircleOutline from "@mui/icons-material/RemoveCircleOutline";
 
 export default function PurchaseOrderEdit() {
   const { id } = useParams();
-  const { data } = usePurchaseOrders();
-  const { data: vendors } = useVendors();
-  const { data: products } = useProducts();
+  const { data } = usePurchaseOrders({ page: 1, limit: 1000 });
+  const { data: vendors } = useVendors({ page: 1, limit: 1000 });
+  const { data: products } = useProducts({ page: 1, limit: 1000 });
   const updatePO = useUpdatePurchaseOrder();
   const { notify } = useToast();
   const navigate = useNavigate();

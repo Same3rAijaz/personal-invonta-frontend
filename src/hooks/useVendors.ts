@@ -1,10 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 
-export function useVendors() {
+export function useVendors(params?: { page?: number; limit?: number; search?: string }) {
   return useQuery({
-    queryKey: ["vendors"],
-    queryFn: async () => (await api.get("/vendors")).data.data
+    queryKey: ["vendors", params?.page, params?.limit, params?.search],
+    queryFn: async () => (await api.get("/vendors", { params })).data.data
   });
 }
 

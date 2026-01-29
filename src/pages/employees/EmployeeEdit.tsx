@@ -9,8 +9,8 @@ import { useAuth } from "../../hooks/useAuth";
 
 export default function EmployeeEdit() {
   const { id } = useParams();
-  const { data } = useEmployees();
-  const { data: warehouses } = useWarehouses();
+  const { data } = useEmployees({ page: 1, limit: 1000 });
+  const { data: warehouses } = useWarehouses({ page: 1, limit: 1000 });
   const updateEmployee = useUpdateEmployee();
   const { notify } = useToast();
   const navigate = useNavigate();

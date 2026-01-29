@@ -9,12 +9,17 @@ import {
   Tooltip,
   ResponsiveContainer,
   CartesianGrid,
-  PieChart,
-  Pie,
-  Cell
+  Legend
 } from "recharts";
 
-const palette = ["#0ea5e9", "#f97316", "#22c55e", "#e11d48", "#a855f7", "#14b8a6"];
+const numberFormat = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
+const integerFormat = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
+const formatValue = (value: number | null | undefined, compact = false) => {
+  if (value === null || value === undefined) return "-";
+  return compact
+    ? new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 }).format(value)
+    : integerFormat.format(value);
+};
 
 export default function Dashboard() {
   const reports = useReports();
@@ -27,9 +32,12 @@ export default function Dashboard() {
   const lowStockCount = reports.lowStock.data?.length || 0;
   const totalProducts = reports.stockOnHand.data?.length || 0;
 
-  const stockPie = [
-    { name: "Low Stock", value: lowStockCount },
-    { name: "Healthy Stock", value: Math.max(0, totalProducts - lowStockCount) }
+  const stockHealth = [
+    {
+      name: "Items",
+      low: lowStockCount,
+      healthy: Math.max(0, totalProducts - lowStockCount)
+    }
   ];
 
   const orderSummary = [
@@ -37,95 +45,78 @@ export default function Dashboard() {
     { name: "Sales", total: reports.salesSummary.data?.total || 0 }
   ];
 
+  const stats = [
+    { label: "Inventory Valuation", value: formatValue(reports.valuation.data?.totalValue, true) },
+    { label: "Total Products", value: formatValue(totalProducts) },
+    { label: "Low Stock Items", value: formatValue(lowStockCount) },
+    { label: "Sales Orders", value: formatValue(reports.salesSummary.data?.total) },
+    { label: "Purchase Orders", value: formatValue(reports.purchaseSummary.data?.total) },
+    { label: "Attendance Hours", value: numberFormat.format(reports.attendance.data?.totalHours ?? 0) },
+    { label: "Profit (All Time)", value: formatValue(reports.profit.data?.totalProfit, true) }
+  ];
+
   return (
     <Box>
-      <PageHeader title="Dashboard" />
-      <Grid container spacing={2} sx={{ mb: 2 }}>
-        <Grid item xs={12} md={3}>
-          <Paper sx={{ p: 2, borderRadius: 3, boxShadow: "0 10px 24px rgba(15,23,42,0.08)" }}>
-            <Typography variant="subtitle2">Inventory Valuation</Typography>
-            <Typography variant="h5" sx={{ fontWeight: 700 }}>
-              {reports.valuation.data?.totalValue ?? "-"}
-            </Typography>
-          </Paper>
-        </Grid>
-        <Grid item xs={12} md={3}>
-          <Paper sx={{ p: 2, borderRadius: 3, boxShadow: "0 10px 24px rgba(15,23,42,0.08)" }}>
-            <Typography variant="subtitle2">Low Stock Items</Typography>
-            <Typography variant="h5" sx={{ fontWeight: 700 }}>
-              {lowStockCount}
-            </Typography>
-          </Paper>
-        </Grid>
-        <Grid item xs={12} md={3}>
-          <Paper sx={{ p: 2, borderRadius: 3, boxShadow: "0 10px 24px rgba(15,23,42,0.08)" }}>
-            <Typography variant="subtitle2">Sales Orders</Typography>
-            <Typography variant="h5" sx={{ fontWeight: 700 }}>
-              {reports.salesSummary.data?.total ?? 0}
-            </Typography>
-          </Paper>
-        </Grid>
-        <Grid item xs={12} md={3}>
-          <Paper sx={{ p: 2, borderRadius: 3, boxShadow: "0 10px 24px rgba(15,23,42,0.08)" }}>
-            <Typography variant="subtitle2">Attendance Hours</Typography>
-            <Typography variant="h5" sx={{ fontWeight: 700 }}>
-              {reports.attendance.data?.totalHours ?? 0}
-            </Typography>
-          </Paper>
-        </Grid>
-        <Grid item xs={12} md={3}>
-          <Paper sx={{ p: 2, borderRadius: 3, boxShadow: "0 10px 24px rgba(15,23,42,0.08)" }}>
-            <Typography variant="subtitle2">Profit (All Time)</Typography>
-            <Typography variant="h5" sx={{ fontWeight: 700 }}>
-              {reports.profit.data?.totalProfit ?? 0}
-            </Typography>
-          </Paper>
-        </Grid>
+      <PageHeader title="Dashboard" subtitle="Operational overview across inventory, orders, and staffing." />
+      <Grid container spacing={2} sx={{ mb: 3 }}>
+        {stats.map((stat) => (
+          <Grid key={stat.label} item xs={12} sm={6} md={4} lg={3}>
+            <Paper sx={{ p: 2.25, borderRadius: 2, boxShadow: "0 12px 28px rgba(15,23,42,0.08)" }}>
+              <Typography variant="overline" sx={{ letterSpacing: 0.6, color: "text.secondary" }}>
+                {stat.label}
+              </Typography>
+              <Typography variant="h5" sx={{ fontWeight: 700, mt: 0.5 }}>
+                {stat.value}
+              </Typography>
+            </Paper>
+          </Grid>
+        ))}
       </Grid>
 
       <Grid container spacing={2}>
         <Grid item xs={12} md={7}>
-          <Paper sx={{ p: 2.5, borderRadius: 3, boxShadow: "0 14px 30px rgba(15,23,42,0.08)" }}>
+          <Paper sx={{ p: 2.5, borderRadius: 2, boxShadow: "0 14px 30px rgba(15,23,42,0.08)" }}>
             <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
               <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Stock On Hand</Typography>
-              <Typography variant="caption" color="text.secondary">Top items</Typography>
+              <Typography variant="caption" color="text.secondary">Top items by quantity</Typography>
             </Stack>
             <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={stockRows}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
+              <BarChart data={stockRows} barGap={8}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.35)" />
+                <XAxis dataKey="name" tick={{ fill: "#64748b", fontSize: 12 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: "#64748b", fontSize: 12 }} axisLine={false} tickLine={false} />
                 <Tooltip />
-                <Bar dataKey="qty" fill="#0ea5e9" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="qty" fill="#0ea5e9" radius={[2, 2, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </Paper>
         </Grid>
         <Grid item xs={12} md={5}>
-          <Paper sx={{ p: 2.5, borderRadius: 3, boxShadow: "0 14px 30px rgba(15,23,42,0.08)" }}>
+          <Paper sx={{ p: 2.5, borderRadius: 2, boxShadow: "0 14px 30px rgba(15,23,42,0.08)" }}>
             <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2 }}>Stock Health</Typography>
             <ResponsiveContainer width="100%" height={280}>
-              <PieChart>
-                <Pie data={stockPie} dataKey="value" nameKey="name" innerRadius={60} outerRadius={100} paddingAngle={2}>
-                  {stockPie.map((_, idx) => (
-                    <Cell key={idx} fill={palette[idx % palette.length]} />
-                  ))}
-                </Pie>
+              <BarChart data={stockHealth} layout="vertical" barSize={26}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.35)" />
+                <XAxis type="number" tick={{ fill: "#64748b", fontSize: 12 }} axisLine={false} tickLine={false} />
+                <YAxis type="category" dataKey="name" tick={{ fill: "#64748b", fontSize: 12 }} axisLine={false} tickLine={false} />
                 <Tooltip />
-              </PieChart>
+                <Legend />
+                <Bar dataKey="healthy" stackId="a" fill="#22c55e" name="Healthy Stock" radius={[2, 2, 2, 2]} />
+                <Bar dataKey="low" stackId="a" fill="#f97316" name="Low Stock" radius={[2, 2, 2, 2]} />
+              </BarChart>
             </ResponsiveContainer>
           </Paper>
         </Grid>
         <Grid item xs={12}>
-          <Paper sx={{ p: 2.5, borderRadius: 3, boxShadow: "0 14px 30px rgba(15,23,42,0.08)" }}>
+          <Paper sx={{ p: 2.5, borderRadius: 2, boxShadow: "0 14px 30px rgba(15,23,42,0.08)" }}>
             <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2 }}>Orders Summary</Typography>
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={orderSummary}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
+            <ResponsiveContainer width="100%" height={240}>
+              <BarChart data={orderSummary} barGap={16}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.35)" />
+                <XAxis dataKey="name" tick={{ fill: "#64748b", fontSize: 12 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: "#64748b", fontSize: 12 }} axisLine={false} tickLine={false} />
                 <Tooltip />
-                <Bar dataKey="total" fill="#f97316" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="total" fill="#f97316" radius={[2, 2, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </Paper>

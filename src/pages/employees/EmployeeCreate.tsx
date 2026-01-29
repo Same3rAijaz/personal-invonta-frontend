@@ -7,7 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 
 export default function EmployeeCreate() {
-  const { data: warehouses } = useWarehouses();
+  const { data: warehouses } = useWarehouses({ page: 1, limit: 1000 });
   const createEmployee = useCreateEmployee();
   const { notify } = useToast();
   const navigate = useNavigate();

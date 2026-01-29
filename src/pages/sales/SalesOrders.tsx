@@ -1,4 +1,5 @@
 import { Box, Button } from "@mui/material";
+import React from "react";
 import { api } from "../../api/client";
 import { useDeleteSalesOrder, useSalesOrders } from "../../hooks/useSales";
 import DataTable from "../../components/DataTable";
@@ -8,9 +9,11 @@ import { useCustomers } from "../../hooks/useCustomers";
 import { useToast } from "../../hooks/useToast";
 
 export default function SalesOrders() {
-  const { data } = useSalesOrders();
+  const [page, setPage] = React.useState(0);
+  const [rowsPerPage, setRowsPerPage] = React.useState(20);
+  const { data } = useSalesOrders({ page: page + 1, limit: rowsPerPage });
   const deleteSO = useDeleteSalesOrder();
-  const { data: customers } = useCustomers();
+  const { data: customers } = useCustomers({ page: 1, limit: 1000 });
   const navigate = useNavigate();
   const customerMap = new Map((customers?.items || []).map((c: any) => [c._id, c.name]));
   const baseUrl = api.defaults.baseURL || "/api";
@@ -97,6 +100,14 @@ export default function SalesOrders() {
           }
         ]}
         rows={rows}
+        page={page}
+        rowsPerPage={rowsPerPage}
+        total={data?.total || 0}
+        onPageChange={setPage}
+        onRowsPerPageChange={(value) => {
+          setRowsPerPage(value);
+          setPage(0);
+        }}
       />
     </Box>
   );

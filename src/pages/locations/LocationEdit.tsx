@@ -8,8 +8,8 @@ import { useNavigate, useParams } from "react-router-dom";
 
 export default function LocationEdit() {
   const { id } = useParams();
-  const { data } = useLocations();
-  const { data: warehouses } = useWarehouses();
+  const { data } = useLocations({ page: 1, limit: 1000 });
+  const { data: warehouses } = useWarehouses({ page: 1, limit: 1000 });
   const updateLocation = useUpdateLocation();
   const { notify } = useToast();
   const navigate = useNavigate();

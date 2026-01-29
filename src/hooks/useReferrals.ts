@@ -16,9 +16,9 @@ export function useUpdateReferralSettings() {
   });
 }
 
-export function useMyReferrals() {
+export function useMyReferrals(params?: { page?: number; limit?: number; isActive?: string }) {
   return useQuery({
-    queryKey: ["referrals", "my"],
-    queryFn: async () => (await api.get("/referrals/my")).data.data
+    queryKey: ["referrals", "my", params?.page, params?.limit, params?.isActive],
+    queryFn: async () => (await api.get("/referrals/my", { params })).data.data
   });
 }

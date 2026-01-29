@@ -12,8 +12,8 @@ export default function SalesOrderCreate() {
   const createSO = useCreateSalesOrder();
   const { notify } = useToast();
   const navigate = useNavigate();
-  const { data: customers } = useCustomers();
-  const { data: products } = useProducts();
+  const { data: customers } = useCustomers({ page: 1, limit: 1000 });
+  const { data: products } = useProducts({ page: 1, limit: 1000 });
   const { register, handleSubmit, control } = useForm({
     defaultValues: { status: "DRAFT", items: [{ productId: "", qty: 1, unitPrice: 0 }] }
   });

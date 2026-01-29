@@ -40,7 +40,7 @@ export default function ResetPassword() {
   };
 
   return (
-    <Box sx={{ minHeight: "100vh", background: "radial-gradient(circle at top left, #fef3c7 0%, #0f172a 40%, #0b1323 100%)" }}>
+    <Box sx={{ minHeight: "100vh", background: "radial-gradient(circle at top left, rgba(14,165,233,0.18) 0%, #0b1220 40%, #0f172a 100%)" }}>
       <Container maxWidth="lg" sx={{ py: 8 }}>
         <Grid container spacing={4} alignItems="center">
           <Grid item xs={12} md={5}>
@@ -55,14 +55,14 @@ export default function ResetPassword() {
             </Typography>
             <Typography sx={{ color: "#94a3b8" }}>
               Back to{" "}
-              <Link to="/login" style={{ color: "#f97316", textDecoration: "none" }}>
+              <Link to="/login" style={{ color: "#38bdf8", textDecoration: "none" }}>
                 sign in
               </Link>
             </Typography>
           </Grid>
           <Grid item xs={12} md={7}>
-            <Paper sx={{ p: 4, borderRadius: 4, boxShadow: "0 24px 50px rgba(0,0,0,0.25)" }}>
-              <Typography variant="h5" gutterBottom>Reset password</Typography>
+            <Paper sx={{ p: 4, borderRadius: 4, boxShadow: "0 30px 60px rgba(15,23,42,0.35)" }}>
+              <Typography variant="h4" gutterBottom>Reset password</Typography>
               <Box component="form" onSubmit={handleSubmit(onSubmit)}>
                 <TextField
                   fullWidth

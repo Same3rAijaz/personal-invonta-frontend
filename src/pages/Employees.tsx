@@ -10,9 +10,11 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 
 export default function Employees() {
-  const { data } = useEmployees();
+  const [page, setPage] = React.useState(0);
+  const [rowsPerPage, setRowsPerPage] = React.useState(20);
+  const { data } = useEmployees({ page: page + 1, limit: rowsPerPage });
   const deleteEmployee = useDeleteEmployee();
-  const { data: warehouses } = useWarehouses();
+  const { data: warehouses } = useWarehouses({ page: 1, limit: 1000 });
   const navigate = useNavigate();
   const warehouseMap = new Map((warehouses?.items || []).map((w: any) => [w._id, w.name]));
   const rows = (data?.items || []).map((emp: any) => ({
@@ -112,6 +114,14 @@ export default function Employees() {
           }
         ]}
         rows={rows}
+        page={page}
+        rowsPerPage={rowsPerPage}
+        total={data?.total || 0}
+        onPageChange={setPage}
+        onRowsPerPageChange={(value) => {
+          setRowsPerPage(value);
+          setPage(0);
+        }}
       />
       <Dialog open={blockDialog.open} onClose={() => setBlockDialog({ open: false, id: null })} maxWidth="xs" fullWidth>
         <DialogTitle>Block Employee Login</DialogTitle>

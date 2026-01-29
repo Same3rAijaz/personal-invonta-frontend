@@ -1,11 +1,14 @@
 import { Box, Typography, Paper } from "@mui/material";
+import React from "react";
 import DataTable from "../../components/DataTable";
 import PageHeader from "../../components/PageHeader";
 import { useMyReferrals } from "../../hooks/useReferrals";
 import { useAuth } from "../../hooks/useAuth";
 
 export default function MyReferrals() {
-  const { data } = useMyReferrals();
+  const [page, setPage] = React.useState(0);
+  const [rowsPerPage, setRowsPerPage] = React.useState(20);
+  const { data } = useMyReferrals({ page: page + 1, limit: rowsPerPage });
   const { user } = useAuth();
 
   return (
@@ -30,6 +33,14 @@ export default function MyReferrals() {
           isActive: row.isActive ? "Yes" : "No",
           createdAt: row.createdAt ? new Date(row.createdAt).toLocaleDateString() : "-"
         }))}
+        page={page}
+        rowsPerPage={rowsPerPage}
+        total={data?.total || 0}
+        onPageChange={setPage}
+        onRowsPerPageChange={(value) => {
+          setRowsPerPage(value);
+          setPage(0);
+        }}
       />
     </Box>
   );

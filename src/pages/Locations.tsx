@@ -1,4 +1,5 @@
 import { Box, Button } from "@mui/material";
+import React from "react";
 import { useDeleteLocation, useLocations } from "../hooks/useLocations";
 import { useWarehouses } from "../hooks/useWarehouses";
 import { useToast } from "../hooks/useToast";
@@ -7,9 +8,11 @@ import { useNavigate } from "react-router-dom";
 import PageHeader from "../components/PageHeader";
 
 export default function Locations() {
-  const { data } = useLocations();
+  const [page, setPage] = React.useState(0);
+  const [rowsPerPage, setRowsPerPage] = React.useState(20);
+  const { data } = useLocations({ page: page + 1, limit: rowsPerPage });
   const deleteLocation = useDeleteLocation();
-  const { data: warehouses } = useWarehouses();
+  const { data: warehouses } = useWarehouses({ page: 1, limit: 1000 });
   const navigate = useNavigate();
   const warehouseMap = new Map((warehouses?.items || []).map((w: any) => [w._id, w.name]));
   const rows = (data?.items || []).map((loc: any) => ({
@@ -53,6 +56,14 @@ export default function Locations() {
           }
         ]}
         rows={rows}
+        page={page}
+        rowsPerPage={rowsPerPage}
+        total={data?.total || 0}
+        onPageChange={setPage}
+        onRowsPerPageChange={(value) => {
+          setRowsPerPage(value);
+          setPage(0);
+        }}
       />
     </Box>
   );

@@ -1,4 +1,5 @@
 import { Box, Button } from "@mui/material";
+import React from "react";
 import { useDeletePurchaseOrder, usePurchaseOrders } from "../../hooks/usePurchasing";
 import DataTable from "../../components/DataTable";
 import { useNavigate } from "react-router-dom";
@@ -7,9 +8,11 @@ import { useVendors } from "../../hooks/useVendors";
 import { useToast } from "../../hooks/useToast";
 
 export default function PurchaseOrders() {
-  const { data } = usePurchaseOrders();
+  const [page, setPage] = React.useState(0);
+  const [rowsPerPage, setRowsPerPage] = React.useState(20);
+  const { data } = usePurchaseOrders({ page: page + 1, limit: rowsPerPage });
   const deletePO = useDeletePurchaseOrder();
-  const { data: vendors } = useVendors();
+  const { data: vendors } = useVendors({ page: 1, limit: 1000 });
   const navigate = useNavigate();
   const vendorMap = new Map((vendors?.items || []).map((v: any) => [v._id, v.name]));
   const rows = (data?.items || []).map((po: any) => ({
@@ -54,6 +57,14 @@ export default function PurchaseOrders() {
           }
         ]}
         rows={rows}
+        page={page}
+        rowsPerPage={rowsPerPage}
+        total={data?.total || 0}
+        onPageChange={setPage}
+        onRowsPerPageChange={(value) => {
+          setRowsPerPage(value);
+          setPage(0);
+        }}
       />
     </Box>
   );

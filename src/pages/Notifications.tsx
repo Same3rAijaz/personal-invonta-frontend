@@ -1,10 +1,13 @@
-import { Box, Button, Paper, Table, TableBody, TableCell, TableHead, TableRow, Typography } from "@mui/material";
+import { Box, Button, Paper, Table, TableBody, TableCell, TableHead, TableRow, Typography, TablePagination } from "@mui/material";
+import React from "react";
 import PageHeader from "../components/PageHeader";
 import { useNotifications, useMarkNotificationRead } from "../hooks/useNotifications";
 import { useToast } from "../hooks/useToast";
 
 export default function Notifications() {
-  const { data } = useNotifications();
+  const [page, setPage] = React.useState(0);
+  const [rowsPerPage, setRowsPerPage] = React.useState(20);
+  const { data } = useNotifications({ page: page + 1, limit: rowsPerPage });
   const markRead = useMarkNotificationRead();
   const { notify } = useToast();
 
@@ -57,6 +60,18 @@ export default function Notifications() {
             ) : null}
           </TableBody>
         </Table>
+        <TablePagination
+          component="div"
+          count={data?.total || 0}
+          page={page}
+          onPageChange={(_, nextPage) => setPage(nextPage)}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={(event) => {
+            setRowsPerPage(Number(event.target.value));
+            setPage(0);
+          }}
+          rowsPerPageOptions={[10, 20, 50, 100]}
+        />
       </Paper>
     </Box>
   );

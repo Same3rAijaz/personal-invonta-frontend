@@ -6,7 +6,7 @@ import { useToast } from "../../hooks/useToast";
 import { useNavigate } from "react-router-dom";
 
 export default function LocationCreate() {
-  const { data: warehouses } = useWarehouses();
+  const { data: warehouses } = useWarehouses({ page: 1, limit: 1000 });
   const createLocation = useCreateLocation();
   const { notify } = useToast();
   const navigate = useNavigate();

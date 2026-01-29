@@ -1,10 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 
-export function useEmployees() {
+export function useEmployees(params?: { page?: number; limit?: number; search?: string }) {
   return useQuery({
-    queryKey: ["employees"],
-    queryFn: async () => (await api.get("/employees")).data.data
+    queryKey: ["employees", params?.page, params?.limit, params?.search],
+    queryFn: async () => (await api.get("/employees", { params })).data.data
   });
 }
 
