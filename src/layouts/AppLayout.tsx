@@ -32,7 +32,8 @@ export default function AppLayout() {
     sales: ["sales"],
     employees: ["hr"],
     attendance: ["hr"],
-    reports: ["reports"]
+    reports: ["reports"],
+    udhaar: ["udhaar"]
   };
   const businessModules = business?.enabledModules || [];
   const userModules = user?.allowedModules || [];
@@ -59,6 +60,8 @@ export default function AppLayout() {
     ...(isAllowed("employees") ? [{ label: "Employees", to: "/employees" }] : []),
     ...(isAllowed("attendance") ? [{ label: "Attendance", to: "/attendance" }] : []),
     ...(isAllowed("reports") ? [{ label: "Reports", to: "/reports" }] : []),
+    ...(isAllowed("udhaar") ? [{ label: "Udhaar", to: "/udhaar/parties" }] : []),
+    ...(isAllowed("udhaar") ? [{ label: "Udhaar Reports", to: "/udhaar/reports" }] : []),
     { label: "Notifications", to: "/notifications" },
     { label: "My Referrals", to: "/referrals" },
     ...(user?.role === "SUPER_ADMIN" ? [{ label: "Referral Settings", to: "/referrals/settings" }] : []),
@@ -280,3 +283,5 @@ export default function AppLayout() {
     </Box>
   );
 }
+
+

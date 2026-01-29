@@ -7,14 +7,87 @@ export default function Privacy() {
         <Paper sx={{ p: 4, borderRadius: 4, boxShadow: "0 30px 60px rgba(15,23,42,0.35)" }}>
           <Typography variant="h4" gutterBottom>Privacy Policy</Typography>
           <Typography paragraph>
-            Invonta collects account details, business profile data, and activity logs to deliver inventory and sales features.
+            We collect account details, business profile data, and activity logs to deliver inventory, sales, and billing features.
             We do not sell your data.
           </Typography>
           <Typography paragraph>
-            We store uploaded images and documents in cloud storage you control. Access is limited to your organization.
+            Card payments are processed by a PCI-compliant payment processor. We do not store full card numbers or CVV codes. We may store
+            limited billing metadata such as card brand, last four digits, expiration month/year, billing address, and a payment token.
           </Typography>
           <Typography paragraph>
-            You can request data removal by contacting support. Admins can export core records for compliance.
+            If you pay through the Facebook/Meta app, we receive confirmation details such as transaction status, amount, currency, timestamp,
+            and platform identifiers so we can reconcile billing and provision access.
+          </Typography>
+          <Typography paragraph>
+            We store uploaded images and documents in cloud storage you control. Access is limited to your organization and authorized staff.
+          </Typography>
+          <Typography paragraph>
+            You can request data removal by contacting support. Admins can export core records for compliance, subject to legal retention
+            requirements.
+          </Typography>
+          <Typography variant="h6" gutterBottom>Information We Collect</Typography>
+          <Typography paragraph>
+            We collect information you provide directly, such as name, email, phone number, business name, addresses, tax identifiers, and
+            user role assignments. We also collect operational data you enter, including products, SKUs, stock counts, purchase orders, sales
+            orders, invoices, customers, vendors, locations, and attendance records.
+          </Typography>
+          <Typography paragraph>
+            We collect usage data, such as login history, feature usage, device type, browser type, IP address, and error logs. This helps us
+            secure the service, improve performance, and support troubleshooting.
+          </Typography>
+          <Typography variant="h6" gutterBottom>How We Use Information</Typography>
+          <Typography paragraph>
+            We use your information to provide and operate the platform, process payments, send service notifications, manage support
+            requests, and improve product features. We may also use data to comply with legal obligations, prevent fraud, and enforce our
+            policies.
+          </Typography>
+          <Typography paragraph>
+            We do not use your data for advertising and we do not sell personal information. If we send product updates or marketing messages,
+            you can opt out at any time.
+          </Typography>
+          <Typography variant="h6" gutterBottom>Sharing and Disclosure</Typography>
+          <Typography paragraph>
+            We share data with trusted service providers who help us deliver the platform, such as hosting, analytics, email delivery, and
+            payment processing providers. These providers are authorized to process data only as needed to perform services for us and are
+            obligated to protect it.
+          </Typography>
+          <Typography paragraph>
+            We may disclose information if required by law, regulation, or legal process, or to protect the rights, property, and safety of
+            our users, employees, and the public. If the platform is involved in a merger, acquisition, or asset sale, your data may be
+            transferred as part of that transaction.
+          </Typography>
+          <Typography variant="h6" gutterBottom>Data Retention</Typography>
+          <Typography paragraph>
+            We retain data for as long as your account is active or as needed to provide the service. We may retain certain information after
+            account closure to comply with legal obligations, resolve disputes, or enforce agreements.
+          </Typography>
+          <Typography variant="h6" gutterBottom>Security</Typography>
+          <Typography paragraph>
+            We use reasonable administrative, technical, and physical safeguards to protect your data, including access controls, encryption
+            in transit, and audit logging. However, no system can be guaranteed to be 100% secure.
+          </Typography>
+          <Typography variant="h6" gutterBottom>Your Choices and Rights</Typography>
+          <Typography paragraph>
+            You may access, update, or correct your account information in your profile settings. Admins can manage user roles, export data,
+            and request deletion. Depending on your location, you may have additional rights under applicable privacy laws.
+          </Typography>
+          <Typography variant="h6" gutterBottom>International Transfers</Typography>
+          <Typography paragraph>
+            If you access the service from outside the country where our servers are located, your information may be transferred and stored
+            across borders. We take steps to ensure appropriate safeguards for such transfers as required by law.
+          </Typography>
+          <Typography variant="h6" gutterBottom>Children's Privacy</Typography>
+          <Typography paragraph>
+            The platform is not intended for children under the age of 13 (or the minimum age required in your jurisdiction). We do not
+            knowingly collect personal data from children.
+          </Typography>
+          <Typography variant="h6" gutterBottom>Policy Updates</Typography>
+          <Typography paragraph>
+            We may update this policy from time to time. We will post the updated version and revise the effective date when changes are made.
+          </Typography>
+          <Typography variant="h6" gutterBottom>Contact</Typography>
+          <Typography paragraph>
+            For privacy questions, contact support through the channels listed on our website or within your account.
           </Typography>
         </Paper>
       </Container>

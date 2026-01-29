@@ -11,6 +11,7 @@ import {
   CartesianGrid,
   Legend
 } from "recharts";
+import { useReceivablesReport } from "../hooks/useUdhaar";
 
 const numberFormat = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 const integerFormat = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
@@ -23,6 +24,7 @@ const formatValue = (value: number | null | undefined, compact = false) => {
 
 export default function Dashboard() {
   const reports = useReports();
+  const receivables = useReceivablesReport({});
 
   const stockRows = (reports.stockOnHand.data || []).slice(0, 8).map((row: any, idx: number) => ({
     name: row.productId?.slice(-6) || `P${idx + 1}`,
@@ -57,20 +59,48 @@ export default function Dashboard() {
 
   return (
     <Box>
-      <PageHeader title="Dashboard" subtitle="Operational overview across inventory, orders, and staffing." />
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        {stats.map((stat) => (
-          <Grid key={stat.label} item xs={12} sm={6} md={4} lg={3}>
-            <Paper sx={{ p: 2.25, borderRadius: 2, boxShadow: "0 12px 28px rgba(15,23,42,0.08)" }}>
-              <Typography variant="overline" sx={{ letterSpacing: 0.6, color: "text.secondary" }}>
-                {stat.label}
-              </Typography>
-              <Typography variant="h5" sx={{ fontWeight: 700, mt: 0.5 }}>
-                {stat.value}
-              </Typography>
-            </Paper>
-          </Grid>
-        ))}
+      <PageHeader title="Dashboard" />
+      <Grid container spacing={2} sx={{ mb: 2 }}>
+        <Grid item xs={12} md={3}>
+          <Paper sx={{ p: 2, borderRadius: 3, boxShadow: "0 10px 24px rgba(15,23,42,0.08)" }}>
+            <Typography variant="subtitle2">Inventory Valuation</Typography>
+            <Typography variant="h5" sx={{ fontWeight: 700 }}>
+              {reports.valuation.data?.totalValue ?? "-"}
+            </Typography>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} md={3}>
+          <Paper sx={{ p: 2, borderRadius: 3, boxShadow: "0 10px 24px rgba(15,23,42,0.08)" }}>
+            <Typography variant="subtitle2">Low Stock Items</Typography>
+            <Typography variant="h5" sx={{ fontWeight: 700 }}>
+              {lowStockCount}
+            </Typography>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} md={3}>
+          <Paper sx={{ p: 2, borderRadius: 3, boxShadow: "0 10px 24px rgba(15,23,42,0.08)" }}>
+            <Typography variant="subtitle2">Sales Orders</Typography>
+            <Typography variant="h5" sx={{ fontWeight: 700 }}>
+              {reports.salesSummary.data?.total ?? 0}
+            </Typography>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} md={3}>
+          <Paper sx={{ p: 2, borderRadius: 3, boxShadow: "0 10px 24px rgba(15,23,42,0.08)" }}>
+            <Typography variant="subtitle2">Attendance Hours</Typography>
+            <Typography variant="h5" sx={{ fontWeight: 700 }}>
+              {reports.attendance.data?.totalHours ?? 0}
+            </Typography>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} md={3}>
+          <Paper sx={{ p: 2, borderRadius: 3, boxShadow: "0 10px 24px rgba(15,23,42,0.08)" }}>
+            <Typography variant="subtitle2">Profit (All Time)</Typography>
+            <Typography variant="h5" sx={{ fontWeight: 700 }}>
+              {reports.profit.data?.totalProfit ?? 0}
+            </Typography>
+          </Paper>
+        </Grid>
       </Grid>
 
       <Grid container spacing={2}>

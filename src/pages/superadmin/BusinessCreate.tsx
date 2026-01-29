@@ -20,7 +20,7 @@ export default function BusinessCreate() {
     onSuccess: () => client.invalidateQueries({ queryKey: ["businesses"] })
   });
 
-  const availableModules = ["products", "inventory", "warehouses", "locations", "customers", "vendors", "purchasing", "sales", "hr", "reports"];
+  const availableModules = ["products", "inventory", "warehouses", "locations", "customers", "vendors", "purchasing", "sales", "hr", "reports", "udhaar"];
   const labelize = (value: string) => (value === "hr" ? "HR" : value.charAt(0).toUpperCase() + value.slice(1));
 
   const onSubmit = async (values: any) => {
