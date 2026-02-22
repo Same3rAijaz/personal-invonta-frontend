@@ -115,6 +115,12 @@ export default function Login() {
                   Reset password
                 </Link>
               </Typography>
+              <Typography sx={{ color: "#475569", mt: 1 }}>
+                Looking for nearby products?{" "}
+                <Link to="/marketplace" style={{ color: "#0ea5e9", textDecoration: "none" }}>
+                  Open marketplace
+                </Link>
+              </Typography>
               <Box sx={{ mt: 2, display: "flex", gap: 2, flexWrap: "wrap" }}>
                 <Link to="/privacy" style={{ color: "#64748b", textDecoration: "none" }}>Privacy Policy</Link>
                 <Link to="/terms" style={{ color: "#64748b", textDecoration: "none" }}>Terms of Service</Link>

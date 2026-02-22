@@ -39,39 +39,43 @@ export default function AppLayout() {
   const userModules = user?.allowedModules || [];
   const hasBusinessLimit = businessModules.length > 0;
   const hasUserLimit = userModules.length > 0 && user?.role !== "ADMIN";
+  const isSuperAdmin = user?.role === "SUPER_ADMIN";
   const isAllowed = (key: string) => {
-    if (user?.role === "SUPER_ADMIN") return true;
+    if (isSuperAdmin) return false;
     const mapped = moduleMap[key] || [];
     const businessPass = !hasBusinessLimit || mapped.some((m) => businessModules.includes(m));
     const userPass = !hasUserLimit || mapped.some((m) => userModules.includes(m));
     return businessPass && userPass;
   };
 
-  const navItems = [
-    { label: "Dashboard", to: "/" },
-    ...(isAllowed("products") ? [{ label: "Products", to: "/products" }] : []),
-    ...(isAllowed("inventory") ? [{ label: "Inventory", to: "/inventory" }] : []),
-    ...(isAllowed("warehouses") ? [{ label: "Warehouses", to: "/warehouses" }] : []),
-    ...(isAllowed("locations") ? [{ label: "Locations", to: "/locations" }] : []),
-    ...(isAllowed("customers") ? [{ label: "Customers", to: "/customers" }] : []),
-    ...(isAllowed("vendors") ? [{ label: "Vendors", to: "/vendors" }] : []),
-    ...(isAllowed("purchasing") ? [{ label: "Purchasing", to: "/purchasing" }] : []),
-    ...(isAllowed("sales") ? [{ label: "Sales", to: "/sales" }] : []),
-    ...(isAllowed("employees") ? [{ label: "Employees", to: "/employees" }] : []),
-    ...(isAllowed("attendance") ? [{ label: "Attendance", to: "/attendance" }] : []),
-    ...(isAllowed("reports") ? [{ label: "Reports", to: "/reports" }] : []),
-    ...(isAllowed("udhaar") ? [{ label: "Udhaar", to: "/udhaar/parties" }] : []),
-    ...(isAllowed("udhaar") ? [{ label: "Udhaar Reports", to: "/udhaar/reports" }] : []),
-    { label: "Notifications", to: "/notifications" },
-    { label: "My Referrals", to: "/referrals" },
-    ...(user?.role === "SUPER_ADMIN" ? [{ label: "Referral Settings", to: "/referrals/settings" }] : []),
-    ...(user?.role === "ADMIN" ? [{ label: "Settings", to: "/settings/profile" }] : [])
-  ];
-  if (user?.role === "SUPER_ADMIN") {
-    navItems.push({ label: "Markets", to: "/superadmin/markets" });
-    navItems.push({ label: "Businesses", to: "/superadmin/businesses" });
-    navItems.push({ label: "Approval Requests", to: "/superadmin/requests" });
-  }
+  const navItems = isSuperAdmin
+    ? [
+        { label: "Dashboard", to: "/" },
+        { label: "Markets", to: "/superadmin/markets" },
+        { label: "Businesses", to: "/superadmin/businesses" },
+        { label: "Categories", to: "/superadmin/categories" },
+        { label: "Approval Requests", to: "/superadmin/requests" },
+        { label: "Referral Settings", to: "/referrals/settings" }
+      ]
+    : [
+        { label: "Dashboard", to: "/" },
+        ...(isAllowed("products") ? [{ label: "Products", to: "/products" }] : []),
+        ...(isAllowed("inventory") ? [{ label: "Inventory", to: "/inventory" }] : []),
+        ...(isAllowed("warehouses") ? [{ label: "Warehouses", to: "/warehouses" }] : []),
+        ...(isAllowed("locations") ? [{ label: "Locations", to: "/locations" }] : []),
+        ...(isAllowed("customers") ? [{ label: "Customers", to: "/customers" }] : []),
+        ...(isAllowed("vendors") ? [{ label: "Vendors", to: "/vendors" }] : []),
+        ...(isAllowed("purchasing") ? [{ label: "Purchasing", to: "/purchasing" }] : []),
+        ...(isAllowed("sales") ? [{ label: "Sales", to: "/sales" }] : []),
+        ...(isAllowed("employees") ? [{ label: "Employees", to: "/employees" }] : []),
+        ...(isAllowed("attendance") ? [{ label: "Attendance", to: "/attendance" }] : []),
+        ...(isAllowed("reports") ? [{ label: "Reports", to: "/reports" }] : []),
+        ...(isAllowed("udhaar") ? [{ label: "Udhaar", to: "/udhaar/parties" }] : []),
+        ...(isAllowed("udhaar") ? [{ label: "Udhaar Reports", to: "/udhaar/reports" }] : []),
+        { label: "Notifications", to: "/notifications" },
+        { label: "My Referrals", to: "/referrals" },
+        ...(user?.role === "ADMIN" ? [{ label: "Settings", to: "/settings/profile" }] : [])
+      ];
 
   const isActive = (path: string) => (path === "/" ? location.pathname === "/" : location.pathname.startsWith(path));
   const menuOpen = Boolean(menuAnchor);
@@ -182,7 +186,7 @@ export default function AppLayout() {
           <Stack direction="row" spacing={1.5} alignItems="center">
             <Box sx={{ textAlign: "right" }}>
               <Typography variant="caption" sx={{ color: "rgba(226,232,240,0.7)", display: "block" }}>
-                {business?.name || "Your Workspace"}
+                {isSuperAdmin ? "Super Admin Workspace" : (business?.name || "Your Workspace")}
               </Typography>
               <Typography variant="body2" sx={{ fontWeight: 600, color: "#ffffff" }}>
                 {displayName}
@@ -212,13 +216,15 @@ export default function AppLayout() {
               transformOrigin={{ vertical: "top", horizontal: "right" }}
               PaperProps={{ sx: { borderRadius: 0, minWidth: 160 } }}
             >
-              <MenuItem component={Link} to="/settings/profile" onClick={() => setMenuAnchor(null)}>
-                <ListItemIcon sx={{ minWidth: 34 }}>
-                  <AccountCircleIcon fontSize="small" />
-                </ListItemIcon>
-                Profile
-              </MenuItem>
-              <Divider />
+              {!isSuperAdmin ? (
+                <MenuItem component={Link} to="/settings/profile" onClick={() => setMenuAnchor(null)}>
+                  <ListItemIcon sx={{ minWidth: 34 }}>
+                    <AccountCircleIcon fontSize="small" />
+                  </ListItemIcon>
+                  Profile
+                </MenuItem>
+              ) : null}
+              {!isSuperAdmin ? <Divider /> : null}
               <MenuItem
                 onClick={() => {
                   setMenuAnchor(null);
