@@ -1,10 +1,12 @@
-import { Box, Button, Paper, Typography, Grid, TextField, Divider, FormControlLabel, Checkbox } from "@mui/material";
-import { useEffect } from "react";
+import { Box, Button, Paper, Typography, Grid, TextField, Divider, FormControlLabel, Checkbox, MenuItem } from "@mui/material";
+import { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { useToast } from "../../hooks/useToast";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
+import { useCities, useCountries, useStates } from "../../hooks/useGeo";
+import { DEFAULT_CITY, DEFAULT_COUNTRY, DEFAULT_STATE } from "../../constants/locationDefaults";
 
 export default function MarketEdit() {
   const { id } = useParams();
@@ -15,7 +17,13 @@ export default function MarketEdit() {
     queryKey: ["markets"],
     queryFn: async () => (await api.get("/superadmin/markets", { params: { page: 1, limit: 1000 } })).data.data
   });
-  const { register, handleSubmit, reset } = useForm({ defaultValues: { isActive: true } });
+  const { register, handleSubmit, reset, watch, setValue } = useForm({ defaultValues: { isActive: true } });
+  const country = watch("country");
+  const state = watch("state");
+  const city = watch("city");
+  const { data: countryOptions = [] } = useCountries();
+  const { data: stateOptions = [] } = useStates(country);
+  const { data: cityOptions = [] } = useCities(country, state);
 
   const market = (markets?.items || []).find((m: any) => m._id === id);
 
@@ -23,12 +31,23 @@ export default function MarketEdit() {
     if (market) {
       reset({
         name: market.name || "",
-        city: market.city || "",
-        state: market.state || "",
+        country: market.country || DEFAULT_COUNTRY,
+        city: market.city || DEFAULT_CITY,
+        state: market.state || DEFAULT_STATE,
         isActive: market.isActive ?? true
       });
     }
   }, [market, reset]);
+
+  useEffect(() => {
+    if (state && !stateOptions.some((item: string) => item === state)) {
+      setValue("state", "");
+      setValue("city", "");
+    }
+    if (city && !cityOptions.some((item: string) => item === city)) {
+      setValue("city", "");
+    }
+  }, [state, city, stateOptions, cityOptions, setValue]);
 
   const mutation = useMutation({
     mutationFn: async (payload: any) => (await api.patch(`/superadmin/markets/${id}`, payload)).data.data,
@@ -54,14 +73,32 @@ export default function MarketEdit() {
       <Typography variant="h5" gutterBottom>Edit Market</Typography>
       <Paper sx={{ p: 3, borderRadius: 3, boxShadow: "0 18px 40px rgba(15,23,42,0.08)" }}>
         <Grid container spacing={2} component="form" onSubmit={handleSubmit(onSubmit)}>
-          <Grid item xs={12} md={4}>
+          <Grid item xs={12} md={3}>
             <TextField fullWidth label="Name" {...register("name")} />
           </Grid>
-          <Grid item xs={12} md={4}>
-            <TextField fullWidth label="City" {...register("city")} />
+          <Grid item xs={12} md={3}>
+            <TextField select fullWidth label="Country" {...register("country")}>
+              <MenuItem value="">Select Country</MenuItem>
+              {countryOptions.map((item: string) => (
+                <MenuItem key={item} value={item}>{item}</MenuItem>
+              ))}
+            </TextField>
           </Grid>
-          <Grid item xs={12} md={4}>
-            <TextField fullWidth label="State" {...register("state")} />
+          <Grid item xs={12} md={3}>
+            <TextField select fullWidth label="State" {...register("state")} disabled={!country}>
+              <MenuItem value="">Select State</MenuItem>
+              {stateOptions.map((item: string) => (
+                <MenuItem key={item} value={item}>{item}</MenuItem>
+              ))}
+            </TextField>
+          </Grid>
+          <Grid item xs={12} md={3}>
+            <TextField select fullWidth label="City" {...register("city")} disabled={!country || !state}>
+              <MenuItem value="">Select City</MenuItem>
+              {cityOptions.map((item: string) => (
+                <MenuItem key={item} value={item}>{item}</MenuItem>
+              ))}
+            </TextField>
           </Grid>
           <Grid item xs={12}>
             <FormControlLabel control={<Checkbox defaultChecked {...register("isActive")} />} label="Active" />

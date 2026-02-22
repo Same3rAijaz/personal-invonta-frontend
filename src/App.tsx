@@ -33,6 +33,9 @@ import Reports from "./pages/reports/Reports";
 import Markets from "./pages/superadmin/Markets";
 import MarketCreate from "./pages/superadmin/MarketCreate";
 import MarketEdit from "./pages/superadmin/MarketEdit";
+import Categories from "./pages/superadmin/Categories";
+import CategoryCreate from "./pages/superadmin/CategoryCreate";
+import CategoryEdit from "./pages/superadmin/CategoryEdit";
 import Businesses from "./pages/superadmin/Businesses";
 import BusinessCreate from "./pages/superadmin/BusinessCreate";
 import BusinessEdit from "./pages/superadmin/BusinessEdit";
@@ -40,12 +43,17 @@ import MyReferrals from "./pages/referrals/MyReferrals";
 import ReferralSettings from "./pages/referrals/ReferralSettings";
 import AppLayout from "./layouts/AppLayout";
 import ProtectedRoute from "./routes/ProtectedRoute";
+import SuperAdminOnlyRoute from "./routes/SuperAdminOnlyRoute";
+import BusinessUserRoute from "./routes/BusinessUserRoute";
 import BusinessProfile from "./pages/settings/BusinessProfile";
 import Signup from "./pages/Signup";
 import ShopRequests from "./pages/superadmin/ShopRequests";
 import Privacy from "./pages/public/Privacy";
 import Terms from "./pages/public/Terms";
 import Tutorial from "./pages/public/Tutorial";
+import Marketplace from "./pages/public/Marketplace";
+import MarketplaceProductDetail from "./pages/public/MarketplaceProductDetail";
+import MarketplaceShopDetail from "./pages/public/MarketplaceShopDetail";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Notifications from "./pages/Notifications";
@@ -63,53 +71,63 @@ export default function App() {
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/terms" element={<Terms />} />
       <Route path="/tutorial" element={<Tutorial />} />
+      <Route path="/marketplace" element={<Marketplace />} />
+      <Route path="/marketplace/:id" element={<MarketplaceProductDetail />} />
+      <Route path="/marketplace/shops/:id" element={<MarketplaceShopDetail />} />
       <Route element={<ProtectedRoute />}
       >
         <Route element={<AppLayout />}>
           <Route index element={<Dashboard />} />
-          <Route path="/products" element={<Products />} />
-          <Route path="/products/new" element={<ProductCreate />} />
-          <Route path="/products/:id/edit" element={<ProductEdit />} />
-          <Route path="/inventory" element={<Inventory />} />
-          <Route path="/inventory/new" element={<InventoryCreate />} />
-          <Route path="/warehouses" element={<Warehouses />} />
-          <Route path="/warehouses/new" element={<WarehouseCreate />} />
-          <Route path="/warehouses/:id/edit" element={<WarehouseEdit />} />
-          <Route path="/locations" element={<Locations />} />
-          <Route path="/locations/new" element={<LocationCreate />} />
-          <Route path="/locations/:id/edit" element={<LocationEdit />} />
-          <Route path="/customers" element={<Customers />} />
-          <Route path="/customers/new" element={<CustomerCreate />} />
-          <Route path="/customers/:id/edit" element={<CustomerEdit />} />
-          <Route path="/vendors" element={<Vendors />} />
-          <Route path="/vendors/new" element={<VendorCreate />} />
-          <Route path="/vendors/:id/edit" element={<VendorEdit />} />
-          <Route path="/purchasing" element={<Purchasing />} />
-          <Route path="/purchasing/new" element={<PurchaseOrderCreate />} />
-          <Route path="/purchasing/:id/edit" element={<PurchaseOrderEdit />} />
-          <Route path="/sales" element={<Sales />} />
-          <Route path="/sales/new" element={<SalesOrderCreate />} />
-          <Route path="/sales/:id/edit" element={<SalesOrderEdit />} />
-          <Route path="/employees" element={<Employees />} />
-          <Route path="/employees/new" element={<EmployeeCreate />} />
-          <Route path="/employees/:id/edit" element={<EmployeeEdit />} />
-          <Route path="/attendance" element={<Attendance />} />
-          <Route path="/attendance/new" element={<AttendanceCreate />} />
-          <Route path="/reports" element={<Reports />} />
-          <Route path="/notifications" element={<Notifications />} />
-          <Route path="/udhaar/parties" element={<UdhaarParties />} />
-          <Route path="/udhaar/parties/:id" element={<PartyDetail />} />
-          <Route path="/udhaar/reports" element={<UdhaarReports />} />
-          <Route path="/superadmin/markets" element={<Markets />} />
-          <Route path="/superadmin/markets/new" element={<MarketCreate />} />
-          <Route path="/superadmin/markets/:id/edit" element={<MarketEdit />} />
-          <Route path="/superadmin/businesses" element={<Businesses />} />
-          <Route path="/superadmin/businesses/new" element={<BusinessCreate />} />
-          <Route path="/superadmin/businesses/:id/edit" element={<BusinessEdit />} />
-          <Route path="/superadmin/requests" element={<ShopRequests />} />
-          <Route path="/settings/profile" element={<BusinessProfile />} />
-          <Route path="/referrals" element={<MyReferrals />} />
-          <Route path="/referrals/settings" element={<ReferralSettings />} />
+          <Route element={<BusinessUserRoute />}>
+            <Route path="/products" element={<Products />} />
+            <Route path="/products/new" element={<ProductCreate />} />
+            <Route path="/products/:id/edit" element={<ProductEdit />} />
+            <Route path="/inventory" element={<Inventory />} />
+            <Route path="/inventory/new" element={<InventoryCreate />} />
+            <Route path="/warehouses" element={<Warehouses />} />
+            <Route path="/warehouses/new" element={<WarehouseCreate />} />
+            <Route path="/warehouses/:id/edit" element={<WarehouseEdit />} />
+            <Route path="/locations" element={<Locations />} />
+            <Route path="/locations/new" element={<LocationCreate />} />
+            <Route path="/locations/:id/edit" element={<LocationEdit />} />
+            <Route path="/customers" element={<Customers />} />
+            <Route path="/customers/new" element={<CustomerCreate />} />
+            <Route path="/customers/:id/edit" element={<CustomerEdit />} />
+            <Route path="/vendors" element={<Vendors />} />
+            <Route path="/vendors/new" element={<VendorCreate />} />
+            <Route path="/vendors/:id/edit" element={<VendorEdit />} />
+            <Route path="/purchasing" element={<Purchasing />} />
+            <Route path="/purchasing/new" element={<PurchaseOrderCreate />} />
+            <Route path="/purchasing/:id/edit" element={<PurchaseOrderEdit />} />
+            <Route path="/sales" element={<Sales />} />
+            <Route path="/sales/new" element={<SalesOrderCreate />} />
+            <Route path="/sales/:id/edit" element={<SalesOrderEdit />} />
+            <Route path="/employees" element={<Employees />} />
+            <Route path="/employees/new" element={<EmployeeCreate />} />
+            <Route path="/employees/:id/edit" element={<EmployeeEdit />} />
+            <Route path="/attendance" element={<Attendance />} />
+            <Route path="/attendance/new" element={<AttendanceCreate />} />
+            <Route path="/reports" element={<Reports />} />
+            <Route path="/notifications" element={<Notifications />} />
+            <Route path="/udhaar/parties" element={<UdhaarParties />} />
+            <Route path="/udhaar/parties/:id" element={<PartyDetail />} />
+            <Route path="/udhaar/reports" element={<UdhaarReports />} />
+            <Route path="/settings/profile" element={<BusinessProfile />} />
+            <Route path="/referrals" element={<MyReferrals />} />
+          </Route>
+          <Route element={<SuperAdminOnlyRoute />}>
+            <Route path="/superadmin/markets" element={<Markets />} />
+            <Route path="/superadmin/markets/new" element={<MarketCreate />} />
+            <Route path="/superadmin/markets/:id/edit" element={<MarketEdit />} />
+            <Route path="/superadmin/categories" element={<Categories />} />
+            <Route path="/superadmin/categories/new" element={<CategoryCreate />} />
+            <Route path="/superadmin/categories/:id/edit" element={<CategoryEdit />} />
+            <Route path="/superadmin/businesses" element={<Businesses />} />
+            <Route path="/superadmin/businesses/new" element={<BusinessCreate />} />
+            <Route path="/superadmin/businesses/:id/edit" element={<BusinessEdit />} />
+            <Route path="/superadmin/requests" element={<ShopRequests />} />
+            <Route path="/referrals/settings" element={<ReferralSettings />} />
+          </Route>
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" />} />

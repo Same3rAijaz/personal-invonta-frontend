@@ -1,16 +1,28 @@
 import { Box, Button, Paper, Typography, Grid, TextField, Divider, FormControlLabel, Checkbox, MenuItem, Stack, Avatar } from "@mui/material";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useCreateProduct } from "../../hooks/useProducts";
 import { useToast } from "../../hooks/useToast";
 import { useNavigate } from "react-router-dom";
 import { uploadImage } from "../../utils/upload";
+import { useCategories } from "../../hooks/useCategories";
 
 export default function ProductCreate() {
   const createProduct = useCreateProduct();
   const { notify } = useToast();
   const navigate = useNavigate();
-  const { register, handleSubmit } = useForm({ defaultValues: { isActive: true } });
+  const { register, handleSubmit, watch, setValue } = useForm({ defaultValues: { isActive: true } });
+  const { data: categories = [] } = useCategories({ activeOnly: true });
+  const selectedCategoryId = watch("categoryId");
+  const subcategories = useMemo(() => {
+    const selected = (categories || []).find((item: any) => item._id === selectedCategoryId);
+    return (selected?.subcategories || []).filter((item: any) => item.isActive !== false);
+  }, [categories, selectedCategoryId]);
+  useEffect(() => {
+    if (!selectedCategoryId) {
+      setValue("subcategory", "");
+    }
+  }, [selectedCategoryId, setValue]);
   const [files, setFiles] = useState<File[]>([]);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
@@ -56,7 +68,24 @@ export default function ProductCreate() {
             <TextField fullWidth label="Name" {...register("name")} />
           </Grid>
           <Grid item xs={12} md={3}>
-            <TextField fullWidth label="Category" {...register("category")} />
+            <TextField select fullWidth label="Category" {...register("categoryId")}>
+              <MenuItem value="">None</MenuItem>
+              {(categories || []).map((item: any) => (
+                <MenuItem key={item._id} value={item._id}>
+                  {item.name}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Grid>
+          <Grid item xs={12} md={3}>
+            <TextField select fullWidth label="Sub Category" {...register("subcategory")} disabled={!selectedCategoryId}>
+              <MenuItem value="">None</MenuItem>
+              {subcategories.map((item: any) => (
+                <MenuItem key={item.slug} value={item.name}>
+                  {item.name}
+                </MenuItem>
+              ))}
+            </TextField>
           </Grid>
           <Grid item xs={12} md={3}>
             <TextField fullWidth label="Unit" {...register("unit")} />
@@ -73,7 +102,6 @@ export default function ProductCreate() {
           <Grid item xs={12} md={3}>
             <TextField select fullWidth label="Visibility" {...register("visibility")}>
               <MenuItem value="PRIVATE">Private</MenuItem>
-              <MenuItem value="MARKET">Market</MenuItem>
               <MenuItem value="PUBLIC">Public</MenuItem>
             </TextField>
           </Grid>

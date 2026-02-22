@@ -1,10 +1,12 @@
 import React from "react";
-import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField } from "@mui/material";
+import { Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, TextField } from "@mui/material";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import DataTable from "../../components/DataTable";
 import PageHeader from "../../components/PageHeader";
 import { useToast } from "../../hooks/useToast";
+import { useCities, useCountries, useStates } from "../../hooks/useGeo";
+import { DEFAULT_CITY, DEFAULT_COUNTRY, DEFAULT_STATE } from "../../constants/locationDefaults";
 
 export default function ShopRequests() {
   const [page, setPage] = React.useState(0);
@@ -15,8 +17,17 @@ export default function ShopRequests() {
     queryKey: ["shop-requests", page, rowsPerPage],
     queryFn: async () => (await api.get("/superadmin/requests", { params: { page: page + 1, limit: rowsPerPage } })).data.data
   });
+  const { data: markets } = useQuery({
+    queryKey: ["markets"],
+    queryFn: async () => (await api.get("/superadmin/markets", { params: { page: 1, limit: 1000 } })).data.data
+  });
   const approve = useMutation({
-    mutationFn: async (id: string) => (await api.patch(`/superadmin/requests/${id}/approve`, {})).data.data,
+    mutationFn: async (payload: any) => (await api.patch(`/superadmin/requests/${payload.id}/approve`, payload.body || {})).data.data,
+    onSuccess: () => client.invalidateQueries({ queryKey: ["shop-requests"] })
+  });
+  const updateRequest = useMutation({
+    mutationFn: async (payload: { id: string; body: any }) =>
+      (await api.patch(`/superadmin/requests/${payload.id}`, payload.body)).data.data,
     onSuccess: () => client.invalidateQueries({ queryKey: ["shop-requests"] })
   });
   const reject = useMutation({
@@ -27,10 +38,24 @@ export default function ShopRequests() {
 
   const [rejectDialog, setRejectDialog] = React.useState<{ open: boolean; id: string | null }>({ open: false, id: null });
   const [rejectReason, setRejectReason] = React.useState("");
+  const [editDialog, setEditDialog] = React.useState<{ open: boolean; row: any | null }>({ open: false, row: null });
+  const [editValues, setEditValues] = React.useState<any>({});
+  const { data: countryOptions = [] } = useCountries();
+  const { data: stateOptions = [] } = useStates(editValues.country);
+  const { data: cityOptions = [] } = useCities(editValues.country, editValues.state);
 
-  const handleApprove = async (id: string) => {
+  const handleApprove = async (row: any) => {
     try {
-      await approve.mutateAsync(id);
+      await approve.mutateAsync({
+        id: row._id,
+        body: {
+          marketId: row.marketId?._id || row.marketId || undefined,
+          marketName: row.marketName || undefined,
+          country: row.country || DEFAULT_COUNTRY,
+          state: row.state || DEFAULT_STATE,
+          city: row.city || DEFAULT_CITY
+        }
+      });
       notify("Request approved", "success");
     } catch (err: any) {
       notify(err?.response?.data?.error?.message || "Failed", "error");
@@ -52,7 +77,10 @@ export default function ShopRequests() {
 
   const rows = (data?.items || []).map((row: any) => ({
     ...row,
-    modulesText: (row.requestedModules || []).join(", ")
+    modulesText: (row.requestedModules || []).join(", "),
+    marketText: row.marketId?.name || row.marketName || "-",
+    locationText: [row.country, row.state, row.city].filter(Boolean).join(", ") || "-",
+    marketRequestType: row.marketId ? "Existing Market" : row.marketName ? "Requested New Market" : "-"
   }));
 
   return (
@@ -61,6 +89,21 @@ export default function ShopRequests() {
       <DataTable
         columns={[
           { key: "businessName", label: "Business" },
+          { key: "marketText", label: "Market" },
+          {
+            key: "marketRequestType",
+            label: "Market Source",
+            render: (row: any) => {
+              if (row.marketRequestType === "Requested New Market") {
+                return <Chip size="small" color="warning" label="Requested New Market" />;
+              }
+              if (row.marketRequestType === "Existing Market") {
+                return <Chip size="small" color="success" label="Existing Market" />;
+              }
+              return <Chip size="small" variant="outlined" label="Missing" />;
+            }
+          },
+          { key: "locationText", label: "Location" },
           { key: "adminEmail", label: "Admin Email" },
           { key: "modulesText", label: "Requested Modules" },
           { key: "status", label: "Status" },
@@ -69,7 +112,23 @@ export default function ShopRequests() {
             label: "Actions",
             render: (row: any) => (
               <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                <Button size="small" disabled={row.status !== "PENDING"} onClick={() => handleApprove(row._id)}>
+                <Button
+                  size="small"
+                  disabled={row.status !== "PENDING"}
+                  onClick={() => {
+                    setEditDialog({ open: true, row });
+                    setEditValues({
+                      marketId: row.marketId?._id || row.marketId || "",
+                      marketName: row.marketName || "",
+                      country: row.country || DEFAULT_COUNTRY,
+                      state: row.state || DEFAULT_STATE,
+                      city: row.city || DEFAULT_CITY
+                    });
+                  }}
+                >
+                  Edit
+                </Button>
+                <Button size="small" disabled={row.status !== "PENDING"} onClick={() => handleApprove(row)}>
                   Approve
                 </Button>
                 <Button
@@ -110,6 +169,93 @@ export default function ShopRequests() {
           <Button onClick={() => setRejectDialog({ open: false, id: null })}>Cancel</Button>
           <Button variant="contained" color="error" onClick={handleReject}>
             Reject
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={editDialog.open} onClose={() => setEditDialog({ open: false, row: null })} maxWidth="sm" fullWidth>
+        <DialogTitle>Edit Request Market & Location</DialogTitle>
+        <DialogContent>
+          <TextField
+            select
+            fullWidth
+            label="Market"
+            value={editValues.marketId || ""}
+            onChange={(e) => setEditValues((prev: any) => ({ ...prev, marketId: e.target.value }))}
+            sx={{ mt: 1 }}
+          >
+            <MenuItem value="">Not listed / create from name</MenuItem>
+            {(markets?.items || []).map((m: any) => (
+              <MenuItem key={m._id} value={m._id}>{m.name}</MenuItem>
+            ))}
+          </TextField>
+          {!editValues.marketId ? (
+            <TextField
+              fullWidth
+              label="Market Name"
+              value={editValues.marketName || ""}
+              onChange={(e) => setEditValues((prev: any) => ({ ...prev, marketName: e.target.value }))}
+              sx={{ mt: 2 }}
+            />
+          ) : null}
+          <TextField
+            select
+            fullWidth
+            label="Country"
+            value={editValues.country || ""}
+            onChange={(e) => setEditValues((prev: any) => ({ ...prev, country: e.target.value, state: "", city: "" }))}
+            sx={{ mt: 2 }}
+          >
+            <MenuItem value="">Select Country</MenuItem>
+            {countryOptions.map((item: string) => (
+              <MenuItem key={item} value={item}>{item}</MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            select
+            fullWidth
+            label="State"
+            value={editValues.state || ""}
+            onChange={(e) => setEditValues((prev: any) => ({ ...prev, state: e.target.value, city: "" }))}
+            sx={{ mt: 2 }}
+            disabled={!editValues.country}
+          >
+            <MenuItem value="">Select State</MenuItem>
+            {stateOptions.map((item: string) => (
+              <MenuItem key={item} value={item}>{item}</MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            select
+            fullWidth
+            label="City"
+            value={editValues.city || ""}
+            onChange={(e) => setEditValues((prev: any) => ({ ...prev, city: e.target.value }))}
+            sx={{ mt: 2 }}
+            disabled={!editValues.country || !editValues.state}
+          >
+            <MenuItem value="">Select City</MenuItem>
+            {cityOptions.map((item: string) => (
+              <MenuItem key={item} value={item}>{item}</MenuItem>
+            ))}
+          </TextField>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditDialog({ open: false, row: null })}>Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={async () => {
+              if (!editDialog.row?._id) return;
+              try {
+                await updateRequest.mutateAsync({ id: editDialog.row._id, body: editValues });
+                notify("Request updated", "success");
+                setEditDialog({ open: false, row: null });
+              } catch (err: any) {
+                notify(err?.response?.data?.error?.message || "Failed", "error");
+              }
+            }}
+          >
+            Save
           </Button>
         </DialogActions>
       </Dialog>

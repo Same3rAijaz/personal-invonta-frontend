@@ -4,6 +4,9 @@ import { useToast } from "../../hooks/useToast";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
+import React from "react";
+import { useCities, useCountries, useStates } from "../../hooks/useGeo";
+import { DEFAULT_CITY, DEFAULT_COUNTRY, DEFAULT_STATE } from "../../constants/locationDefaults";
 
 export default function BusinessCreate() {
   const { notify } = useToast();
@@ -13,7 +16,32 @@ export default function BusinessCreate() {
     queryKey: ["markets"],
     queryFn: async () => (await api.get("/superadmin/markets", { params: { page: 1, limit: 1000 } })).data.data
   });
-  const { register, handleSubmit } = useForm({ defaultValues: { isActive: true } });
+  const { register, handleSubmit, watch, setValue } = useForm({
+    defaultValues: {
+      isActive: true,
+      country: DEFAULT_COUNTRY,
+      state: DEFAULT_STATE,
+      city: DEFAULT_CITY
+    }
+  });
+  const marketId = watch("marketId");
+  const country = watch("country");
+  const state = watch("state");
+  const city = watch("city");
+  const { data: countryOptions = [] } = useCountries();
+  const { data: stateOptions = [] } = useStates(country);
+  const { data: cityOptions = [] } = useCities(country, state);
+  React.useEffect(() => {
+    if (state && !stateOptions.some((item: string) => item === state)) {
+      setValue("state", "");
+      setValue("city", "");
+    }
+  }, [state, stateOptions, setValue]);
+  React.useEffect(() => {
+    if (city && !cityOptions.some((item: string) => item === city)) {
+      setValue("city", "");
+    }
+  }, [city, cityOptions, setValue]);
 
   const mutation = useMutation({
     mutationFn: async (payload: any) => (await api.post("/superadmin/businesses", payload)).data.data,
@@ -53,6 +81,35 @@ export default function BusinessCreate() {
               <MenuItem value="">None</MenuItem>
               {(markets?.items || []).map((m: any) => (
                 <MenuItem key={m._id} value={m._id}>{m.name}</MenuItem>
+              ))}
+            </TextField>
+          </Grid>
+          {!marketId ? (
+            <Grid item xs={12} md={6}>
+              <TextField fullWidth label="Market Name (create if missing)" {...register("marketName")} />
+            </Grid>
+          ) : null}
+          <Grid item xs={12} md={4}>
+            <TextField select fullWidth label="Country" {...register("country")}>
+              <MenuItem value="">Select Country</MenuItem>
+              {countryOptions.map((item: string) => (
+                <MenuItem key={item} value={item}>{item}</MenuItem>
+              ))}
+            </TextField>
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <TextField select fullWidth label="State" {...register("state")} disabled={!country}>
+              <MenuItem value="">Select State</MenuItem>
+              {stateOptions.map((item: string) => (
+                <MenuItem key={item} value={item}>{item}</MenuItem>
+              ))}
+            </TextField>
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <TextField select fullWidth label="City" {...register("city")} disabled={!country || !state}>
+              <MenuItem value="">Select City</MenuItem>
+              {cityOptions.map((item: string) => (
+                <MenuItem key={item} value={item}>{item}</MenuItem>
               ))}
             </TextField>
           </Grid>

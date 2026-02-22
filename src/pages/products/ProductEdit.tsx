@@ -5,6 +5,7 @@ import { useUpdateProduct, useProducts } from "../../hooks/useProducts";
 import { useToast } from "../../hooks/useToast";
 import { useNavigate, useParams } from "react-router-dom";
 import { uploadImage } from "../../utils/upload";
+import { useCategories } from "../../hooks/useCategories";
 
 export default function ProductEdit() {
   const { id } = useParams();
@@ -12,10 +13,21 @@ export default function ProductEdit() {
   const updateProduct = useUpdateProduct();
   const { notify } = useToast();
   const navigate = useNavigate();
-  const { register, handleSubmit, reset } = useForm({ defaultValues: { isActive: true, visibility: "PRIVATE" } });
+  const { register, handleSubmit, reset, watch, setValue } = useForm({ defaultValues: { isActive: true, visibility: "PRIVATE" } });
+  const { data: categories = [] } = useCategories({ activeOnly: true });
   const [existingImages, setExistingImages] = useState<string[]>([]);
   const [newFiles, setNewFiles] = useState<File[]>([]);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const selectedCategoryId = watch("categoryId");
+  const subcategories = useMemo(() => {
+    const selected = (categories || []).find((item: any) => item._id === selectedCategoryId);
+    return (selected?.subcategories || []).filter((item: any) => item.isActive !== false);
+  }, [categories, selectedCategoryId]);
+  useEffect(() => {
+    if (!selectedCategoryId) {
+      setValue("subcategory", "");
+    }
+  }, [selectedCategoryId, setValue]);
 
   const product = (data?.items || []).find((p: any) => p._id === id);
 
@@ -25,12 +37,13 @@ export default function ProductEdit() {
         sku: product.sku || "",
         barcode: product.barcode || "",
         name: product.name || "",
-        category: product.category || "",
+        categoryId: product.categoryId || "",
+        subcategory: product.subcategory || "",
         unit: product.unit || "",
         costPrice: product.costPrice || 0,
         salePrice: product.salePrice || 0,
         reorderLevel: product.reorderLevel || 0,
-        visibility: product.visibility || "PRIVATE",
+        visibility: product.visibility === "MARKET" ? "PUBLIC" : (product.visibility || "PRIVATE"),
         isActive: product.isActive ?? true
       });
       setExistingImages(product.images || []);
@@ -101,7 +114,24 @@ export default function ProductEdit() {
             <TextField fullWidth label="Name" {...register("name")} />
           </Grid>
           <Grid item xs={12} md={3}>
-            <TextField fullWidth label="Category" {...register("category")} />
+            <TextField select fullWidth label="Category" {...register("categoryId")}>
+              <MenuItem value="">None</MenuItem>
+              {(categories || []).map((item: any) => (
+                <MenuItem key={item._id} value={item._id}>
+                  {item.name}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Grid>
+          <Grid item xs={12} md={3}>
+            <TextField select fullWidth label="Sub Category" {...register("subcategory")} disabled={!selectedCategoryId}>
+              <MenuItem value="">None</MenuItem>
+              {subcategories.map((item: any) => (
+                <MenuItem key={item.slug} value={item.name}>
+                  {item.name}
+                </MenuItem>
+              ))}
+            </TextField>
           </Grid>
           <Grid item xs={12} md={3}>
             <TextField fullWidth label="Unit" {...register("unit")} />
@@ -118,7 +148,6 @@ export default function ProductEdit() {
           <Grid item xs={12} md={3}>
             <TextField select fullWidth label="Visibility" {...register("visibility")}>
               <MenuItem value="PRIVATE">Private</MenuItem>
-              <MenuItem value="MARKET">Market</MenuItem>
               <MenuItem value="PUBLIC">Public</MenuItem>
             </TextField>
           </Grid>

@@ -1,10 +1,12 @@
 import { Box, Button, Paper, Typography, Grid, TextField, MenuItem, Divider, FormControlLabel, Checkbox, Stack } from "@mui/material";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useToast } from "../../hooks/useToast";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
+import { useCities, useCountries, useStates } from "../../hooks/useGeo";
+import { DEFAULT_CITY, DEFAULT_COUNTRY, DEFAULT_STATE } from "../../constants/locationDefaults";
 
 const AVAILABLE_MODULES = ["products", "inventory", "warehouses", "locations", "customers", "vendors", "purchasing", "sales", "hr", "reports", "udhaar"];
 const labelize = (value: string) => (value === "hr" ? "HR" : value.charAt(0).toUpperCase() + value.slice(1));
@@ -22,7 +24,13 @@ export default function BusinessEdit() {
     queryKey: ["businesses"],
     queryFn: async () => (await api.get("/superadmin/businesses", { params: { page: 1, limit: 1000 } })).data.data
   });
-  const { register, handleSubmit, reset, control } = useForm({ defaultValues: { isActive: true, marketId: "" } });
+  const { register, handleSubmit, reset, control, watch, setValue } = useForm({ defaultValues: { isActive: true, marketId: "" } });
+  const country = watch("country");
+  const state = watch("state");
+  const city = watch("city");
+  const { data: countryOptions = [] } = useCountries();
+  const { data: stateOptions = [] } = useStates(country);
+  const { data: cityOptions = [] } = useCities(country, state);
 
   const business = (businesses?.items || []).find((b: any) => b._id === id);
 
@@ -40,6 +48,9 @@ export default function BusinessEdit() {
       reset({
         name: business.name || "",
         marketId: normalizedMarketId,
+        country: business.country || DEFAULT_COUNTRY,
+        state: business.state || DEFAULT_STATE,
+        city: business.city || DEFAULT_CITY,
         contactName: business.contactName || "",
         contactPhone: business.contactPhone || "",
         address: business.address || "",
@@ -48,6 +59,16 @@ export default function BusinessEdit() {
       });
     }
   }, [business, reset]);
+
+  useEffect(() => {
+    if (state && !stateOptions.some((item: string) => item === state)) {
+      setValue("state", "");
+      setValue("city", "");
+    }
+    if (city && !cityOptions.some((item: string) => item === city)) {
+      setValue("city", "");
+    }
+  }, [state, city, stateOptions, cityOptions, setValue]);
 
   const mutation = useMutation({
     mutationFn: async (payload: any) => (await api.patch(`/superadmin/businesses/${id}`, payload)).data.data,
@@ -96,6 +117,30 @@ export default function BusinessEdit() {
                 </TextField>
               )}
             />
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <TextField select fullWidth label="Country" {...register("country")}>
+              <MenuItem value="">Select Country</MenuItem>
+              {countryOptions.map((item: string) => (
+                <MenuItem key={item} value={item}>{item}</MenuItem>
+              ))}
+            </TextField>
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <TextField select fullWidth label="State" {...register("state")} disabled={!country}>
+              <MenuItem value="">Select State</MenuItem>
+              {stateOptions.map((item: string) => (
+                <MenuItem key={item} value={item}>{item}</MenuItem>
+              ))}
+            </TextField>
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <TextField select fullWidth label="City" {...register("city")} disabled={!country || !state}>
+              <MenuItem value="">Select City</MenuItem>
+              {cityOptions.map((item: string) => (
+                <MenuItem key={item} value={item}>{item}</MenuItem>
+              ))}
+            </TextField>
           </Grid>
           <Grid item xs={12} md={4}>
             <TextField fullWidth label="Contact Name" {...register("contactName")} />
