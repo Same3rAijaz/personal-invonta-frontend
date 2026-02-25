@@ -32,3 +32,21 @@ export function useDeleteProduct() {
     onSuccess: () => client.invalidateQueries({ queryKey: ["products"] })
   });
 }
+
+export function useProductShareTargets(search?: string) {
+  return useQuery({
+    queryKey: ["product-share-targets", search],
+    queryFn: async () => (await api.get("/products/share-targets/list", { params: { search } })).data.data
+  });
+}
+
+export function useShareProduct() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, businessIds }: { id: string; businessIds: string[] }) =>
+      (await api.patch(`/products/${id}/share`, { businessIds })).data.data,
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: ["products"] });
+    }
+  });
+}

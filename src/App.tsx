@@ -29,6 +29,7 @@ import EmployeeCreate from "./pages/employees/EmployeeCreate";
 import EmployeeEdit from "./pages/employees/EmployeeEdit";
 import Attendance from "./pages/attendance/Attendance";
 import AttendanceCreate from "./pages/attendance/AttendanceCreate";
+import Payroll from "./pages/payroll/Payroll";
 import Reports from "./pages/reports/Reports";
 import Markets from "./pages/superadmin/Markets";
 import MarketCreate from "./pages/superadmin/MarketCreate";
@@ -107,6 +108,7 @@ export default function App() {
             <Route path="/employees/:id/edit" element={<EmployeeEdit />} />
             <Route path="/attendance" element={<Attendance />} />
             <Route path="/attendance/new" element={<AttendanceCreate />} />
+            <Route path="/payroll" element={<Payroll />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/notifications" element={<Notifications />} />
             <Route path="/udhaar/parties" element={<UdhaarParties />} />

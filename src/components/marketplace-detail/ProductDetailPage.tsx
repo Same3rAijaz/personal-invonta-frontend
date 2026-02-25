@@ -10,7 +10,6 @@ import ProductDetailsGrid from "./ProductDetailsGrid";
 import ProductDescription from "./ProductDescription";
 import SellerContactCard from "./SellerContactCard";
 import RelatedProductsGrid from "./RelatedProductsGrid";
-import SafetyTipsSection from "./SafetyTipsSection";
 import AppDownloadCTA from "./AppDownloadCTA";
 import type { ProductDetailViewModel } from "./types";
 
@@ -18,6 +17,7 @@ type MarketOption = { _id: string; name: string };
 
 type ProductDetailPageProps = {
   model: ProductDetailViewModel;
+  isLoading?: boolean;
   markets: MarketOption[];
   selectedMarketId: string;
   searchValue: string;
@@ -32,6 +32,7 @@ type ProductDetailPageProps = {
 export default function ProductDetailPage(props: ProductDetailPageProps) {
   const {
     model,
+    isLoading = false,
     markets,
     selectedMarketId,
     searchValue,
@@ -74,41 +75,56 @@ export default function ProductDetailPage(props: ProductDetailPageProps) {
           Back to Marketplace
         </Button>
 
-        <Grid container spacing={{ xs: 2, md: 3 }} alignItems="flex-start">
-          <Grid item xs={12} md={8.4}>
-            <ProductImageGallery images={model.gallery} featured={model.isFeatured} />
+        {isLoading ? (
+          <Box
+            sx={{
+              minHeight: 420,
+              border: `1px solid ${alpha(theme.palette.text.primary, 0.14)}`,
+              borderRadius: 2,
+              bgcolor: theme.palette.background.paper,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              px: 3
+            }}
+          >
+            <Typography color="text.secondary">Loading product...</Typography>
+          </Box>
+        ) : (
+          <>
+            <Grid container spacing={{ xs: 2, md: 3 }} alignItems="flex-start">
+              <Grid item xs={12} md={8.4}>
+                <ProductImageGallery images={model.gallery} featured={model.isFeatured} />
 
-            <Box sx={{ mt: 2 }}>
-              <ProductSummary
-                price={model.price}
-                title={model.title}
-                locationText={model.locationText}
-                postedText={model.postedText}
-              />
+                <Box sx={{ mt: 2 }}>
+                  <ProductSummary
+                    price={model.price}
+                    title={model.title}
+                    locationText={model.locationText}
+                    postedText={model.postedText}
+                  />
+                </Box>
+
+                <ProductDetailsGrid items={model.details} />
+                <ProductDescription text={model.description} />
+              </Grid>
+
+              <Grid item xs={12} md={3.6}>
+                <Box sx={{ position: { md: "sticky" }, top: { md: 16 } }}>
+                  <SellerContactCard seller={model.seller} onOpenProfile={onOpenSellerProfile} />
+                </Box>
+              </Grid>
+            </Grid>
+
+            <Divider sx={{ my: 3 }} />
+
+            <RelatedProductsGrid products={model.relatedProducts} onProductClick={onOpenRelatedProduct} />
+
+            <Box sx={{ mt: 3 }}>
+              <AppDownloadCTA />
             </Box>
-
-            <ProductDetailsGrid items={model.details} />
-            <ProductDescription text={model.description} />
-          </Grid>
-
-          <Grid item xs={12} md={3.6}>
-            <Box sx={{ position: { md: "sticky" }, top: { md: 16 } }}>
-              <SellerContactCard seller={model.seller} onOpenProfile={onOpenSellerProfile} />
-            </Box>
-          </Grid>
-        </Grid>
-
-        <Divider sx={{ my: 3 }} />
-
-        <RelatedProductsGrid products={model.relatedProducts} onProductClick={onOpenRelatedProduct} />
-
-        <Box sx={{ mt: 3 }}>
-          <SafetyTipsSection tips={model.safetyTips} />
-        </Box>
-
-        <Box sx={{ mt: 3 }}>
-          <AppDownloadCTA />
-        </Box>
+          </>
+        )}
       </Container>
     </Box>
   );

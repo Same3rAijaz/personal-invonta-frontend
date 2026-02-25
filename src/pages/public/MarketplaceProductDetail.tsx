@@ -1,5 +1,4 @@
 import React from "react";
-import { Paper, Typography } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router-dom";
 import ProductDetailPage from "../../components/marketplace-detail/ProductDetailPage";
@@ -145,7 +144,8 @@ export default function MarketplaceProductDetail() {
   const { data, isLoading, isError } = useQuery({
     queryKey: ["public-product-detail", id],
     queryFn: () => getPublicProductDetail(id),
-    enabled: Boolean(id)
+    enabled: Boolean(id),
+    placeholderData: (previousData) => previousData
   });
 
   const model = React.useMemo(() => {
@@ -153,17 +153,10 @@ export default function MarketplaceProductDetail() {
     return mapApiToViewModel(id, data);
   }, [data, id, isError]);
 
-  if (isLoading && !data) {
-    return (
-      <Paper sx={{ p: 4, m: 3 }}>
-        <Typography color="text.secondary">Loading product...</Typography>
-      </Paper>
-    );
-  }
-
   return (
     <ProductDetailPage
       model={model}
+      isLoading={isLoading && !data}
       markets={marketData || []}
       selectedMarketId={marketId}
       searchValue={search}

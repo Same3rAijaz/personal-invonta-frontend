@@ -1,4 +1,7 @@
-import { Box, Grid, Paper, Stack, Typography } from "@mui/material";
+import { Box, Grid, Paper, Stack, Table, TableBody, TableCell, TableHead, TableRow, Typography } from "@mui/material";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "../api/client";
+import { useAuth } from "../hooks/useAuth";
 import { useReports } from "../hooks/useReports";
 import PageHeader from "../components/PageHeader";
 import {
@@ -22,7 +25,7 @@ const formatValue = (value: number | null | undefined, compact = false) => {
     : integerFormat.format(value);
 };
 
-export default function Dashboard() {
+function ShopDashboard() {
   const reports = useReports();
   const receivables = useReceivablesReport({});
 
@@ -45,16 +48,6 @@ export default function Dashboard() {
   const orderSummary = [
     { name: "Purchases", total: reports.purchaseSummary.data?.total || 0 },
     { name: "Sales", total: reports.salesSummary.data?.total || 0 }
-  ];
-
-  const stats = [
-    { label: "Inventory Valuation", value: formatValue(reports.valuation.data?.totalValue, true) },
-    { label: "Total Products", value: formatValue(totalProducts) },
-    { label: "Low Stock Items", value: formatValue(lowStockCount) },
-    { label: "Sales Orders", value: formatValue(reports.salesSummary.data?.total) },
-    { label: "Purchase Orders", value: formatValue(reports.purchaseSummary.data?.total) },
-    { label: "Attendance Hours", value: numberFormat.format(reports.attendance.data?.totalHours ?? 0) },
-    { label: "Profit (All Time)", value: formatValue(reports.profit.data?.totalProfit, true) }
   ];
 
   return (
@@ -98,6 +91,14 @@ export default function Dashboard() {
             <Typography variant="subtitle2">Profit (All Time)</Typography>
             <Typography variant="h5" sx={{ fontWeight: 700 }}>
               {reports.profit.data?.totalProfit ?? 0}
+            </Typography>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} md={3}>
+          <Paper sx={{ p: 2, borderRadius: 3, boxShadow: "0 10px 24px rgba(15,23,42,0.08)" }}>
+            <Typography variant="subtitle2">Receivables Due</Typography>
+            <Typography variant="h5" sx={{ fontWeight: 700 }}>
+              {numberFormat.format(receivables.data?.dueTotal || 0)}
             </Typography>
           </Paper>
         </Grid>
@@ -154,4 +155,148 @@ export default function Dashboard() {
       </Grid>
     </Box>
   );
+}
+
+function SuperAdminDashboard() {
+  const markets = useQuery({
+    queryKey: ["sa-dashboard-markets"],
+    queryFn: async () => (await api.get("/superadmin/markets", { params: { page: 1, limit: 1000 } })).data.data
+  });
+  const businesses = useQuery({
+    queryKey: ["sa-dashboard-businesses"],
+    queryFn: async () => (await api.get("/superadmin/businesses", { params: { page: 1, limit: 1000 } })).data.data
+  });
+  const categories = useQuery({
+    queryKey: ["sa-dashboard-categories"],
+    queryFn: async () => (await api.get("/superadmin/categories", { params: { page: 1, limit: 1000 } })).data.data
+  });
+  const requests = useQuery({
+    queryKey: ["sa-dashboard-requests"],
+    queryFn: async () => (await api.get("/superadmin/requests", { params: { page: 1, limit: 1000 } })).data.data
+  });
+
+  const businessItems = businesses.data?.items || [];
+  const requestItems = requests.data?.items || [];
+  const pendingRequests = requestItems.filter((item: any) => item.status === "PENDING");
+  const approvedRequests = requestItems.filter((item: any) => item.status === "APPROVED");
+  const rejectedRequests = requestItems.filter((item: any) => item.status === "REJECTED");
+  const activeBusinesses = businessItems.filter((item: any) => item.isActive && (!item.blockedUntil || new Date(item.blockedUntil) <= new Date()));
+  const blockedBusinesses = businessItems.filter((item: any) => !item.isActive || (item.blockedUntil && new Date(item.blockedUntil) > new Date()));
+  const recentRequests = [...requestItems]
+    .sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+    .slice(0, 8);
+
+  return (
+    <Box>
+      <PageHeader title="Super Admin Dashboard" />
+      <Grid container spacing={2} sx={{ mb: 2 }}>
+        <Grid item xs={12} md={3}>
+          <Paper sx={{ p: 2, borderRadius: 3, boxShadow: "0 10px 24px rgba(15,23,42,0.08)" }}>
+            <Typography variant="subtitle2">Total Markets</Typography>
+            <Typography variant="h5" sx={{ fontWeight: 700 }}>
+              {formatValue(markets.data?.total || 0)}
+            </Typography>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} md={3}>
+          <Paper sx={{ p: 2, borderRadius: 3, boxShadow: "0 10px 24px rgba(15,23,42,0.08)" }}>
+            <Typography variant="subtitle2">Total Businesses</Typography>
+            <Typography variant="h5" sx={{ fontWeight: 700 }}>
+              {formatValue(businesses.data?.total || 0)}
+            </Typography>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} md={3}>
+          <Paper sx={{ p: 2, borderRadius: 3, boxShadow: "0 10px 24px rgba(15,23,42,0.08)" }}>
+            <Typography variant="subtitle2">Active Businesses</Typography>
+            <Typography variant="h5" sx={{ fontWeight: 700 }}>
+              {formatValue(activeBusinesses.length)}
+            </Typography>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} md={3}>
+          <Paper sx={{ p: 2, borderRadius: 3, boxShadow: "0 10px 24px rgba(15,23,42,0.08)" }}>
+            <Typography variant="subtitle2">Blocked/Inactive Businesses</Typography>
+            <Typography variant="h5" sx={{ fontWeight: 700 }}>
+              {formatValue(blockedBusinesses.length)}
+            </Typography>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} md={3}>
+          <Paper sx={{ p: 2, borderRadius: 3, boxShadow: "0 10px 24px rgba(15,23,42,0.08)" }}>
+            <Typography variant="subtitle2">Pending Shop Requests</Typography>
+            <Typography variant="h5" sx={{ fontWeight: 700 }}>
+              {formatValue(pendingRequests.length)}
+            </Typography>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} md={3}>
+          <Paper sx={{ p: 2, borderRadius: 3, boxShadow: "0 10px 24px rgba(15,23,42,0.08)" }}>
+            <Typography variant="subtitle2">Approved Requests</Typography>
+            <Typography variant="h5" sx={{ fontWeight: 700 }}>
+              {formatValue(approvedRequests.length)}
+            </Typography>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} md={3}>
+          <Paper sx={{ p: 2, borderRadius: 3, boxShadow: "0 10px 24px rgba(15,23,42,0.08)" }}>
+            <Typography variant="subtitle2">Rejected Requests</Typography>
+            <Typography variant="h5" sx={{ fontWeight: 700 }}>
+              {formatValue(rejectedRequests.length)}
+            </Typography>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} md={3}>
+          <Paper sx={{ p: 2, borderRadius: 3, boxShadow: "0 10px 24px rgba(15,23,42,0.08)" }}>
+            <Typography variant="subtitle2">Categories</Typography>
+            <Typography variant="h5" sx={{ fontWeight: 700 }}>
+              {formatValue(categories.data?.total || 0)}
+            </Typography>
+          </Paper>
+        </Grid>
+      </Grid>
+
+      <Paper sx={{ p: 2.5, borderRadius: 2, boxShadow: "0 14px 30px rgba(15,23,42,0.08)" }}>
+        <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1.5 }}>
+          Recent Shop Requests
+        </Typography>
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell>Business</TableCell>
+              <TableCell>Admin Email</TableCell>
+              <TableCell>Status</TableCell>
+              <TableCell>City</TableCell>
+              <TableCell>Submitted</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {recentRequests.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5}>No requests found.</TableCell>
+              </TableRow>
+            ) : (
+              recentRequests.map((item: any) => (
+                <TableRow key={item._id}>
+                  <TableCell>{item.businessName || "-"}</TableCell>
+                  <TableCell>{item.adminEmail || "-"}</TableCell>
+                  <TableCell>{item.status || "-"}</TableCell>
+                  <TableCell>{item.city || "-"}</TableCell>
+                  <TableCell>{item.createdAt ? new Date(item.createdAt).toLocaleString() : "-"}</TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </Paper>
+    </Box>
+  );
+}
+
+export default function Dashboard() {
+  const { user } = useAuth();
+  if (user?.role === "SUPER_ADMIN") {
+    return <SuperAdminDashboard />;
+  }
+  return <ShopDashboard />;
 }

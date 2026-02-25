@@ -19,22 +19,23 @@ import {
   Typography
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
-import SearchIcon from "@mui/icons-material/Search";
-import LocationOnOutlinedIcon from "@mui/icons-material/LocationOnOutlined";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import ViewListIcon from "@mui/icons-material/ViewList";
 import GridViewIcon from "@mui/icons-material/GridView";
 import StorefrontIcon from "@mui/icons-material/Storefront";
-import { Link, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { listPublicCategories, listPublicMarkets, listPublicProducts, listPublicShops } from "../../api/public";
+import PlaceOutlinedIcon from "@mui/icons-material/PlaceOutlined";
+import { useNavigate } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getPublicProductDetail, getPublicShopDetail, listPublicCategories, listPublicMarkets, listPublicProducts, listPublicShops } from "../../api/public";
 import { useCities, useCountries, useStates } from "../../hooks/useGeo";
+import MarketplaceHeader from "../../components/marketplace-detail/MarketplaceHeader";
 
 const LIMIT = 12;
 
 export default function Marketplace() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const palette = {
     navStart: "#0b1220",
     navEnd: "#1f2a40",
@@ -53,9 +54,10 @@ export default function Marketplace() {
   const [category, setCategory] = React.useState("");
   const [minPrice, setMinPrice] = React.useState("");
   const [maxPrice, setMaxPrice] = React.useState("");
-  const [resultType, setResultType] = React.useState<"products" | "shops">("products");
+  const [resultType, setResultType] = React.useState<"products" | "shops" | "markets">("products");
   const [sort, setSort] = React.useState<"newest" | "price_asc" | "price_desc" | "name_asc">("newest");
   const [shopSort, setShopSort] = React.useState<"newest" | "name_asc">("newest");
+  const [marketSort, setMarketSort] = React.useState<"name_asc" | "name_desc" | "newest">("name_asc");
   const [viewMode, setViewMode] = React.useState<"list" | "grid">("list");
   const [page, setPage] = React.useState(1);
   const { data: countryOptions = [] } = useCountries();
@@ -84,7 +86,8 @@ export default function Marketplace() {
 
   const { data: categories = [] } = useQuery({
     queryKey: ["public-categories", marketId],
-    queryFn: () => listPublicCategories(marketId || undefined)
+    queryFn: () => listPublicCategories(marketId || undefined),
+    enabled: resultType !== "markets"
   });
 
   const { data: productData, isLoading: isProductsLoading } = useQuery({
@@ -123,11 +126,44 @@ export default function Marketplace() {
     enabled: resultType === "shops"
   });
 
-  const data = resultType === "shops" ? shopData : productData;
-  const isLoading = resultType === "shops" ? isShopsLoading : isProductsLoading;
-  const total = data?.total || 0;
+  const marketResults = React.useMemo(() => {
+    let items = [...(markets as any[])];
+    if (search.trim()) {
+      const keyword = search.trim().toLowerCase();
+      items = items.filter((item) => String(item?.name || "").toLowerCase().includes(keyword));
+    }
+    if (marketId) {
+      items = items.filter((item) => String(item?._id) === String(marketId));
+    }
+    if (country) {
+      items = items.filter((item) => String(item?.country || "") === country);
+    }
+    if (state) {
+      items = items.filter((item) => String(item?.state || "") === state);
+    }
+    if (city) {
+      items = items.filter((item) => String(item?.city || "") === city);
+    }
+    if (marketSort === "name_asc") {
+      items.sort((a, b) => String(a?.name || "").localeCompare(String(b?.name || "")));
+    } else if (marketSort === "name_desc") {
+      items.sort((a, b) => String(b?.name || "").localeCompare(String(a?.name || "")));
+    } else {
+      items.sort((a, b) => new Date(b?.createdAt || 0).getTime() - new Date(a?.createdAt || 0).getTime());
+    }
+    return items;
+  }, [markets, search, marketId, country, state, city, marketSort]);
+
+  const marketPagedItems = React.useMemo(() => {
+    const start = (page - 1) * LIMIT;
+    return marketResults.slice(start, start + LIMIT);
+  }, [marketResults, page]);
+
+  const data = resultType === "shops" ? shopData : resultType === "products" ? productData : null;
+  const isLoading = resultType === "shops" ? isShopsLoading : resultType === "products" ? isProductsLoading : false;
+  const total = resultType === "markets" ? marketResults.length : data?.total || 0;
   const pages = Math.max(1, Math.ceil(total / LIMIT));
-  const products = data?.items || [];
+  const items = resultType === "markets" ? marketPagedItems : data?.items || [];
 
   const resetFilters = () => {
     setSearch("");
@@ -141,93 +177,55 @@ export default function Marketplace() {
     setResultType("products");
     setSort("newest");
     setShopSort("newest");
+    setMarketSort("name_asc");
     setPage(1);
   };
 
+  const prefetchProductDetail = React.useCallback(
+    (id?: string) => {
+      if (!id) return;
+      queryClient.prefetchQuery({
+        queryKey: ["public-product-detail", id],
+        queryFn: () => getPublicProductDetail(id),
+        staleTime: 60 * 1000
+      });
+    },
+    [queryClient]
+  );
+
+  const prefetchShopDetail = React.useCallback(
+    (id?: string) => {
+      if (!id) return;
+      queryClient.prefetchQuery({
+        queryKey: ["public-shop-detail", id, 1, "", ""],
+        queryFn: () =>
+          getPublicShopDetail(id, {
+            page: 1,
+            limit: LIMIT,
+            sort: "newest"
+          }),
+        staleTime: 60 * 1000
+      });
+    },
+    [queryClient]
+  );
+
   return (
     <Box sx={{ minHeight: "100vh", backgroundColor: palette.canvas }}>
-      <Box sx={{ borderBottom: `1px solid ${alpha("#ffffff", 0.14)}`, background: `linear-gradient(90deg, ${palette.navStart} 0%, ${palette.navEnd} 100%)` }}>
-        <Container maxWidth="xl" sx={{ py: 1.2 }}>
-          <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2}>
-            <Stack direction="row" alignItems="center" spacing={3}>
-              <Stack direction="row" alignItems="center" spacing={1.2}>
-                <Box component="img" src="/Invonta.png" alt="Invonta" sx={{ width: 36, height: 36 }} />
-                <Typography sx={{ fontWeight: 800, fontSize: 30, color: "#ffffff", lineHeight: 1 }}>
-                  Invonta
-                </Typography>
-              </Stack>
-              <Typography sx={{ fontWeight: 700, color: alpha("#ffffff", 0.9), display: { xs: "none", md: "block" } }}>Marketplace</Typography>
-            </Stack>
-            <Stack direction="row" spacing={2} alignItems="center">
-              <Typography component={Link} to="/login" sx={{ color: "#ffffff", fontWeight: 700, textDecoration: "underline" }}>
-                Login
-              </Typography>
-            </Stack>
-          </Stack>
-        </Container>
-      </Box>
-
-      <Box sx={{ borderBottom: `1px solid ${palette.line}`, backgroundColor: palette.surface }}>
-        <Container maxWidth="xl" sx={{ py: 2 }}>
-          <Grid container spacing={1.5}>
-            <Grid item xs={12} md={3.5}>
-              <FormControl fullWidth>
-                <InputLabel>Location</InputLabel>
-                <Select
-                  value={marketId}
-                  label="Location"
-                  onChange={(event) => {
-                    setMarketId(event.target.value);
-                    setPage(1);
-                  }}
-                  IconComponent={KeyboardArrowDownIcon}
-                  startAdornment={<LocationOnOutlinedIcon sx={{ color: palette.accent, mr: 1 }} />}
-                  sx={{ bgcolor: palette.surface, borderRadius: 0.8 }}
-                >
-                  <MenuItem value="">All Markets</MenuItem>
-                  {markets.map((market: any) => (
-                    <MenuItem key={market._id} value={market._id}>
-                      {market.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} md={8.5}>
-              <Stack direction="row">
-                <TextField
-                  fullWidth
-                  placeholder="Find products, SKU, shops and more..."
-                  value={search}
-                  onChange={(event) => {
-                    setSearch(event.target.value);
-                    setPage(1);
-                  }}
-                  sx={{
-                    "& .MuiOutlinedInput-root": {
-                      borderTopRightRadius: 0,
-                      borderBottomRightRadius: 0,
-                      bgcolor: palette.surface
-                    }
-                  }}
-                />
-                <Button
-                  variant="contained"
-                  startIcon={<SearchIcon />}
-                  sx={{
-                    borderTopLeftRadius: 0,
-                    borderBottomLeftRadius: 0,
-                    px: 4,
-                    backgroundColor: palette.navStart
-                  }}
-                >
-                  Search
-                </Button>
-              </Stack>
-            </Grid>
-          </Grid>
-        </Container>
-      </Box>
+      <MarketplaceHeader
+        markets={markets}
+        selectedMarketId={marketId}
+        onMarketChange={(value) => {
+          setMarketId(value);
+          setPage(1);
+        }}
+        search={search}
+        onSearchChange={(value) => {
+          setSearch(value);
+          setPage(1);
+        }}
+        onSearchSubmit={() => setPage(1)}
+      />
 
       <Container maxWidth="xl" sx={{ py: 4 }}>
         <Typography variant="body2" sx={{ color: palette.muted, mb: 1 }}>
@@ -235,41 +233,43 @@ export default function Marketplace() {
         </Typography>
         <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 3 }}>
           <Typography variant="h4" sx={{ color: palette.ink, fontWeight: 800 }}>
-            {resultType === "shops" ? "Shops in Marketplace" : "Products in Marketplace"}
+            {resultType === "shops" ? "Shops in Marketplace" : resultType === "markets" ? "Markets Directory" : "Products in Marketplace"}
           </Typography>
           <Chip label={`${total.toLocaleString()} Results`} sx={{ bgcolor: alpha(palette.accent, 0.18), color: palette.ink, fontWeight: 700 }} />
         </Stack>
 
         <Grid container spacing={2.5} alignItems="flex-start">
           <Grid item xs={12} md={3.3}>
-            <Paper sx={{ borderRadius: 1, p: 2, mb: 1.8 }}>
-              <Typography variant="h6" sx={{ color: palette.ink, fontWeight: 800, mb: 2 }}>
-                Categories
-              </Typography>
-              <Stack spacing={1}>
-                <Button
-                  onClick={() => {
-                    setCategory("");
-                    setPage(1);
-                  }}
-                  sx={{ justifyContent: "flex-start", color: category ? palette.muted : palette.ink, fontWeight: category ? 500 : 700 }}
-                >
-                  All categories
-                </Button>
-                {categories.map((item: string) => (
+            {resultType !== "markets" ? (
+              <Paper sx={{ borderRadius: 1, p: 2, mb: 1.8 }}>
+                <Typography variant="h6" sx={{ color: palette.ink, fontWeight: 800, mb: 2 }}>
+                  Categories
+                </Typography>
+                <Stack spacing={1}>
                   <Button
-                    key={item}
                     onClick={() => {
-                      setCategory(item);
+                      setCategory("");
                       setPage(1);
                     }}
-                    sx={{ justifyContent: "flex-start", color: category === item ? palette.ink : palette.muted, fontWeight: category === item ? 700 : 500 }}
+                    sx={{ justifyContent: "flex-start", color: category ? palette.muted : palette.ink, fontWeight: category ? 500 : 700 }}
                   >
-                    {item}
+                    All categories
                   </Button>
-                ))}
-              </Stack>
-            </Paper>
+                  {categories.map((item: string) => (
+                    <Button
+                      key={item}
+                      onClick={() => {
+                        setCategory(item);
+                        setPage(1);
+                      }}
+                      sx={{ justifyContent: "flex-start", color: category === item ? palette.ink : palette.muted, fontWeight: category === item ? 700 : 500 }}
+                    >
+                      {item}
+                    </Button>
+                  ))}
+                </Stack>
+              </Paper>
+            ) : null}
 
             <Paper sx={{ borderRadius: 1, p: 2, mb: 1.8 }}>
               <Typography variant="h6" sx={{ color: palette.ink, fontWeight: 800, mb: 1.5 }}>
@@ -372,21 +372,24 @@ export default function Marketplace() {
               <FormControl fullWidth size="small" sx={{ mb: 1.5 }}>
                 <InputLabel>Sort by</InputLabel>
                 <Select
-                  value={resultType === "shops" ? shopSort : sort}
+                  value={resultType === "shops" ? shopSort : resultType === "markets" ? marketSort : sort}
                   label="Sort by"
                   onChange={(event) => {
                     if (resultType === "shops") {
                       setShopSort(event.target.value as "newest" | "name_asc");
+                    } else if (resultType === "markets") {
+                      setMarketSort(event.target.value as "newest" | "name_asc" | "name_desc");
                     } else {
                       setSort(event.target.value as "newest" | "price_asc" | "price_desc" | "name_asc");
                     }
                     setPage(1);
                   }}
                 >
-                  <MenuItem value="newest">Most relevant</MenuItem>
+                  <MenuItem value="newest">{resultType === "markets" ? "Newest markets" : "Most relevant"}</MenuItem>
                   {resultType === "products" ? <MenuItem value="price_asc">Price: Low to High</MenuItem> : null}
                   {resultType === "products" ? <MenuItem value="price_desc">Price: High to Low</MenuItem> : null}
                   <MenuItem value="name_asc">Name A-Z</MenuItem>
+                  {resultType === "markets" ? <MenuItem value="name_desc">Name Z-A</MenuItem> : null}
                 </Select>
               </FormControl>
               <Button fullWidth variant="outlined" onClick={resetFilters}>
@@ -418,6 +421,16 @@ export default function Marketplace() {
                 >
                   Shops
                 </Button>
+                <Button
+                  variant={resultType === "markets" ? "contained" : "outlined"}
+                  onClick={() => {
+                    setResultType("markets");
+                    setPage(1);
+                  }}
+                  sx={{ minWidth: 110 }}
+                >
+                  Markets
+                </Button>
                 {resultType === "products" ? (
                   <>
                     <Typography sx={{ color: palette.ink, fontWeight: 700, ml: 1 }}>View</Typography>
@@ -439,13 +452,15 @@ export default function Marketplace() {
               <Stack direction="row" spacing={1} alignItems="center">
                 <Typography sx={{ color: palette.ink, fontWeight: 700 }}>Sort by:</Typography>
                 <Typography sx={{ color: palette.muted }}>
-                  {(resultType === "shops" ? shopSort : sort) === "newest"
-                    ? "Most relevant"
-                    : (resultType === "shops" ? shopSort : sort) === "price_asc"
+                  {(resultType === "shops" ? shopSort : resultType === "markets" ? marketSort : sort) === "newest"
+                    ? resultType === "markets" ? "Newest markets" : "Most relevant"
+                    : (resultType === "shops" ? shopSort : resultType === "markets" ? marketSort : sort) === "price_asc"
                       ? "Price low to high"
-                      : (resultType === "shops" ? shopSort : sort) === "price_desc"
+                      : (resultType === "shops" ? shopSort : resultType === "markets" ? marketSort : sort) === "price_desc"
                         ? "Price high to low"
-                        : "Name A-Z"}
+                        : (resultType === "shops" ? shopSort : resultType === "markets" ? marketSort : sort) === "name_desc"
+                          ? "Name Z-A"
+                          : "Name A-Z"}
                 </Typography>
                 <KeyboardArrowDownIcon />
               </Stack>
@@ -456,17 +471,18 @@ export default function Marketplace() {
               <Paper sx={{ p: 4, borderRadius: 1 }}>
                 <Typography color="text.secondary">Loading {resultType}...</Typography>
               </Paper>
-            ) : products.length === 0 ? (
+            ) : items.length === 0 ? (
               <Paper sx={{ p: 4, borderRadius: 1 }}>
                 <Typography variant="h6" sx={{ fontWeight: 700, color: palette.ink }}>No {resultType} found</Typography>
                 <Typography color="text.secondary">Try another market, category, or search keyword.</Typography>
               </Paper>
             ) : resultType === "shops" ? (
               <Stack spacing={1.8}>
-                {products.map((shop: any) => {
+                {items.map((shop: any) => {
                   const market = shop.marketId || {};
                   return (
                     <Card key={shop._id} sx={{ borderRadius: 1, border: `1px solid ${palette.line}`, cursor: "pointer" }} onClick={() => navigate(`/marketplace/shops/${shop._id}`)}>
+                      <Box onMouseEnter={() => prefetchShopDetail(shop._id)} onFocus={() => prefetchShopDetail(shop._id)} onTouchStart={() => prefetchShopDetail(shop._id)}>
                       <Box sx={{ p: 2.2 }}>
                         <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
                           <Box>
@@ -490,17 +506,69 @@ export default function Marketplace() {
                           />
                         </Stack>
                       </Box>
+                      </Box>
                     </Card>
                   );
                 })}
               </Stack>
+            ) : resultType === "markets" ? (
+              <Stack spacing={1.8}>
+                {items.map((market: any) => (
+                  <Card key={market._id} sx={{ borderRadius: 1, border: `1px solid ${palette.line}` }}>
+                    <Box sx={{ p: 2.2 }}>
+                      <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} spacing={1.5}>
+                        <Box>
+                          <Typography sx={{ fontSize: 28, lineHeight: 1.1, fontWeight: 800, color: palette.ink }}>
+                            {market.name}
+                          </Typography>
+                          <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
+                            <PlaceOutlinedIcon sx={{ color: palette.accent, fontSize: 18 }} />
+                            <Typography sx={{ color: palette.muted, fontSize: 16 }}>
+                              {[market.city, market.state, market.country].filter(Boolean).join(", ") || "Location not available"}
+                            </Typography>
+                          </Stack>
+                        </Box>
+                        <Stack direction="row" spacing={1} flexWrap="wrap">
+                          <Button
+                            variant="contained"
+                            onClick={() => {
+                              setMarketId(String(market._id));
+                              setResultType("products");
+                              setPage(1);
+                            }}
+                          >
+                            Search Products
+                          </Button>
+                          <Button
+                            variant="outlined"
+                            onClick={() => {
+                              setMarketId(String(market._id));
+                              setResultType("shops");
+                              setPage(1);
+                            }}
+                          >
+                            Browse Shops
+                          </Button>
+                        </Stack>
+                      </Stack>
+                    </Box>
+                  </Card>
+                ))}
+              </Stack>
             ) : viewMode === "list" ? (
               <Stack spacing={1.8}>
-                {products.map((product: any) => {
+                {items.map((product: any) => {
                   const business = product.businessId || {};
                   const market = business.marketId || {};
                   return (
-                    <Card key={product._id} sx={{ borderRadius: 1, border: `1px solid ${palette.line}`, cursor: "pointer" }} onClick={() => navigate(`/marketplace/${product._id}`)}>
+                    <Card
+                      key={product._id}
+                      sx={{ borderRadius: 1, border: `1px solid ${palette.line}`, cursor: "pointer" }}
+                      onClick={() => navigate(`/marketplace/${product._id}`)}
+                      onMouseEnter={() => prefetchProductDetail(product._id)}
+                      onFocus={() => prefetchProductDetail(product._id)}
+                      onTouchStart={() => prefetchProductDetail(product._id)}
+                    >
                       <Grid container>
                         <Grid item xs={12} sm={4.2}>
                           <Box
@@ -543,12 +611,18 @@ export default function Marketplace() {
               </Stack>
             ) : (
               <Grid container spacing={1.8}>
-                {products.map((product: any) => {
+                {items.map((product: any) => {
                   const business = product.businessId || {};
                   const market = business.marketId || {};
                   return (
                     <Grid key={product._id} item xs={12} sm={6}>
-                      <Card sx={{ borderRadius: 1, border: `1px solid ${palette.line}`, height: "100%", cursor: "pointer" }} onClick={() => navigate(`/marketplace/${product._id}`)}>
+                      <Card
+                        sx={{ borderRadius: 1, border: `1px solid ${palette.line}`, height: "100%", cursor: "pointer" }}
+                        onClick={() => navigate(`/marketplace/${product._id}`)}
+                        onMouseEnter={() => prefetchProductDetail(product._id)}
+                        onFocus={() => prefetchProductDetail(product._id)}
+                        onTouchStart={() => prefetchProductDetail(product._id)}
+                      >
                         <Box
                           component="img"
                           src={product.thumbnailUrl || "/Invonta.png"}

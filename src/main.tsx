@@ -6,6 +6,7 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import { theme } from "./theme";
 import { AuthProvider } from "./hooks/useAuth";
+import { MarketplaceAuthProvider } from "./hooks/useMarketplaceAuth";
 import { ToastProvider } from "./hooks/useToast";
 
 const queryClient = new QueryClient();
@@ -17,9 +18,11 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
       <QueryClientProvider client={queryClient}>
         <ToastProvider>
           <AuthProvider>
-            <BrowserRouter>
-              <App />
-            </BrowserRouter>
+            <MarketplaceAuthProvider>
+              <BrowserRouter>
+                <App />
+              </BrowserRouter>
+            </MarketplaceAuthProvider>
           </AuthProvider>
         </ToastProvider>
       </QueryClientProvider>

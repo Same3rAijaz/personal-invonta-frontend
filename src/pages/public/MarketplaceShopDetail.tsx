@@ -20,15 +20,17 @@ import StorefrontIcon from "@mui/icons-material/Storefront";
 import PlaceIcon from "@mui/icons-material/Place";
 import PhoneIcon from "@mui/icons-material/Phone";
 import SearchIcon from "@mui/icons-material/Search";
-import { Link, useNavigate, useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { getPublicShopDetail } from "../../api/public";
+import { useNavigate, useParams } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getPublicProductDetail, getPublicShopDetail, listPublicMarkets } from "../../api/public";
+import MarketplaceHeader from "../../components/marketplace-detail/MarketplaceHeader";
 
 const LIMIT = 12;
 
 export default function MarketplaceShopDetail() {
   const { id = "" } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const palette = {
     navStart: "#0b1220",
     navEnd: "#1f2a40",
@@ -43,6 +45,8 @@ export default function MarketplaceShopDetail() {
   const [page, setPage] = React.useState(1);
   const [searchInput, setSearchInput] = React.useState("");
   const [search, setSearch] = React.useState("");
+  const [topSearch, setTopSearch] = React.useState("");
+  const [marketId, setMarketId] = React.useState("");
   const [category, setCategory] = React.useState("");
   React.useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -66,6 +70,11 @@ export default function MarketplaceShopDetail() {
     placeholderData: (previousData) => previousData
   });
 
+  const { data: marketData = [] } = useQuery({
+    queryKey: ["public-markets-shop-detail"],
+    queryFn: () => listPublicMarkets()
+  });
+
   const shop = data?.shop;
   const market = shop?.marketId || {};
   const inventory = data?.inventory?.items || [];
@@ -73,22 +82,28 @@ export default function MarketplaceShopDetail() {
   const pages = Math.max(1, Math.ceil(total / LIMIT));
   const categories = data?.categories || [];
 
+  const prefetchProductDetail = React.useCallback(
+    (productId?: string) => {
+      if (!productId) return;
+      queryClient.prefetchQuery({
+        queryKey: ["public-product-detail", productId],
+        queryFn: () => getPublicProductDetail(productId),
+        staleTime: 60 * 1000
+      });
+    },
+    [queryClient]
+  );
+
   return (
     <Box sx={{ minHeight: "100vh", backgroundColor: palette.canvas }}>
-      <Box sx={{ borderBottom: `1px solid ${alpha("#ffffff", 0.14)}`, background: `linear-gradient(90deg, ${palette.navStart} 0%, ${palette.navEnd} 100%)` }}>
-        <Container maxWidth="xl" sx={{ py: 1.2 }}>
-          <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2}>
-            <Stack direction="row" alignItems="center" spacing={1.2}>
-              <Box component="img" src="/Invonta.png" alt="Invonta" sx={{ width: 34, height: 34 }} />
-              <Typography sx={{ fontWeight: 800, fontSize: 28, color: "#ffffff", lineHeight: 1 }}>Invonta</Typography>
-              <Typography sx={{ fontWeight: 700, color: alpha("#ffffff", 0.9), ml: 1, display: { xs: "none", md: "block" } }}>Marketplace</Typography>
-            </Stack>
-            <Typography component={Link} to="/login" sx={{ color: "#ffffff", fontWeight: 700, textDecoration: "underline" }}>
-              Login
-            </Typography>
-          </Stack>
-        </Container>
-      </Box>
+      <MarketplaceHeader
+        markets={marketData}
+        selectedMarketId={marketId}
+        onMarketChange={setMarketId}
+        search={topSearch}
+        onSearchChange={setTopSearch}
+        onSearchSubmit={() => navigate(`/marketplace?search=${encodeURIComponent(topSearch)}${marketId ? `&marketId=${marketId}` : ""}`)}
+      />
 
       <Container maxWidth="xl" sx={{ py: 3 }}>
         <Button startIcon={<ArrowBackIcon />} onClick={() => navigate("/marketplace")} sx={{ color: palette.ink, mb: 2 }}>
@@ -179,6 +194,9 @@ export default function MarketplaceShopDetail() {
                     <Card
                       key={item._id}
                       onClick={() => navigate(`/marketplace/${item._id}`)}
+                      onMouseEnter={() => prefetchProductDetail(item._id)}
+                      onFocus={() => prefetchProductDetail(item._id)}
+                      onTouchStart={() => prefetchProductDetail(item._id)}
                       sx={{ borderRadius: 1, border: `1px solid ${palette.line}`, cursor: "pointer" }}
                     >
                       <Grid container>

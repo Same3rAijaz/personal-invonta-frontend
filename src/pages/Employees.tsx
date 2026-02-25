@@ -8,6 +8,7 @@ import PageHeader from "../components/PageHeader";
 import { useToast } from "../hooks/useToast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
+import { useAuth } from "../hooks/useAuth";
 
 export default function Employees() {
   const [page, setPage] = React.useState(0);
@@ -16,6 +17,8 @@ export default function Employees() {
   const deleteEmployee = useDeleteEmployee();
   const { data: warehouses } = useWarehouses({ page: 1, limit: 1000 });
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const canManageBusinessAdmin = user?.role === "SUPER_ADMIN";
   const warehouseMap = new Map((warehouses?.items || []).map((w: any) => [w._id, w.name]));
   const rows = (data?.items || []).map((emp: any) => ({
     ...emp,
@@ -93,13 +96,22 @@ export default function Employees() {
             label: "Actions",
             render: (row: any) => (
               <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                <Button size="small" onClick={() => navigate(`/employees/${row._id}/edit`)}>
+                <Button
+                  size="small"
+                  disabled={Boolean(row.isBusinessAdmin) && !canManageBusinessAdmin}
+                  onClick={() => navigate(`/employees/${row._id}/edit`)}
+                >
                   Edit
                 </Button>
-                <Button size="small" color="error" onClick={() => handleDelete(row._id)}>
+                <Button
+                  size="small"
+                  color="error"
+                  disabled={Boolean(row.isBusinessAdmin) && !canManageBusinessAdmin}
+                  onClick={() => handleDelete(row._id)}
+                >
                   Delete
                 </Button>
-                {row.userId ? (
+                {row.userId && (!row.isBusinessAdmin || canManageBusinessAdmin) ? (
                   <>
                     <Button size="small" onClick={() => handleOpenBlockLogin(row._id)}>
                       Block Login
@@ -108,6 +120,11 @@ export default function Employees() {
                       Unblock Login
                     </Button>
                   </>
+                ) : null}
+                {row.isBusinessAdmin && !canManageBusinessAdmin ? (
+                  <Button size="small" disabled>
+                    Restricted
+                  </Button>
                 ) : null}
               </Box>
             )

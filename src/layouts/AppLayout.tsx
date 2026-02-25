@@ -1,13 +1,17 @@
 import React from "react";
-import { AppBar, Toolbar, Typography, Box, Drawer, List, ListItemButton, ListItemText, IconButton, Divider, Avatar, Stack, Menu, MenuItem, ListItemIcon, ListSubheader } from "@mui/material";
+import { AppBar, Toolbar, Typography, Box, Drawer, List, ListItemButton, ListItemText, IconButton, Divider, Avatar, Stack, Menu, MenuItem, ListItemIcon, ListSubheader, Collapse } from "@mui/material";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import LogoutIcon from "@mui/icons-material/Logout";
 import MenuIcon from "@mui/icons-material/Menu";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 
 const drawerWidth = 248;
+type NavItem = { label: string; to: string };
+type NavGroup = { id: string; label: string; items: NavItem[] };
 export default function AppLayout() {
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [menuAnchor, setMenuAnchor] = React.useState<null | HTMLElement>(null);
@@ -32,6 +36,7 @@ export default function AppLayout() {
     sales: ["sales"],
     employees: ["hr"],
     attendance: ["hr"],
+    payroll: ["hr"],
     reports: ["reports"],
     udhaar: ["udhaar"]
   };
@@ -48,36 +53,94 @@ export default function AppLayout() {
     return businessPass && userPass;
   };
 
-  const navItems = isSuperAdmin
+  const directNavItems: NavItem[] = [{ label: "Dashboard", to: "/" }];
+  const navGroups: NavGroup[] = isSuperAdmin
     ? [
-        { label: "Dashboard", to: "/" },
-        { label: "Markets", to: "/superadmin/markets" },
-        { label: "Businesses", to: "/superadmin/businesses" },
-        { label: "Categories", to: "/superadmin/categories" },
-        { label: "Approval Requests", to: "/superadmin/requests" },
-        { label: "Referral Settings", to: "/referrals/settings" }
+        {
+          id: "platform",
+          label: "Platform",
+          items: [
+            { label: "Markets", to: "/superadmin/markets" },
+            { label: "Businesses", to: "/superadmin/businesses" },
+            { label: "Categories", to: "/superadmin/categories" },
+            { label: "Approval Requests", to: "/superadmin/requests" }
+          ]
+        },
+        {
+          id: "referrals",
+          label: "Referrals",
+          items: [{ label: "Referral Settings", to: "/referrals/settings" }]
+        }
       ]
     : [
-        { label: "Dashboard", to: "/" },
-        ...(isAllowed("products") ? [{ label: "Products", to: "/products" }] : []),
-        ...(isAllowed("inventory") ? [{ label: "Inventory", to: "/inventory" }] : []),
-        ...(isAllowed("warehouses") ? [{ label: "Warehouses", to: "/warehouses" }] : []),
-        ...(isAllowed("locations") ? [{ label: "Locations", to: "/locations" }] : []),
-        ...(isAllowed("customers") ? [{ label: "Customers", to: "/customers" }] : []),
-        ...(isAllowed("vendors") ? [{ label: "Vendors", to: "/vendors" }] : []),
-        ...(isAllowed("purchasing") ? [{ label: "Purchasing", to: "/purchasing" }] : []),
-        ...(isAllowed("sales") ? [{ label: "Sales", to: "/sales" }] : []),
-        ...(isAllowed("employees") ? [{ label: "Employees", to: "/employees" }] : []),
-        ...(isAllowed("attendance") ? [{ label: "Attendance", to: "/attendance" }] : []),
-        ...(isAllowed("reports") ? [{ label: "Reports", to: "/reports" }] : []),
-        ...(isAllowed("udhaar") ? [{ label: "Udhaar", to: "/udhaar/parties" }] : []),
-        ...(isAllowed("udhaar") ? [{ label: "Udhaar Reports", to: "/udhaar/reports" }] : []),
-        { label: "Notifications", to: "/notifications" },
-        { label: "My Referrals", to: "/referrals" },
-        ...(user?.role === "ADMIN" ? [{ label: "Settings", to: "/settings/profile" }] : [])
+        {
+          id: "operations",
+          label: "Operations",
+          items: [
+            ...(isAllowed("products") ? [{ label: "Products", to: "/products" }] : []),
+            ...(isAllowed("inventory") ? [{ label: "Inventory", to: "/inventory" }] : []),
+            ...(isAllowed("warehouses") ? [{ label: "Warehouses", to: "/warehouses" }] : []),
+            ...(isAllowed("locations") ? [{ label: "Locations", to: "/locations" }] : []),
+            ...(isAllowed("purchasing") ? [{ label: "Purchasing", to: "/purchasing" }] : []),
+            ...(isAllowed("sales") ? [{ label: "Sales", to: "/sales" }] : [])
+          ]
+        },
+        {
+          id: "people",
+          label: "People & Payroll",
+          items: [
+            ...(isAllowed("employees") ? [{ label: "Employees", to: "/employees" }] : []),
+            ...(isAllowed("attendance") ? [{ label: "Attendance", to: "/attendance" }] : []),
+            ...(isAllowed("payroll") ? [{ label: "Payroll", to: "/payroll" }] : [])
+          ]
+        },
+        {
+          id: "partners",
+          label: "Partners",
+          items: [
+            ...(isAllowed("customers") ? [{ label: "Customers", to: "/customers" }] : []),
+            ...(isAllowed("vendors") ? [{ label: "Vendors", to: "/vendors" }] : [])
+          ]
+        },
+        {
+          id: "analytics",
+          label: "Analytics",
+          items: [
+            ...(isAllowed("reports") ? [{ label: "Reports", to: "/reports" }] : []),
+            ...(isAllowed("udhaar") ? [{ label: "Udhaar", to: "/udhaar/parties" }] : []),
+            ...(isAllowed("udhaar") ? [{ label: "Udhaar Reports", to: "/udhaar/reports" }] : [])
+          ]
+        },
+        {
+          id: "account",
+          label: "Account",
+          items: [
+            { label: "Notifications", to: "/notifications" },
+            { label: "My Referrals", to: "/referrals" },
+            ...(user?.role === "ADMIN" ? [{ label: "Settings", to: "/settings/profile" }] : [])
+          ]
+        }
       ];
+  const filteredNavGroups = navGroups.filter((group) => group.items.length > 0);
 
   const isActive = (path: string) => (path === "/" ? location.pathname === "/" : location.pathname.startsWith(path));
+  const [openGroups, setOpenGroups] = React.useState<Record<string, boolean>>({});
+  React.useEffect(() => {
+    setOpenGroups((prev) => {
+      const next: Record<string, boolean> = {};
+      let changed = false;
+      for (const group of filteredNavGroups) {
+        const hasActiveChild = group.items.some((item) => isActive(item.to));
+        const current = prev[group.id];
+        const value = current !== undefined ? current : hasActiveChild;
+        next[group.id] = value;
+        if (current === undefined || value !== current) changed = true;
+      }
+      if (Object.keys(prev).length !== Object.keys(next).length) changed = true;
+      return changed ? next : prev;
+    });
+  }, [filteredNavGroups, location.pathname]);
+
   const menuOpen = Boolean(menuAnchor);
 
   const drawer = (
@@ -109,7 +172,7 @@ export default function AppLayout() {
           </ListSubheader>
         }
       >
-        {navItems.map((item) => (
+        {directNavItems.map((item) => (
           <ListItemButton
             key={item.to}
             component={Link}
@@ -145,6 +208,74 @@ export default function AppLayout() {
             <ListItemText primary={item.label} />
           </ListItemButton>
         ))}
+        {filteredNavGroups.map((group) => {
+          const groupActive = group.items.some((item) => isActive(item.to));
+          return (
+            <React.Fragment key={group.id}>
+              <ListItemButton
+                onClick={() => setOpenGroups((prev) => ({ ...prev, [group.id]: !prev[group.id] }))}
+                sx={{
+                  borderRadius: 0,
+                  mt: 0.4,
+                  mb: 0.2,
+                  px: 1.2,
+                  py: 0.8,
+                  color: groupActive ? "#ffffff" : "rgba(226,232,240,0.8)"
+                }}
+              >
+                <ListItemText
+                  primary={group.label}
+                  primaryTypographyProps={{
+                    fontSize: 12,
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    letterSpacing: 0.7
+                  }}
+                />
+                {openGroups[group.id] ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+              </ListItemButton>
+              <Collapse in={Boolean(openGroups[group.id])} timeout="auto" unmountOnExit>
+                {group.items.map((item) => (
+                  <ListItemButton
+                    key={item.to}
+                    component={Link}
+                    to={item.to}
+                    selected={isActive(item.to)}
+                    sx={{
+                      borderRadius: 0,
+                      mb: 0.5,
+                      ml: 1,
+                      px: 1.5,
+                      py: 0.9,
+                      fontSize: 13,
+                      color: "rgba(226,232,240,0.78)",
+                      position: "relative",
+                      "&.Mui-selected": {
+                        backgroundColor: "rgba(14,165,233,0.18)",
+                        color: "#ffffff"
+                      },
+                      "&.Mui-selected::before": {
+                        content: "\"\"",
+                        position: "absolute",
+                        left: 6,
+                        top: 8,
+                        bottom: 8,
+                        width: 3,
+                        borderRadius: 999,
+                        backgroundColor: "#38bdf8"
+                      },
+                      "&.Mui-selected:hover": {
+                        backgroundColor: "rgba(14,165,233,0.18)"
+                      }
+                    }}
+                  >
+                    <ListItemText primary={item.label} />
+                  </ListItemButton>
+                ))}
+              </Collapse>
+            </React.Fragment>
+          );
+        })}
       </List>
       <Box sx={{ px: 1.5, pb: 2 }}>
         <ListItemButton

@@ -13,6 +13,21 @@ type AuthState = {
 
 const AuthContext = React.createContext<AuthState | undefined>(undefined);
 
+function parseJwtExpiry(token: string) {
+  try {
+    const parts = token.split(".");
+    if (parts.length < 2) return null;
+    const normalized = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), "=");
+    const payload = JSON.parse(atob(padded));
+    const exp = Number(payload?.exp);
+    if (!Number.isFinite(exp)) return null;
+    return exp * 1000;
+  } catch {
+    return null;
+  }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = React.useState<string | null>(localStorage.getItem("accessToken"));
   const [user, setUser] = React.useState<any | null>(() => {
@@ -23,6 +38,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const saved = localStorage.getItem("business");
     return saved ? JSON.parse(saved) : null;
   });
+
+  const clearSessionAndRedirect = React.useCallback(() => {
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+    localStorage.removeItem("user");
+    localStorage.removeItem("business");
+    setToken(null);
+    setUser(null);
+    setBusiness(null);
+    if (window.location.pathname !== "/login") {
+      window.location.href = "/login";
+    }
+  }, []);
+
+  React.useEffect(() => {
+    if (!token) return;
+    const expiresAt = parseJwtExpiry(token);
+    if (!expiresAt) return;
+    const checkExpiry = () => {
+      if (Date.now() >= expiresAt) {
+        clearSessionAndRedirect();
+      }
+    };
+    checkExpiry();
+    // Use interval checks to avoid browser setTimeout overflow for long durations (e.g., 30d).
+    const interval = window.setInterval(checkExpiry, 60 * 1000);
+    return () => window.clearInterval(interval);
+  }, [token, clearSessionAndRedirect]);
 
   React.useEffect(() => {
     const fetchBusiness = async () => {
