@@ -1,4 +1,4 @@
-import { Box, Button } from "@mui/material";
+import { Box, Button, TextField } from "@mui/material";
 import React from "react";
 import { useDeleteLocation, useLocations } from "../hooks/useLocations";
 import { useWarehouses } from "../hooks/useWarehouses";
@@ -6,11 +6,14 @@ import { useToast } from "../hooks/useToast";
 import DataTable from "../components/DataTable";
 import { useNavigate } from "react-router-dom";
 import PageHeader from "../components/PageHeader";
+import { useDebouncedValue } from "../hooks/useDebouncedValue";
 
 export default function Locations() {
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(20);
-  const { data } = useLocations({ page: page + 1, limit: rowsPerPage });
+  const [search, setSearch] = React.useState("");
+  const debouncedSearch = useDebouncedValue(search.trim());
+  const { data } = useLocations({ page: page + 1, limit: rowsPerPage, search: debouncedSearch || undefined });
   const deleteLocation = useDeleteLocation();
   const { data: warehouses } = useWarehouses({ page: 1, limit: 1000 });
   const navigate = useNavigate();
@@ -20,6 +23,10 @@ export default function Locations() {
     warehouseName: warehouseMap.get(loc.warehouseId) || loc.warehouseId
   }));
   const { notify } = useToast();
+
+  React.useEffect(() => {
+    setPage(0);
+  }, [debouncedSearch]);
 
   const handleDelete = async (id: string) => {
     if (!window.confirm("Delete this location?")) return;
@@ -56,6 +63,15 @@ export default function Locations() {
           }
         ]}
         rows={rows}
+        actions={
+          <TextField
+            size="small"
+            placeholder="Search locations"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            sx={{ minWidth: 240 }}
+          />
+        }
         page={page}
         rowsPerPage={rowsPerPage}
         total={data?.total || 0}

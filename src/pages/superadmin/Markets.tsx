@@ -1,4 +1,4 @@
-import { Box, Button } from "@mui/material";
+import { Box, Button, TextField } from "@mui/material";
 import React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
@@ -6,21 +6,33 @@ import DataTable from "../../components/DataTable";
 import PageHeader from "../../components/PageHeader";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "../../hooks/useToast";
+import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 
 export default function Markets() {
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(20);
+  const [search, setSearch] = React.useState("");
+  const debouncedSearch = useDebouncedValue(search.trim());
   const navigate = useNavigate();
   const client = useQueryClient();
   const { notify } = useToast();
   const { data } = useQuery({
-    queryKey: ["markets", page, rowsPerPage],
-    queryFn: async () => (await api.get("/superadmin/markets", { params: { page: page + 1, limit: rowsPerPage } })).data.data
+    queryKey: ["markets", page, rowsPerPage, debouncedSearch],
+    queryFn: async () =>
+      (
+        await api.get("/superadmin/markets", {
+          params: { page: page + 1, limit: rowsPerPage, search: debouncedSearch || undefined }
+        })
+      ).data.data
   });
   const deleteMarket = useMutation({
     mutationFn: async (id: string) => (await api.delete(`/superadmin/markets/${id}`)).data.data,
     onSuccess: () => client.invalidateQueries({ queryKey: ["markets"] })
   });
+
+  React.useEffect(() => {
+    setPage(0);
+  }, [debouncedSearch]);
 
   const handleDelete = async (id: string) => {
     if (!window.confirm("Delete this market?")) return;
@@ -57,6 +69,15 @@ export default function Markets() {
           }
         ]}
         rows={data?.items || []}
+        actions={
+          <TextField
+            size="small"
+            placeholder="Search markets"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            sx={{ minWidth: 240 }}
+          />
+        }
         page={page}
         rowsPerPage={rowsPerPage}
         total={data?.total || 0}

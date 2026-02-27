@@ -1,18 +1,25 @@
-import { Box, Button } from "@mui/material";
+import { Box, Button, TextField } from "@mui/material";
 import React from "react";
 import { useDeleteVendor, useVendors } from "../hooks/useVendors";
 import DataTable from "../components/DataTable";
 import { useNavigate } from "react-router-dom";
 import PageHeader from "../components/PageHeader";
 import { useToast } from "../hooks/useToast";
+import { useDebouncedValue } from "../hooks/useDebouncedValue";
 
 export default function Vendors() {
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(20);
-  const { data } = useVendors({ page: page + 1, limit: rowsPerPage });
+  const [search, setSearch] = React.useState("");
+  const debouncedSearch = useDebouncedValue(search.trim());
+  const { data } = useVendors({ page: page + 1, limit: rowsPerPage, search: debouncedSearch || undefined });
   const deleteVendor = useDeleteVendor();
   const navigate = useNavigate();
   const { notify } = useToast();
+
+  React.useEffect(() => {
+    setPage(0);
+  }, [debouncedSearch]);
 
   const handleDelete = async (id: string) => {
     if (!window.confirm("Delete this vendor?")) return;
@@ -51,6 +58,15 @@ export default function Vendors() {
           }
         ]}
         rows={data?.items || []}
+        actions={
+          <TextField
+            size="small"
+            placeholder="Search vendors"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            sx={{ minWidth: 240 }}
+          />
+        }
         page={page}
         rowsPerPage={rowsPerPage}
         total={data?.total || 0}

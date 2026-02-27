@@ -1,9 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 
-export function useSalesOrders(params?: { page?: number; limit?: number }) {
+export function useSalesOrders(params?: { page?: number; limit?: number; search?: string }) {
   return useQuery({
-    queryKey: ["sos", params?.page, params?.limit],
+    queryKey: ["sos", params?.page, params?.limit, params?.search],
     queryFn: async () => (await api.get("/sales/sos", { params })).data.data
   });
 }

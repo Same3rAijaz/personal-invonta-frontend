@@ -9,11 +9,14 @@ import { useToast } from "../hooks/useToast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 import { useAuth } from "../hooks/useAuth";
+import { useDebouncedValue } from "../hooks/useDebouncedValue";
 
 export default function Employees() {
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(20);
-  const { data } = useEmployees({ page: page + 1, limit: rowsPerPage });
+  const [search, setSearch] = React.useState("");
+  const debouncedSearch = useDebouncedValue(search.trim());
+  const { data } = useEmployees({ page: page + 1, limit: rowsPerPage, search: debouncedSearch || undefined });
   const deleteEmployee = useDeleteEmployee();
   const { data: warehouses } = useWarehouses({ page: 1, limit: 1000 });
   const navigate = useNavigate();
@@ -39,6 +42,10 @@ export default function Employees() {
     mutationFn: async (id: string) => (await api.patch(`/employees/${id}/unblock-login`)).data.data,
     onSuccess: () => client.invalidateQueries({ queryKey: ["employees"] })
   });
+
+  React.useEffect(() => {
+    setPage(0);
+  }, [debouncedSearch]);
 
   const handleDelete = async (id: string) => {
     if (!window.confirm("Delete this employee?")) return;
@@ -131,6 +138,15 @@ export default function Employees() {
           }
         ]}
         rows={rows}
+        actions={
+          <TextField
+            size="small"
+            placeholder="Search employees"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            sx={{ minWidth: 240 }}
+          />
+        }
         page={page}
         rowsPerPage={rowsPerPage}
         total={data?.total || 0}

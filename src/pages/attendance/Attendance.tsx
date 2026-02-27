@@ -1,14 +1,17 @@
-import { Box } from "@mui/material";
+import { Box, TextField } from "@mui/material";
 import React from "react";
 import { useAttendance } from "../../hooks/useAttendance";
 import DataTable from "../../components/DataTable";
 import PageHeader from "../../components/PageHeader";
 import { useNavigate } from "react-router-dom";
+import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 
 export default function Attendance() {
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(20);
-  const { data } = useAttendance({ page: page + 1, limit: rowsPerPage });
+  const [search, setSearch] = React.useState("");
+  const debouncedSearch = useDebouncedValue(search.trim());
+  const { data } = useAttendance({ page: page + 1, limit: rowsPerPage, search: debouncedSearch || undefined });
   const navigate = useNavigate();
   const rows = (data?.items || []).map((item: any) => {
     const employee = item?.employeeId || {};
@@ -20,6 +23,10 @@ export default function Attendance() {
       employeeEmail: employeeUser?.email || "-"
     };
   });
+
+  React.useEffect(() => {
+    setPage(0);
+  }, [debouncedSearch]);
 
   return (
     <Box>
@@ -35,6 +42,15 @@ export default function Attendance() {
           { key: "overtimeHours", label: "Overtime" }
         ]}
         rows={rows}
+        actions={
+          <TextField
+            size="small"
+            placeholder="Search attendance"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            sx={{ minWidth: 240 }}
+          />
+        }
         page={page}
         rowsPerPage={rowsPerPage}
         total={data?.total || 0}

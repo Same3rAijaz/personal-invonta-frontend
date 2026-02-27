@@ -1,4 +1,4 @@
-import { Box, Button } from "@mui/material";
+import { Box, Button, TextField } from "@mui/material";
 import React from "react";
 import { api } from "../../api/client";
 import { useDeleteSalesOrder, useSalesOrders } from "../../hooks/useSales";
@@ -7,11 +7,14 @@ import { useNavigate } from "react-router-dom";
 import PageHeader from "../../components/PageHeader";
 import { useCustomers } from "../../hooks/useCustomers";
 import { useToast } from "../../hooks/useToast";
+import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 
 export default function SalesOrders() {
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(20);
-  const { data } = useSalesOrders({ page: page + 1, limit: rowsPerPage });
+  const [search, setSearch] = React.useState("");
+  const debouncedSearch = useDebouncedValue(search.trim());
+  const { data } = useSalesOrders({ page: page + 1, limit: rowsPerPage, search: debouncedSearch || undefined });
   const deleteSO = useDeleteSalesOrder();
   const { data: customers } = useCustomers({ page: 1, limit: 1000 });
   const navigate = useNavigate();
@@ -55,6 +58,10 @@ export default function SalesOrders() {
     customerName: customerMap.get(so.customerId) || so.customerId
   }));
   const { notify } = useToast();
+
+  React.useEffect(() => {
+    setPage(0);
+  }, [debouncedSearch]);
 
   const handleDelete = async (id: string) => {
     if (!window.confirm("Delete this sales order?")) return;
@@ -100,6 +107,15 @@ export default function SalesOrders() {
           }
         ]}
         rows={rows}
+        actions={
+          <TextField
+            size="small"
+            placeholder="Search sales orders"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            sx={{ minWidth: 240 }}
+          />
+        }
         page={page}
         rowsPerPage={rowsPerPage}
         total={data?.total || 0}

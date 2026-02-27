@@ -1,9 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 
-export function useAttendance(params?: { employeeId?: string; page?: number; limit?: number }) {
+export function useAttendance(params?: { employeeId?: string; page?: number; limit?: number; search?: string }) {
   return useQuery({
-    queryKey: ["attendance", params?.employeeId, params?.page, params?.limit],
+    queryKey: ["attendance", params?.employeeId, params?.page, params?.limit, params?.search],
     queryFn: async () => (await api.get("/attendance", { params })).data.data
   });
 }

@@ -1,4 +1,4 @@
-import { Box, Button } from "@mui/material";
+import { Box, Button, TextField } from "@mui/material";
 import React from "react";
 import { useDeletePurchaseOrder, usePurchaseOrders } from "../../hooks/usePurchasing";
 import DataTable from "../../components/DataTable";
@@ -6,11 +6,14 @@ import { useNavigate } from "react-router-dom";
 import PageHeader from "../../components/PageHeader";
 import { useVendors } from "../../hooks/useVendors";
 import { useToast } from "../../hooks/useToast";
+import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 
 export default function PurchaseOrders() {
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(20);
-  const { data } = usePurchaseOrders({ page: page + 1, limit: rowsPerPage });
+  const [search, setSearch] = React.useState("");
+  const debouncedSearch = useDebouncedValue(search.trim());
+  const { data } = usePurchaseOrders({ page: page + 1, limit: rowsPerPage, search: debouncedSearch || undefined });
   const deletePO = useDeletePurchaseOrder();
   const { data: vendors } = useVendors({ page: 1, limit: 1000 });
   const navigate = useNavigate();
@@ -21,6 +24,10 @@ export default function PurchaseOrders() {
     vendorName: vendorMap.get(po.vendorId) || po.vendorId
   }));
   const { notify } = useToast();
+
+  React.useEffect(() => {
+    setPage(0);
+  }, [debouncedSearch]);
 
   const handleDelete = async (id: string) => {
     if (!window.confirm("Delete this purchase order?")) return;
@@ -57,6 +64,15 @@ export default function PurchaseOrders() {
           }
         ]}
         rows={rows}
+        actions={
+          <TextField
+            size="small"
+            placeholder="Search purchase orders"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            sx={{ minWidth: 240 }}
+          />
+        }
         page={page}
         rowsPerPage={rowsPerPage}
         total={data?.total || 0}

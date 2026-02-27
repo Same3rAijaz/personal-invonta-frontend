@@ -1,18 +1,25 @@
-import { Box, Button } from "@mui/material";
+import { Box, Button, TextField } from "@mui/material";
 import React from "react";
 import { useDeleteWarehouse, useWarehouses } from "../hooks/useWarehouses";
 import DataTable from "../components/DataTable";
 import { useNavigate } from "react-router-dom";
 import PageHeader from "../components/PageHeader";
 import { useToast } from "../hooks/useToast";
+import { useDebouncedValue } from "../hooks/useDebouncedValue";
 
 export default function Warehouses() {
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(20);
-  const { data } = useWarehouses({ page: page + 1, limit: rowsPerPage });
+  const [search, setSearch] = React.useState("");
+  const debouncedSearch = useDebouncedValue(search.trim());
+  const { data } = useWarehouses({ page: page + 1, limit: rowsPerPage, search: debouncedSearch || undefined });
   const deleteWarehouse = useDeleteWarehouse();
   const navigate = useNavigate();
   const { notify } = useToast();
+
+  React.useEffect(() => {
+    setPage(0);
+  }, [debouncedSearch]);
 
   const handleDelete = async (id: string) => {
     if (!window.confirm("Delete this warehouse?")) return;
@@ -48,6 +55,15 @@ export default function Warehouses() {
           }
         ]}
         rows={data?.items || []}
+        actions={
+          <TextField
+            size="small"
+            placeholder="Search warehouses"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            sx={{ minWidth: 240 }}
+          />
+        }
         page={page}
         rowsPerPage={rowsPerPage}
         total={data?.total || 0}

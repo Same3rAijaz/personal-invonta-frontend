@@ -7,15 +7,23 @@ import PageHeader from "../../components/PageHeader";
 import { useToast } from "../../hooks/useToast";
 import { useCities, useCountries, useStates } from "../../hooks/useGeo";
 import { DEFAULT_CITY, DEFAULT_COUNTRY, DEFAULT_STATE } from "../../constants/locationDefaults";
+import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 
 export default function ShopRequests() {
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(20);
+  const [search, setSearch] = React.useState("");
+  const debouncedSearch = useDebouncedValue(search.trim());
   const { notify } = useToast();
   const client = useQueryClient();
   const { data } = useQuery({
-    queryKey: ["shop-requests", page, rowsPerPage],
-    queryFn: async () => (await api.get("/superadmin/requests", { params: { page: page + 1, limit: rowsPerPage } })).data.data
+    queryKey: ["shop-requests", page, rowsPerPage, debouncedSearch],
+    queryFn: async () =>
+      (
+        await api.get("/superadmin/requests", {
+          params: { page: page + 1, limit: rowsPerPage, search: debouncedSearch || undefined }
+        })
+      ).data.data
   });
   const { data: markets } = useQuery({
     queryKey: ["markets"],
@@ -43,6 +51,10 @@ export default function ShopRequests() {
   const { data: countryOptions = [] } = useCountries();
   const { data: stateOptions = [] } = useStates(editValues.country);
   const { data: cityOptions = [] } = useCities(editValues.country, editValues.state);
+
+  React.useEffect(() => {
+    setPage(0);
+  }, [debouncedSearch]);
 
   const handleApprove = async (row: any) => {
     try {
@@ -144,6 +156,15 @@ export default function ShopRequests() {
           }
         ]}
         rows={rows}
+        actions={
+          <TextField
+            size="small"
+            placeholder="Search requests"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            sx={{ minWidth: 240 }}
+          />
+        }
         page={page}
         rowsPerPage={rowsPerPage}
         total={data?.total || 0}

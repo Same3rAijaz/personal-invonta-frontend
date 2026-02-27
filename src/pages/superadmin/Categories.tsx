@@ -1,18 +1,25 @@
-import { Box, Button } from "@mui/material";
+import { Box, Button, TextField } from "@mui/material";
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import DataTable from "../../components/DataTable";
 import PageHeader from "../../components/PageHeader";
 import { useDeleteCategory, useSuperAdminCategories } from "../../hooks/useCategories";
 import { useToast } from "../../hooks/useToast";
+import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 
 export default function Categories() {
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(20);
+  const [search, setSearch] = React.useState("");
+  const debouncedSearch = useDebouncedValue(search.trim());
   const navigate = useNavigate();
   const { notify } = useToast();
-  const { data } = useSuperAdminCategories({ page: page + 1, limit: rowsPerPage });
+  const { data } = useSuperAdminCategories({ page: page + 1, limit: rowsPerPage, search: debouncedSearch || undefined });
   const deleteCategory = useDeleteCategory();
+
+  React.useEffect(() => {
+    setPage(0);
+  }, [debouncedSearch]);
 
   const handleDelete = async (id: string) => {
     if (!window.confirm("Delete this category?")) return;
@@ -53,6 +60,15 @@ export default function Categories() {
           }
         ]}
         rows={data?.items || []}
+        actions={
+          <TextField
+            size="small"
+            placeholder="Search categories"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            sx={{ minWidth: 240 }}
+          />
+        }
         page={page}
         rowsPerPage={rowsPerPage}
         total={data?.total || 0}

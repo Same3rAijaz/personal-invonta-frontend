@@ -6,10 +6,13 @@ import DataTable from "../../components/DataTable";
 import PageHeader from "../../components/PageHeader";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "../../hooks/useToast";
+import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 
 export default function Businesses() {
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(20);
+  const [search, setSearch] = React.useState("");
+  const debouncedSearch = useDebouncedValue(search.trim());
   const navigate = useNavigate();
   const client = useQueryClient();
   const { notify } = useToast();
@@ -18,8 +21,13 @@ export default function Businesses() {
   const [blockReasonOther, setBlockReasonOther] = React.useState("");
   const [blockDays, setBlockDays] = React.useState("");
   const { data } = useQuery({
-    queryKey: ["businesses", page, rowsPerPage],
-    queryFn: async () => (await api.get("/superadmin/businesses", { params: { page: page + 1, limit: rowsPerPage } })).data.data
+    queryKey: ["businesses", page, rowsPerPage, debouncedSearch],
+    queryFn: async () =>
+      (
+        await api.get("/superadmin/businesses", {
+          params: { page: page + 1, limit: rowsPerPage, search: debouncedSearch || undefined }
+        })
+      ).data.data
   });
   const deleteBusiness = useMutation({
     mutationFn: async (id: string) => (await api.delete(`/superadmin/businesses/${id}`)).data.data,
@@ -34,6 +42,10 @@ export default function Businesses() {
     mutationFn: async (id: string) => (await api.patch(`/superadmin/businesses/${id}/unblock`)).data.data,
     onSuccess: () => client.invalidateQueries({ queryKey: ["businesses"] })
   });
+
+  React.useEffect(() => {
+    setPage(0);
+  }, [debouncedSearch]);
 
   const handleDelete = async (id: string) => {
     if (!window.confirm("Delete this business?")) return;
@@ -114,6 +126,15 @@ export default function Businesses() {
           }
         ]}
         rows={data?.items || []}
+        actions={
+          <TextField
+            size="small"
+            placeholder="Search businesses"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            sx={{ minWidth: 240 }}
+          />
+        }
         page={page}
         rowsPerPage={rowsPerPage}
         total={data?.total || 0}

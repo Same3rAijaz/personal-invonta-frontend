@@ -5,11 +5,14 @@ import DataTable from "../components/DataTable";
 import { useNavigate } from "react-router-dom";
 import PageHeader from "../components/PageHeader";
 import { useToast } from "../hooks/useToast";
+import { useDebouncedValue } from "../hooks/useDebouncedValue";
 
 export default function Products() {
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(20);
-  const { data } = useProducts({ page: page + 1, limit: rowsPerPage });
+  const [search, setSearch] = React.useState("");
+  const debouncedSearch = useDebouncedValue(search.trim());
+  const { data } = useProducts({ page: page + 1, limit: rowsPerPage, search: debouncedSearch || undefined });
   const deleteProduct = useDeleteProduct();
   const shareProduct = useShareProduct();
   const navigate = useNavigate();
@@ -18,6 +21,10 @@ export default function Products() {
   const [targetSearch, setTargetSearch] = React.useState("");
   const [selectedTargets, setSelectedTargets] = React.useState<any[]>([]);
   const { data: shareTargets = [] } = useProductShareTargets(targetSearch || undefined);
+
+  React.useEffect(() => {
+    setPage(0);
+  }, [debouncedSearch]);
 
   const handleDelete = async (id: string) => {
     if (!window.confirm("Delete this product?")) return;
@@ -120,6 +127,15 @@ export default function Products() {
           }
         ]}
         rows={data?.items || []}
+        actions={
+          <TextField
+            size="small"
+            placeholder="Search products"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            sx={{ minWidth: 240 }}
+          />
+        }
         page={page}
         rowsPerPage={rowsPerPage}
         total={data?.total || 0}
