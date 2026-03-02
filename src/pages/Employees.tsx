@@ -9,6 +9,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 import { useAuth } from "../hooks/useAuth";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
+import { useConfirmDialog } from "../hooks/useConfirmDialog";
 
 export default function Employees() {
   const [page, setPage] = React.useState(0);
@@ -22,6 +23,7 @@ export default function Employees() {
   const canManageBusinessAdmin = user?.role === "SUPER_ADMIN";
   const rows = data?.items || [];
   const { notify } = useToast();
+  const { confirm, confirmDialog } = useConfirmDialog();
   const client = useQueryClient();
   const [blockDialog, setBlockDialog] = React.useState<{ open: boolean; id: string | null }>({ open: false, id: null });
   const [resetDialog, setResetDialog] = React.useState<{ open: boolean; id: string | null }>({ open: false, id: null });
@@ -45,7 +47,7 @@ export default function Employees() {
   }, [debouncedSearch]);
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Delete this employee?")) return;
+    if (!(await confirm({ title: "Delete Employee", message: "Are you sure you want to delete this employee?", confirmText: "Delete" }))) return;
     try {
       await deleteEmployee.mutateAsync(id);
       notify("Employee deleted", "success");
@@ -235,6 +237,7 @@ export default function Employees() {
           </Button>
         </DialogActions>
       </Dialog>
+      {confirmDialog}
     </Box>
   );
 }

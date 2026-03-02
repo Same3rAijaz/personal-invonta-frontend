@@ -18,18 +18,38 @@ export default function ProductEdit() {
   const [existingImages, setExistingImages] = useState<string[]>([]);
   const [newFiles, setNewFiles] = useState<File[]>([]);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
-  const selectedCategoryId = watch("categoryId");
-  const subcategories = useMemo(() => {
-    const selected = (categories || []).find((item: any) => String(item._id) === String(selectedCategoryId || ""));
-    return (selected?.subcategories || []).filter((item: any) => item.isActive !== false);
-  }, [categories, selectedCategoryId]);
-  useEffect(() => {
-    if (!selectedCategoryId) {
-      setValue("subcategory", "");
-    }
-  }, [selectedCategoryId, setValue]);
+  const [selectedPathIds, setSelectedPathIds] = useState<string[]>([]);
 
   const product = (data?.items || []).find((p: any) => p._id === id);
+  const categoriesById = useMemo(() => {
+    const map = new Map<string, any>();
+    (categories || []).forEach((item: any) => map.set(String(item._id), item));
+    return map;
+  }, [categories]);
+  const childrenByParent = useMemo(() => {
+    const map = new Map<string, any[]>();
+    (categories || []).forEach((item: any) => {
+      const key = item.parentId ? String(item.parentId) : "root";
+      const list = map.get(key) || [];
+      list.push(item);
+      map.set(key, list);
+    });
+    map.forEach((list, key) => map.set(key, [...list].sort((a, b) => String(a.name).localeCompare(String(b.name)))));
+    return map;
+  }, [categories]);
+  const levelOptions = useMemo(() => {
+    const levels: any[][] = [];
+    let parentKey = "root";
+    for (let level = 0; level < 10; level += 1) {
+      const options = childrenByParent.get(parentKey) || [];
+      if (options.length === 0) break;
+      levels.push(options);
+      const selectedId = selectedPathIds[level];
+      if (!selectedId) break;
+      parentKey = selectedId;
+    }
+    return levels;
+  }, [childrenByParent, selectedPathIds]);
 
   useEffect(() => {
     if (product) {
@@ -38,7 +58,6 @@ export default function ProductEdit() {
         barcode: product.barcode || "",
         name: product.name || "",
         categoryId: product.categoryId || "",
-        subcategory: product.subcategory || "",
         unit: product.unit || "",
         costPrice: product.costPrice || 0,
         salePrice: product.salePrice || 0,
@@ -53,13 +72,27 @@ export default function ProductEdit() {
 
   useEffect(() => {
     if (!product || !categories.length) return;
-    if (product.categoryId) return;
-    if (!product.category) return;
-    const matched = categories.find((item: any) => item.name?.toLowerCase() === String(product.category).toLowerCase());
-    if (matched?._id) {
-      setValue("categoryId", String(matched._id), { shouldDirty: false });
+    if (product.categoryId) {
+      const category = categoriesById.get(String(product.categoryId));
+      if (category) {
+        setSelectedPathIds([...(category.pathIds || []), String(category._id)]);
+        setValue("categoryId", String(category._id), { shouldDirty: false });
+      }
+      return;
     }
-  }, [product, categories, setValue]);
+    if (product.category) {
+      const matched = categories.find((item: any) => (item.pathNames || []).join(" > ").toLowerCase() === String(product.category).toLowerCase());
+      if (matched?._id) {
+        setSelectedPathIds([...(matched.pathIds || []), String(matched._id)]);
+        setValue("categoryId", String(matched._id), { shouldDirty: false });
+      }
+    }
+  }, [product, categories, categoriesById, setValue]);
+
+  useEffect(() => {
+    const categoryId = selectedPathIds.length > 0 ? selectedPathIds[selectedPathIds.length - 1] : "";
+    setValue("categoryId", categoryId, { shouldDirty: true });
+  }, [selectedPathIds, setValue]);
 
   const previewItems = useMemo(() => {
     const existing = existingImages.map((url) => ({ key: `existing:${url}`, url }));
@@ -71,11 +104,7 @@ export default function ProductEdit() {
     if (!id) return;
     try {
       const uploadBase = values.sku ? `products/${values.sku}` : `products/${Date.now()}`;
-      const uploadedUrls = newFiles.length
-        ? await Promise.all(
-            newFiles.map((file) => uploadImage(file, uploadBase))
-          )
-        : [];
+      const uploadedUrls = newFiles.length ? await Promise.all(newFiles.map((file) => uploadImage(file, uploadBase))) : [];
       const mergedImages = [...existingImages, ...uploadedUrls];
       let thumbnailUrl = product?.thumbnailUrl;
       if (selectedKey?.startsWith("existing:")) {
@@ -91,6 +120,8 @@ export default function ProductEdit() {
         id,
         payload: {
           ...values,
+          categoryId: values.categoryId || undefined,
+          subcategory: undefined,
           costPrice: Number(values.costPrice),
           salePrice: Number(values.salePrice),
           reorderLevel: Number(values.reorderLevel || 0),
@@ -124,50 +155,45 @@ export default function ProductEdit() {
             <TextField fullWidth label="Name" {...register("name")} />
           </Grid>
           <Grid item xs={12} md={3}>
-            <Controller
-              name="categoryId"
-              control={control}
-              render={({ field }) => (
-                <TextField
-                  select
-                  fullWidth
-                  label="Category"
-                  value={field.value || ""}
-                  onChange={(event) => field.onChange(event.target.value)}
-                >
-                  <MenuItem value="">None</MenuItem>
-                  {(categories || []).map((item: any) => (
-                    <MenuItem key={item._id} value={String(item._id)}>
-                      {item.name}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              )}
+            <TextField
+              fullWidth
+              label="Selected Category"
+              value={
+                selectedPathIds.length > 0
+                  ? ((categoriesById.get(selectedPathIds[selectedPathIds.length - 1])?.pathNames || []).join(" > ") || "")
+                  : ""
+              }
+              InputProps={{ readOnly: true }}
+              placeholder="Choose from category levels"
             />
           </Grid>
-          <Grid item xs={12} md={3}>
-            <Controller
-              name="subcategory"
-              control={control}
-              render={({ field }) => (
-                <TextField
-                  select
-                  fullWidth
-                  label="Sub Category"
-                  value={field.value || ""}
-                  onChange={(event) => field.onChange(event.target.value)}
-                  disabled={!selectedCategoryId}
-                >
-                  <MenuItem value="">None</MenuItem>
-                  {subcategories.map((item: any) => (
-                    <MenuItem key={item.slug} value={item.name}>
-                      {item.name}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              )}
-            />
-          </Grid>
+
+          {levelOptions.map((options, level) => (
+            <Grid item xs={12} md={3} key={`category-level-${level}`}>
+              <TextField
+                select
+                fullWidth
+                label={level === 0 ? "Category Level 1" : `Category Level ${level + 1}`}
+                value={selectedPathIds[level] || ""}
+                onChange={(event) => {
+                  const selectedId = String(event.target.value || "");
+                  setSelectedPathIds((prev) => {
+                    const next = prev.slice(0, level);
+                    if (selectedId) next[level] = selectedId;
+                    return next;
+                  });
+                }}
+              >
+                <MenuItem value="">None</MenuItem>
+                {options.map((item: any) => (
+                  <MenuItem key={item._id} value={item._id}>
+                    {item.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+          ))}
+
           <Grid item xs={12} md={3}>
             <TextField fullWidth label="Unit" {...register("unit")} />
           </Grid>
@@ -185,13 +211,7 @@ export default function ProductEdit() {
               name="visibility"
               control={control}
               render={({ field }) => (
-                <TextField
-                  select
-                  fullWidth
-                  label="Visibility"
-                  value={field.value || "PRIVATE"}
-                  onChange={(event) => field.onChange(event.target.value)}
-                >
+                <TextField select fullWidth label="Visibility" value={field.value || "PRIVATE"} onChange={(event) => field.onChange(event.target.value)}>
                   <MenuItem value="PRIVATE">Private</MenuItem>
                   <MenuItem value="PUBLIC">Public</MenuItem>
                 </TextField>
@@ -220,11 +240,7 @@ export default function ProductEdit() {
             <Grid item xs={12}>
               <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap>
                 {previewItems.map((item) => (
-                  <Button
-                    key={item.key}
-                    onClick={() => setSelectedKey(item.key)}
-                    variant={selectedKey === item.key ? "contained" : "outlined"}
-                  >
+                  <Button key={item.key} onClick={() => setSelectedKey(item.key)} variant={selectedKey === item.key ? "contained" : "outlined"}>
                     <Avatar src={item.url} variant="rounded" sx={{ width: 64, height: 64 }} />
                   </Button>
                 ))}

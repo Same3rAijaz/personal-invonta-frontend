@@ -38,7 +38,6 @@ export default function ProductView() {
               <Typography color="text.secondary">SKU: {product.sku || "-"}</Typography>
               <Typography color="text.secondary">Barcode: {product.barcode || "-"}</Typography>
               <Typography color="text.secondary">Category: {product.category || "-"}</Typography>
-              <Typography color="text.secondary">Sub-category: {product.subcategory || "-"}</Typography>
               <Typography color="text.secondary">Unit: {product.unit || "-"}</Typography>
               <Typography color="text.secondary">Cost: {product.costPrice ?? "-"}</Typography>
               <Typography color="text.secondary">Sale: {product.salePrice ?? "-"}</Typography>

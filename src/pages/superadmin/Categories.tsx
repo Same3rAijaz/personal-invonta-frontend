@@ -6,6 +6,7 @@ import PageHeader from "../../components/PageHeader";
 import { useDeleteCategory, useSuperAdminCategories } from "../../hooks/useCategories";
 import { useToast } from "../../hooks/useToast";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
+import { useConfirmDialog } from "../../hooks/useConfirmDialog";
 
 export default function Categories() {
   const [page, setPage] = React.useState(0);
@@ -14,6 +15,7 @@ export default function Categories() {
   const debouncedSearch = useDebouncedValue(search.trim());
   const navigate = useNavigate();
   const { notify } = useToast();
+  const { confirm, confirmDialog } = useConfirmDialog();
   const { data, isLoading } = useSuperAdminCategories({ page: page + 1, limit: rowsPerPage, search: debouncedSearch || undefined });
   const deleteCategory = useDeleteCategory();
 
@@ -22,7 +24,7 @@ export default function Categories() {
   }, [debouncedSearch]);
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Delete this category?")) return;
+    if (!(await confirm({ title: "Delete Category", message: "Are you sure you want to delete this category?", confirmText: "Delete" }))) return;
     try {
       await deleteCategory.mutateAsync(id);
       notify("Category deleted", "success");
@@ -37,12 +39,10 @@ export default function Categories() {
       <DataTable
         columns={[
           { key: "name", label: "Name" },
+          { key: "parent", label: "Parent", render: (row: any) => row.pathNames?.length > 1 ? row.pathNames[row.pathNames.length - 2] : "-" },
+          { key: "path", label: "Hierarchy", render: (row: any) => (row.pathNames || []).join(" > ") || row.name },
+          { key: "level", label: "Level" },
           { key: "slug", label: "Slug" },
-          {
-            key: "subcategories",
-            label: "Sub Categories",
-            render: (row: any) => row.subcategories?.map((x: any) => x.name).join(", ") || "-"
-          },
           { key: "isActive", label: "Active" },
           {
             key: "actions",
@@ -79,6 +79,7 @@ export default function Categories() {
           setPage(0);
         }}
       />
+      {confirmDialog}
     </Box>
   );
 }

@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import PageHeader from "../components/PageHeader";
 import { useToast } from "../hooks/useToast";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
+import { useConfirmDialog } from "../hooks/useConfirmDialog";
 
 export default function Products() {
   const [page, setPage] = React.useState(0);
@@ -23,6 +24,7 @@ export default function Products() {
   const shareProduct = useShareProduct();
   const navigate = useNavigate();
   const { notify } = useToast();
+  const { confirm, confirmDialog } = useConfirmDialog();
   const [shareDialog, setShareDialog] = React.useState<{ open: boolean; product: any | null }>({ open: false, product: null });
   const [targetSearch, setTargetSearch] = React.useState("");
   const [selectedTargets, setSelectedTargets] = React.useState<any[]>([]);
@@ -42,7 +44,7 @@ export default function Products() {
   );
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Delete this product?")) return;
+    if (!(await confirm({ title: "Delete Product", message: "Are you sure you want to delete this product?", confirmText: "Delete" }))) return;
     try {
       await deleteProduct.mutateAsync(id);
       notify("Product deleted", "success");
@@ -222,6 +224,7 @@ export default function Products() {
           </Button>
         </DialogActions>
       </Dialog>
+      {confirmDialog}
     </Box>
   );
 }

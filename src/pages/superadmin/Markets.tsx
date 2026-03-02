@@ -7,6 +7,7 @@ import PageHeader from "../../components/PageHeader";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "../../hooks/useToast";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
+import { useConfirmDialog } from "../../hooks/useConfirmDialog";
 
 export default function Markets() {
   const [page, setPage] = React.useState(0);
@@ -16,6 +17,7 @@ export default function Markets() {
   const navigate = useNavigate();
   const client = useQueryClient();
   const { notify } = useToast();
+  const { confirm, confirmDialog } = useConfirmDialog();
   const { data, isLoading } = useQuery({
     queryKey: ["markets", page, rowsPerPage, debouncedSearch],
     queryFn: async () =>
@@ -35,7 +37,7 @@ export default function Markets() {
   }, [debouncedSearch]);
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Delete this market?")) return;
+    if (!(await confirm({ title: "Delete Market", message: "Are you sure you want to delete this market?", confirmText: "Delete" }))) return;
     try {
       await deleteMarket.mutateAsync(id);
       notify("Market deleted", "success");
@@ -88,6 +90,7 @@ export default function Markets() {
           setPage(0);
         }}
       />
+      {confirmDialog}
     </Box>
   );
 }

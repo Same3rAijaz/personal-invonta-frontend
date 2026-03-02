@@ -7,6 +7,7 @@ import PageHeader from "../../components/PageHeader";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "../../hooks/useToast";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
+import { useConfirmDialog } from "../../hooks/useConfirmDialog";
 
 export default function Businesses() {
   const [page, setPage] = React.useState(0);
@@ -16,6 +17,7 @@ export default function Businesses() {
   const navigate = useNavigate();
   const client = useQueryClient();
   const { notify } = useToast();
+  const { confirm, confirmDialog } = useConfirmDialog();
   const [blockDialog, setBlockDialog] = React.useState<{ open: boolean; id: string | null }>({ open: false, id: null });
   const [blockReason, setBlockReason] = React.useState("");
   const [blockReasonOther, setBlockReasonOther] = React.useState("");
@@ -48,7 +50,7 @@ export default function Businesses() {
   }, [debouncedSearch]);
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Delete this business?")) return;
+    if (!(await confirm({ title: "Delete Business", message: "Are you sure you want to delete this business?", confirmText: "Delete" }))) return;
     try {
       await deleteBusiness.mutateAsync(id);
       notify("Business deleted", "success");
@@ -187,6 +189,7 @@ export default function Businesses() {
           <Button variant="contained" onClick={handleConfirmBlock}>Block</Button>
         </DialogActions>
       </Dialog>
+      {confirmDialog}
     </Box>
   );
 }

@@ -11,35 +11,58 @@ export default function ProductCreate() {
   const createProduct = useCreateProduct();
   const { notify } = useToast();
   const navigate = useNavigate();
-  const { register, handleSubmit, watch, setValue } = useForm({ defaultValues: { isActive: true } });
+  const { register, handleSubmit, setValue } = useForm({ defaultValues: { isActive: true } });
   const { data: categories = [] } = useCategories({ activeOnly: true });
-  const selectedCategoryId = watch("categoryId");
-  const subcategories = useMemo(() => {
-    const selected = (categories || []).find((item: any) => item._id === selectedCategoryId);
-    return (selected?.subcategories || []).filter((item: any) => item.isActive !== false);
-  }, [categories, selectedCategoryId]);
-  useEffect(() => {
-    if (!selectedCategoryId) {
-      setValue("subcategory", "");
-    }
-  }, [selectedCategoryId, setValue]);
+  const [selectedPathIds, setSelectedPathIds] = useState<string[]>([]);
   const [files, setFiles] = useState<File[]>([]);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+
+  const categoriesById = useMemo(() => {
+    const map = new Map<string, any>();
+    (categories || []).forEach((item: any) => map.set(String(item._id), item));
+    return map;
+  }, [categories]);
+  const childrenByParent = useMemo(() => {
+    const map = new Map<string, any[]>();
+    (categories || []).forEach((item: any) => {
+      const key = item.parentId ? String(item.parentId) : "root";
+      const list = map.get(key) || [];
+      list.push(item);
+      map.set(key, list);
+    });
+    map.forEach((list, key) => map.set(key, [...list].sort((a, b) => String(a.name).localeCompare(String(b.name)))));
+    return map;
+  }, [categories]);
+  const levelOptions = useMemo(() => {
+    const levels: any[][] = [];
+    let parentKey = "root";
+    for (let level = 0; level < 10; level += 1) {
+      const options = childrenByParent.get(parentKey) || [];
+      if (options.length === 0) break;
+      levels.push(options);
+      const selectedId = selectedPathIds[level];
+      if (!selectedId) break;
+      parentKey = selectedId;
+    }
+    return levels;
+  }, [childrenByParent, selectedPathIds]);
+
+  useEffect(() => {
+    const categoryId = selectedPathIds.length > 0 ? selectedPathIds[selectedPathIds.length - 1] : "";
+    setValue("categoryId", categoryId);
+  }, [selectedPathIds, setValue]);
 
   const onSubmit = async (values: any) => {
     try {
       const uploadBase = values.sku ? `products/${values.sku}` : `products/${Date.now()}`;
       const uploadedUrls = files.length
-        ? await Promise.all(
-            files.map((file) => uploadImage(file, uploadBase))
-          )
+        ? await Promise.all(files.map((file) => uploadImage(file, uploadBase)))
         : [];
-      const thumbnailUrl =
-        selectedIndex !== null && uploadedUrls[selectedIndex]
-          ? uploadedUrls[selectedIndex]
-          : uploadedUrls[0];
+      const thumbnailUrl = selectedIndex !== null && uploadedUrls[selectedIndex] ? uploadedUrls[selectedIndex] : uploadedUrls[0];
       await createProduct.mutateAsync({
         ...values,
+        categoryId: values.categoryId || undefined,
+        subcategory: undefined,
         costPrice: Number(values.costPrice),
         salePrice: Number(values.salePrice),
         reorderLevel: Number(values.reorderLevel || 0),
@@ -68,25 +91,45 @@ export default function ProductCreate() {
             <TextField fullWidth label="Name" {...register("name")} />
           </Grid>
           <Grid item xs={12} md={3}>
-            <TextField select fullWidth label="Category" {...register("categoryId")}>
-              <MenuItem value="">None</MenuItem>
-              {(categories || []).map((item: any) => (
-                <MenuItem key={item._id} value={item._id}>
-                  {item.name}
-                </MenuItem>
-              ))}
-            </TextField>
+            <TextField
+              fullWidth
+              label="Selected Category"
+              value={
+                selectedPathIds.length > 0
+                  ? ((categoriesById.get(selectedPathIds[selectedPathIds.length - 1])?.pathNames || []).join(" > ") || "")
+                  : ""
+              }
+              InputProps={{ readOnly: true }}
+              placeholder="Choose from category levels"
+            />
           </Grid>
-          <Grid item xs={12} md={3}>
-            <TextField select fullWidth label="Sub Category" {...register("subcategory")} disabled={!selectedCategoryId}>
-              <MenuItem value="">None</MenuItem>
-              {subcategories.map((item: any) => (
-                <MenuItem key={item.slug} value={item.name}>
-                  {item.name}
-                </MenuItem>
-              ))}
-            </TextField>
-          </Grid>
+
+          {levelOptions.map((options, level) => (
+            <Grid item xs={12} md={3} key={`category-level-${level}`}>
+              <TextField
+                select
+                fullWidth
+                label={level === 0 ? "Category Level 1" : `Category Level ${level + 1}`}
+                value={selectedPathIds[level] || ""}
+                onChange={(event) => {
+                  const selectedId = String(event.target.value || "");
+                  setSelectedPathIds((prev) => {
+                    const next = prev.slice(0, level);
+                    if (selectedId) next[level] = selectedId;
+                    return next;
+                  });
+                }}
+              >
+                <MenuItem value="">None</MenuItem>
+                {options.map((item: any) => (
+                  <MenuItem key={item._id} value={item._id}>
+                    {item.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+          ))}
+
           <Grid item xs={12} md={3}>
             <TextField fullWidth label="Unit" {...register("unit")} />
           </Grid>
@@ -125,11 +168,7 @@ export default function ProductCreate() {
             <Grid item xs={12}>
               <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap>
                 {files.map((file, idx) => (
-                  <Button
-                    key={file.name + idx}
-                    onClick={() => setSelectedIndex(idx)}
-                    variant={selectedIndex === idx ? "contained" : "outlined"}
-                  >
+                  <Button key={file.name + idx} onClick={() => setSelectedIndex(idx)} variant={selectedIndex === idx ? "contained" : "outlined"}>
                     <Avatar src={URL.createObjectURL(file)} variant="rounded" sx={{ width: 64, height: 64 }} />
                   </Button>
                 ))}

@@ -1,42 +1,39 @@
-import { Box, Button, Checkbox, FormControlLabel, Grid, Paper, TextField, Typography } from "@mui/material";
+import { Box, Button, Checkbox, FormControl, FormControlLabel, Grid, InputLabel, MenuItem, Paper, Select, TextField, Typography } from "@mui/material";
 import { useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { useNavigate, useParams } from "react-router-dom";
 import { useSuperAdminCategories, useUpdateCategory } from "../../hooks/useCategories";
 import { useToast } from "../../hooks/useToast";
 
 export default function CategoryEdit() {
+  const ROOT_VALUE = "__ROOT__";
   const { id } = useParams();
   const navigate = useNavigate();
   const { notify } = useToast();
   const updateCategory = useUpdateCategory();
   const { data } = useSuperAdminCategories({ page: 1, limit: 1000 });
-  const category = (data?.items || []).find((item: any) => item._id === id);
-  const { register, handleSubmit, reset } = useForm({ defaultValues: { name: "", subcategoriesText: "", isActive: true } });
+  const categories = data?.items || [];
+  const category = categories.find((item: any) => item._id === id);
+  const { register, handleSubmit, reset, control } = useForm({ defaultValues: { name: "", parentId: ROOT_VALUE, isActive: true } });
 
   useEffect(() => {
     if (!category) return;
     reset({
       name: category.name || "",
-      isActive: category.isActive ?? true,
-      subcategoriesText: (category.subcategories || []).map((x: any) => x.name).join(", ")
+      parentId: category.parentId || ROOT_VALUE,
+      isActive: category.isActive ?? true
     });
   }, [category, reset]);
 
   const onSubmit = async (values: any) => {
     if (!id) return;
-    const subcategories = String(values.subcategoriesText || "")
-      .split(",")
-      .map((item) => item.trim())
-      .filter(Boolean)
-      .map((name) => ({ name, isActive: true }));
     try {
       await updateCategory.mutateAsync({
         id,
         payload: {
           name: values.name,
-          isActive: Boolean(values.isActive),
-          subcategories
+          parentId: values.parentId && values.parentId !== ROOT_VALUE ? values.parentId : null,
+          isActive: Boolean(values.isActive)
         }
       });
       notify("Category updated", "success");
@@ -50,25 +47,52 @@ export default function CategoryEdit() {
 
   return (
     <Box>
-      <Typography variant="h5" gutterBottom>Edit Category</Typography>
-      <Paper sx={{ p: 3, borderRadius: 3, boxShadow: "0 18px 40px rgba(15,23,42,0.08)" }}>
+      <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.6 }}>Edit Category</Typography>
+      <Typography color="text.secondary" sx={{ mb: 2.2 }}>
+        Reorganize the category hierarchy without breaking parent-child structure.
+      </Typography>
+      <Paper sx={{ p: 3, borderRadius: 4, boxShadow: "0 18px 40px rgba(15,23,42,0.08)" }}>
         <Grid container spacing={2} component="form" onSubmit={handleSubmit(onSubmit)}>
           <Grid item xs={12} md={6}>
             <TextField fullWidth label="Category Name" {...register("name")} />
           </Grid>
-          <Grid item xs={12}>
-            <TextField
-              fullWidth
-              label="Sub Categories (comma separated)"
-              placeholder="Smartphones, Accessories, Tablets"
-              {...register("subcategoriesText")}
+          <Grid item xs={12} md={6}>
+            <Controller
+              name="parentId"
+              control={control}
+              render={({ field }) => (
+                <FormControl fullWidth>
+                  <InputLabel id="edit-category-parent-label">Parent Category</InputLabel>
+                  <Select
+                    labelId="edit-category-parent-label"
+                    label="Parent Category"
+                    value={field.value || ROOT_VALUE}
+                    onChange={(event) => field.onChange(event.target.value)}
+                    displayEmpty
+                    renderValue={(value) => {
+                      if (!value || value === ROOT_VALUE) return "Root Category";
+                      const match = categories.find((item: any) => String(item._id) === String(value));
+                      return match ? (match.pathNames || [match.name]).join(" > ") : "Root Category";
+                    }}
+                  >
+                    <MenuItem value={ROOT_VALUE}>Root Category</MenuItem>
+                    {categories
+                      .filter((item: any) => item._id !== id)
+                      .map((item: any) => (
+                        <MenuItem key={item._id} value={item._id}>
+                          {(item.pathNames || [item.name]).join(" > ")}
+                        </MenuItem>
+                      ))}
+                  </Select>
+                </FormControl>
+              )}
             />
           </Grid>
           <Grid item xs={12}>
             <FormControlLabel control={<Checkbox defaultChecked {...register("isActive")} />} label="Active" />
           </Grid>
           <Grid item xs={12}>
-            <Button type="submit" variant="contained">
+            <Button type="submit" variant="contained" sx={{ px: 3.2, py: 1.2, borderRadius: 2.5, fontWeight: 700 }}>
               Update Category
             </Button>
           </Grid>

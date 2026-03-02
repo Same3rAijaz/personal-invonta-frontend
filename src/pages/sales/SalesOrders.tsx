@@ -8,6 +8,7 @@ import PageHeader from "../../components/PageHeader";
 import { useCustomers } from "../../hooks/useCustomers";
 import { useToast } from "../../hooks/useToast";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
+import { useConfirmDialog } from "../../hooks/useConfirmDialog";
 
 export default function SalesOrders() {
   const [page, setPage] = React.useState(0);
@@ -58,13 +59,14 @@ export default function SalesOrders() {
     customerName: customerMap.get(so.customerId) || so.customerId
   }));
   const { notify } = useToast();
+  const { confirm, confirmDialog } = useConfirmDialog();
 
   React.useEffect(() => {
     setPage(0);
   }, [debouncedSearch]);
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Delete this sales order?")) return;
+    if (!(await confirm({ title: "Delete Sales Order", message: "Are you sure you want to delete this sales order?", confirmText: "Delete" }))) return;
     try {
       await deleteSO.mutateAsync(id);
       notify("Sales order deleted", "success");
@@ -126,6 +128,7 @@ export default function SalesOrders() {
           setPage(0);
         }}
       />
+      {confirmDialog}
     </Box>
   );
 }

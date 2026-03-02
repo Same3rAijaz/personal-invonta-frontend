@@ -7,6 +7,7 @@ import PageHeader from "../../components/PageHeader";
 import { useVendors } from "../../hooks/useVendors";
 import { useToast } from "../../hooks/useToast";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
+import { useConfirmDialog } from "../../hooks/useConfirmDialog";
 
 export default function PurchaseOrders() {
   const [page, setPage] = React.useState(0);
@@ -24,13 +25,14 @@ export default function PurchaseOrders() {
     vendorName: vendorMap.get(po.vendorId) || po.vendorId
   }));
   const { notify } = useToast();
+  const { confirm, confirmDialog } = useConfirmDialog();
 
   React.useEffect(() => {
     setPage(0);
   }, [debouncedSearch]);
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Delete this purchase order?")) return;
+    if (!(await confirm({ title: "Delete Purchase Order", message: "Are you sure you want to delete this purchase order?", confirmText: "Delete" }))) return;
     try {
       await deletePO.mutateAsync(id);
       notify("Purchase order deleted", "success");
@@ -83,6 +85,7 @@ export default function PurchaseOrders() {
           setPage(0);
         }}
       />
+      {confirmDialog}
     </Box>
   );
 }

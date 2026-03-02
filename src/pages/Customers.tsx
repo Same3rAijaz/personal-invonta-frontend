@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import PageHeader from "../components/PageHeader";
 import { useToast } from "../hooks/useToast";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
+import { useConfirmDialog } from "../hooks/useConfirmDialog";
 
 export default function Customers() {
   const [page, setPage] = React.useState(0);
@@ -16,13 +17,14 @@ export default function Customers() {
   const deleteCustomer = useDeleteCustomer();
   const navigate = useNavigate();
   const { notify } = useToast();
+  const { confirm, confirmDialog } = useConfirmDialog();
 
   React.useEffect(() => {
     setPage(0);
   }, [debouncedSearch]);
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Delete this customer?")) return;
+    if (!(await confirm({ title: "Delete Customer", message: "Are you sure you want to delete this customer?", confirmText: "Delete" }))) return;
     try {
       await deleteCustomer.mutateAsync(id);
       notify("Customer deleted", "success");
@@ -77,6 +79,7 @@ export default function Customers() {
           setPage(0);
         }}
       />
+      {confirmDialog}
     </Box>
   );
 }

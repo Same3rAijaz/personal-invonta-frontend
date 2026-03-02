@@ -1,26 +1,24 @@
-import { Box, Button, Checkbox, FormControlLabel, Grid, Paper, TextField, Typography } from "@mui/material";
-import { useForm } from "react-hook-form";
+import { Box, Button, Checkbox, FormControl, FormControlLabel, Grid, InputLabel, MenuItem, Paper, Select, TextField, Typography } from "@mui/material";
+import { Controller, useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
-import { useCreateCategory } from "../../hooks/useCategories";
+import { useCreateCategory, useSuperAdminCategories } from "../../hooks/useCategories";
 import { useToast } from "../../hooks/useToast";
 
 export default function CategoryCreate() {
+  const ROOT_VALUE = "__ROOT__";
   const navigate = useNavigate();
   const { notify } = useToast();
   const createCategory = useCreateCategory();
-  const { register, handleSubmit } = useForm({ defaultValues: { isActive: true, subcategoriesText: "" } });
+  const { data } = useSuperAdminCategories({ page: 1, limit: 1000 });
+  const categories = data?.items || [];
+  const { register, handleSubmit, control } = useForm({ defaultValues: { isActive: true, parentId: ROOT_VALUE } });
 
   const onSubmit = async (values: any) => {
-    const subcategories = String(values.subcategoriesText || "")
-      .split(",")
-      .map((item) => item.trim())
-      .filter(Boolean)
-      .map((name) => ({ name, isActive: true }));
     try {
       await createCategory.mutateAsync({
         name: values.name,
-        isActive: Boolean(values.isActive),
-        subcategories
+        parentId: values.parentId && values.parentId !== ROOT_VALUE ? values.parentId : undefined,
+        isActive: Boolean(values.isActive)
       });
       notify("Category created", "success");
       navigate("/superadmin/categories");
@@ -31,25 +29,50 @@ export default function CategoryCreate() {
 
   return (
     <Box>
-      <Typography variant="h5" gutterBottom>Create Category</Typography>
-      <Paper sx={{ p: 3, borderRadius: 3, boxShadow: "0 18px 40px rgba(15,23,42,0.08)" }}>
+      <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.6 }}>Create Category</Typography>
+      <Typography color="text.secondary" sx={{ mb: 2.2 }}>
+        Build hierarchical categories like Electronics {" > "} Home Appliances {" > "} Fridge.
+      </Typography>
+      <Paper sx={{ p: 3, borderRadius: 4, boxShadow: "0 18px 40px rgba(15,23,42,0.08)" }}>
         <Grid container spacing={2} component="form" onSubmit={handleSubmit(onSubmit)}>
           <Grid item xs={12} md={6}>
-            <TextField fullWidth label="Category Name" {...register("name")} />
+            <TextField fullWidth label="Category Name" placeholder="e.g. Electronics" {...register("name")} />
           </Grid>
-          <Grid item xs={12}>
-            <TextField
-              fullWidth
-              label="Sub Categories (comma separated)"
-              placeholder="Smartphones, Accessories, Tablets"
-              {...register("subcategoriesText")}
+          <Grid item xs={12} md={6}>
+            <Controller
+              name="parentId"
+              control={control}
+              render={({ field }) => (
+                <FormControl fullWidth>
+                  <InputLabel id="category-parent-label">Parent Category</InputLabel>
+                  <Select
+                    labelId="category-parent-label"
+                    label="Parent Category"
+                    value={field.value || ROOT_VALUE}
+                    onChange={(event) => field.onChange(event.target.value)}
+                    displayEmpty
+                    renderValue={(value) => {
+                      if (!value || value === ROOT_VALUE) return "Root Category";
+                      const match = categories.find((item: any) => String(item._id) === String(value));
+                      return match ? (match.pathNames || [match.name]).join(" > ") : "Root Category";
+                    }}
+                  >
+                    <MenuItem value={ROOT_VALUE}>Root Category</MenuItem>
+                    {categories.map((item: any) => (
+                      <MenuItem key={item._id} value={item._id}>
+                        {(item.pathNames || [item.name]).join(" > ")}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
             />
           </Grid>
           <Grid item xs={12}>
             <FormControlLabel control={<Checkbox defaultChecked {...register("isActive")} />} label="Active" />
           </Grid>
           <Grid item xs={12}>
-            <Button type="submit" variant="contained">
+            <Button type="submit" variant="contained" sx={{ px: 3.2, py: 1.2, borderRadius: 2.5, fontWeight: 700 }}>
               Save Category
             </Button>
           </Grid>
