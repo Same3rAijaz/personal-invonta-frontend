@@ -12,7 +12,7 @@ export default function Customers() {
   const [rowsPerPage, setRowsPerPage] = React.useState(20);
   const [search, setSearch] = React.useState("");
   const debouncedSearch = useDebouncedValue(search.trim());
-  const { data } = useCustomers({ page: page + 1, limit: rowsPerPage, search: debouncedSearch || undefined });
+  const { data, isLoading } = useCustomers({ page: page + 1, limit: rowsPerPage, search: debouncedSearch || undefined });
   const deleteCustomer = useDeleteCustomer();
   const navigate = useNavigate();
   const { notify } = useToast();
@@ -58,6 +58,7 @@ export default function Customers() {
           }
         ]}
         rows={data?.items || []}
+        loading={isLoading}
         actions={
           <TextField
             size="small"

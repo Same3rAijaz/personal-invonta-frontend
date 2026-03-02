@@ -11,7 +11,7 @@ export default function Attendance() {
   const [rowsPerPage, setRowsPerPage] = React.useState(20);
   const [search, setSearch] = React.useState("");
   const debouncedSearch = useDebouncedValue(search.trim());
-  const { data } = useAttendance({ page: page + 1, limit: rowsPerPage, search: debouncedSearch || undefined });
+  const { data, isLoading } = useAttendance({ page: page + 1, limit: rowsPerPage, search: debouncedSearch || undefined });
   const navigate = useNavigate();
   const rows = (data?.items || []).map((item: any) => {
     const employee = item?.employeeId || {};
@@ -42,6 +42,7 @@ export default function Attendance() {
           { key: "overtimeHours", label: "Overtime" }
         ]}
         rows={rows}
+        loading={isLoading}
         actions={
           <TextField
             size="small"

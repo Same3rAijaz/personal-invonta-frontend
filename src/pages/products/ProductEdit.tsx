@@ -1,6 +1,6 @@
 import { Box, Button, Paper, Typography, Grid, TextField, Divider, FormControlLabel, Checkbox, MenuItem, Stack, Avatar } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { useUpdateProduct, useProducts } from "../../hooks/useProducts";
 import { useToast } from "../../hooks/useToast";
 import { useNavigate, useParams } from "react-router-dom";
@@ -13,14 +13,14 @@ export default function ProductEdit() {
   const updateProduct = useUpdateProduct();
   const { notify } = useToast();
   const navigate = useNavigate();
-  const { register, handleSubmit, reset, watch, setValue } = useForm({ defaultValues: { isActive: true, visibility: "PRIVATE" } });
+  const { register, handleSubmit, reset, watch, setValue, control } = useForm({ defaultValues: { isActive: true, visibility: "PRIVATE" } });
   const { data: categories = [] } = useCategories({ activeOnly: true });
   const [existingImages, setExistingImages] = useState<string[]>([]);
   const [newFiles, setNewFiles] = useState<File[]>([]);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const selectedCategoryId = watch("categoryId");
   const subcategories = useMemo(() => {
-    const selected = (categories || []).find((item: any) => item._id === selectedCategoryId);
+    const selected = (categories || []).find((item: any) => String(item._id) === String(selectedCategoryId || ""));
     return (selected?.subcategories || []).filter((item: any) => item.isActive !== false);
   }, [categories, selectedCategoryId]);
   useEffect(() => {
@@ -50,6 +50,16 @@ export default function ProductEdit() {
       setSelectedKey(product.thumbnailUrl ? `existing:${product.thumbnailUrl}` : (product.images?.[0] ? `existing:${product.images[0]}` : null));
     }
   }, [product, reset]);
+
+  useEffect(() => {
+    if (!product || !categories.length) return;
+    if (product.categoryId) return;
+    if (!product.category) return;
+    const matched = categories.find((item: any) => item.name?.toLowerCase() === String(product.category).toLowerCase());
+    if (matched?._id) {
+      setValue("categoryId", String(matched._id), { shouldDirty: false });
+    }
+  }, [product, categories, setValue]);
 
   const previewItems = useMemo(() => {
     const existing = existingImages.map((url) => ({ key: `existing:${url}`, url }));
@@ -114,24 +124,49 @@ export default function ProductEdit() {
             <TextField fullWidth label="Name" {...register("name")} />
           </Grid>
           <Grid item xs={12} md={3}>
-            <TextField select fullWidth label="Category" {...register("categoryId")}>
-              <MenuItem value="">None</MenuItem>
-              {(categories || []).map((item: any) => (
-                <MenuItem key={item._id} value={item._id}>
-                  {item.name}
-                </MenuItem>
-              ))}
-            </TextField>
+            <Controller
+              name="categoryId"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  select
+                  fullWidth
+                  label="Category"
+                  value={field.value || ""}
+                  onChange={(event) => field.onChange(event.target.value)}
+                >
+                  <MenuItem value="">None</MenuItem>
+                  {(categories || []).map((item: any) => (
+                    <MenuItem key={item._id} value={String(item._id)}>
+                      {item.name}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              )}
+            />
           </Grid>
           <Grid item xs={12} md={3}>
-            <TextField select fullWidth label="Sub Category" {...register("subcategory")} disabled={!selectedCategoryId}>
-              <MenuItem value="">None</MenuItem>
-              {subcategories.map((item: any) => (
-                <MenuItem key={item.slug} value={item.name}>
-                  {item.name}
-                </MenuItem>
-              ))}
-            </TextField>
+            <Controller
+              name="subcategory"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  select
+                  fullWidth
+                  label="Sub Category"
+                  value={field.value || ""}
+                  onChange={(event) => field.onChange(event.target.value)}
+                  disabled={!selectedCategoryId}
+                >
+                  <MenuItem value="">None</MenuItem>
+                  {subcategories.map((item: any) => (
+                    <MenuItem key={item.slug} value={item.name}>
+                      {item.name}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              )}
+            />
           </Grid>
           <Grid item xs={12} md={3}>
             <TextField fullWidth label="Unit" {...register("unit")} />
@@ -146,10 +181,22 @@ export default function ProductEdit() {
             <TextField fullWidth label="Reorder Level" type="number" {...register("reorderLevel")} />
           </Grid>
           <Grid item xs={12} md={3}>
-            <TextField select fullWidth label="Visibility" {...register("visibility")}>
-              <MenuItem value="PRIVATE">Private</MenuItem>
-              <MenuItem value="PUBLIC">Public</MenuItem>
-            </TextField>
+            <Controller
+              name="visibility"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  select
+                  fullWidth
+                  label="Visibility"
+                  value={field.value || "PRIVATE"}
+                  onChange={(event) => field.onChange(event.target.value)}
+                >
+                  <MenuItem value="PRIVATE">Private</MenuItem>
+                  <MenuItem value="PUBLIC">Public</MenuItem>
+                </TextField>
+              )}
+            />
           </Grid>
           <Grid item xs={12}>
             <Button variant="outlined" component="label">

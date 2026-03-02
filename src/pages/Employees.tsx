@@ -1,7 +1,6 @@
 import React from "react";
 import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, InputLabel, MenuItem, Select, TextField } from "@mui/material";
-import { useDeleteEmployee, useEmployees } from "../hooks/useEmployees";
-import { useWarehouses } from "../hooks/useWarehouses";
+import { useDeleteEmployee, useEmployees, useResetEmployeePassword } from "../hooks/useEmployees";
 import DataTable from "../components/DataTable";
 import { useNavigate } from "react-router-dom";
 import PageHeader from "../components/PageHeader";
@@ -16,23 +15,21 @@ export default function Employees() {
   const [rowsPerPage, setRowsPerPage] = React.useState(20);
   const [search, setSearch] = React.useState("");
   const debouncedSearch = useDebouncedValue(search.trim());
-  const { data } = useEmployees({ page: page + 1, limit: rowsPerPage, search: debouncedSearch || undefined });
+  const { data, isLoading } = useEmployees({ page: page + 1, limit: rowsPerPage, search: debouncedSearch || undefined });
   const deleteEmployee = useDeleteEmployee();
-  const { data: warehouses } = useWarehouses({ page: 1, limit: 1000 });
   const navigate = useNavigate();
   const { user } = useAuth();
   const canManageBusinessAdmin = user?.role === "SUPER_ADMIN";
-  const warehouseMap = new Map((warehouses?.items || []).map((w: any) => [w._id, w.name]));
-  const rows = (data?.items || []).map((emp: any) => ({
-    ...emp,
-    assignedWarehouseName: warehouseMap.get(emp.assignedWarehouse) || emp.assignedWarehouse
-  }));
+  const rows = data?.items || [];
   const { notify } = useToast();
   const client = useQueryClient();
   const [blockDialog, setBlockDialog] = React.useState<{ open: boolean; id: string | null }>({ open: false, id: null });
+  const [resetDialog, setResetDialog] = React.useState<{ open: boolean; id: string | null }>({ open: false, id: null });
+  const [resetPassword, setResetPassword] = React.useState("");
   const [blockReason, setBlockReason] = React.useState("");
   const [blockReasonOther, setBlockReasonOther] = React.useState("");
   const [blockDays, setBlockDays] = React.useState("");
+  const resetEmployeePassword = useResetEmployeePassword();
   const blockLogin = useMutation({
     mutationFn: async (payload: { id: string; until?: string; reason?: string }) =>
       (await api.patch(`/employees/${payload.id}/block-login`, { until: payload.until, reason: payload.reason })).data.data,
@@ -87,6 +84,24 @@ export default function Employees() {
     }
   };
 
+  const handleOpenResetPassword = (id: string) => {
+    setResetDialog({ open: true, id });
+    setResetPassword("");
+  };
+
+  const handleConfirmResetPassword = async () => {
+    if (!resetDialog.id) return;
+    try {
+      const result = await resetEmployeePassword.mutateAsync({ id: resetDialog.id, password: resetPassword || undefined });
+      notify(`Password reset email sent to ${result?.loginEmail || "employee"}`, "success");
+    } catch (err: any) {
+      notify(err?.response?.data?.error?.message || "Failed", "error");
+    } finally {
+      setResetDialog({ open: false, id: null });
+      setResetPassword("");
+    }
+  };
+
   return (
     <Box>
       <PageHeader title="Employees" actionLabel="Create Employee" onAction={() => navigate("/employees/new")} />
@@ -94,9 +109,7 @@ export default function Employees() {
         columns={[
           { key: "name", label: "Name" },
           { key: "employeeId", label: "Employee ID" },
-          { key: "department", label: "Department" },
           { key: "role", label: "Role" },
-          { key: "assignedWarehouseName", label: "Warehouse" },
           { key: "isActive", label: "Active" },
           {
             key: "actions",
@@ -126,6 +139,9 @@ export default function Employees() {
                     <Button size="small" onClick={() => handleUnblockLogin(row._id)}>
                       Unblock Login
                     </Button>
+                    <Button size="small" onClick={() => handleOpenResetPassword(row._id)}>
+                      Reset Password
+                    </Button>
                   </>
                 ) : null}
                 {row.isBusinessAdmin && !canManageBusinessAdmin ? (
@@ -138,6 +154,7 @@ export default function Employees() {
           }
         ]}
         rows={rows}
+        loading={isLoading}
         actions={
           <TextField
             size="small"
@@ -196,6 +213,26 @@ export default function Employees() {
         <DialogActions>
           <Button onClick={() => setBlockDialog({ open: false, id: null })}>Cancel</Button>
           <Button variant="contained" onClick={handleConfirmBlockLogin}>Block</Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog open={resetDialog.open} onClose={() => setResetDialog({ open: false, id: null })} maxWidth="xs" fullWidth>
+        <DialogTitle>Reset Employee Password</DialogTitle>
+        <DialogContent>
+          <TextField
+            fullWidth
+            type="password"
+            label="New password (optional)"
+            value={resetPassword}
+            onChange={(e) => setResetPassword(e.target.value)}
+            sx={{ mt: 1 }}
+            helperText="Leave blank to auto-generate a temporary password and email it."
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setResetDialog({ open: false, id: null })}>Cancel</Button>
+          <Button variant="contained" onClick={handleConfirmResetPassword} disabled={resetEmployeePassword.isPending}>
+            Reset
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>

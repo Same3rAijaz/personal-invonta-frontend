@@ -1,13 +1,14 @@
-import { Box, Button, Paper, Table, TableBody, TableCell, TableHead, TableRow, Typography, TablePagination } from "@mui/material";
+import { Box, Button, Typography } from "@mui/material";
 import React from "react";
 import PageHeader from "../components/PageHeader";
 import { useNotifications, useMarkNotificationRead } from "../hooks/useNotifications";
 import { useToast } from "../hooks/useToast";
+import DataTable from "../components/DataTable";
 
 export default function Notifications() {
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(20);
-  const { data } = useNotifications({ page: page + 1, limit: rowsPerPage });
+  const { data, isLoading } = useNotifications({ page: page + 1, limit: rowsPerPage });
   const markRead = useMarkNotificationRead();
   const { notify } = useToast();
 
@@ -22,57 +23,38 @@ export default function Notifications() {
   return (
     <Box>
       <PageHeader title="Notifications" />
-      <Paper sx={{ p: 2 }}>
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell sx={{ fontWeight: 600 }}>Title</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Message</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Type</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Action</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {(data?.items || []).map((item: any) => (
-              <TableRow key={item.id || item._id}>
-                <TableCell>{item.title}</TableCell>
-                <TableCell>{item.message}</TableCell>
-                <TableCell>{item.type}</TableCell>
-                <TableCell>{item.readAt ? "Read" : "Unread"}</TableCell>
-                <TableCell>
-                  {item.readAt ? (
-                    <Typography variant="body2" color="text.secondary">—</Typography>
-                  ) : (
-                    <Button size="small" variant="outlined" onClick={() => onMarkRead(item.id || item._id)}>
-                      Mark read
-                    </Button>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
-            {(data?.items || []).length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5}>
-                  <Typography variant="body2" color="text.secondary">No notifications yet.</Typography>
-                </TableCell>
-              </TableRow>
-            ) : null}
-          </TableBody>
-        </Table>
-        <TablePagination
-          component="div"
-          count={data?.total || 0}
-          page={page}
-          onPageChange={(_, nextPage) => setPage(nextPage)}
-          rowsPerPage={rowsPerPage}
-          onRowsPerPageChange={(event) => {
-            setRowsPerPage(Number(event.target.value));
-            setPage(0);
-          }}
-          rowsPerPageOptions={[10, 20, 50, 100]}
-        />
-      </Paper>
+      <DataTable
+        title="Notifications"
+        subtitle={data?.total ? `${data.total} records` : "No notifications yet."}
+        columns={[
+          { key: "title", label: "Title" },
+          { key: "message", label: "Message" },
+          { key: "type", label: "Type" },
+          { key: "status", label: "Status", render: (row: any) => (row.readAt ? "Read" : "Unread") },
+          {
+            key: "action",
+            label: "Action",
+            render: (row: any) =>
+              row.readAt ? (
+                <Typography variant="body2" color="text.secondary">-</Typography>
+              ) : (
+                <Button size="small" variant="outlined" onClick={() => onMarkRead(row.id || row._id)}>
+                  Mark read
+                </Button>
+              )
+          }
+        ]}
+        rows={data?.items || []}
+        loading={isLoading}
+        page={page}
+        rowsPerPage={rowsPerPage}
+        total={data?.total || 0}
+        onPageChange={setPage}
+        onRowsPerPageChange={(value) => {
+          setRowsPerPage(value);
+          setPage(0);
+        }}
+      />
     </Box>
   );
 }

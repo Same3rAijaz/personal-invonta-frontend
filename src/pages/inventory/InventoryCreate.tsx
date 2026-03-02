@@ -5,10 +5,11 @@ import { useToast } from "../../hooks/useToast";
 import { useNavigate } from "react-router-dom";
 import Inventory2Outlined from "@mui/icons-material/Inventory2Outlined";
 import WarehouseOutlined from "@mui/icons-material/WarehouseOutlined";
-import PlaceOutlined from "@mui/icons-material/PlaceOutlined";
 import NumbersOutlined from "@mui/icons-material/NumbersOutlined";
 import PaidOutlined from "@mui/icons-material/PaidOutlined";
 import LocalOfferOutlined from "@mui/icons-material/LocalOfferOutlined";
+import { useProducts } from "../../hooks/useProducts";
+import { useWarehouses } from "../../hooks/useWarehouses";
 
 export default function InventoryCreate() {
   const { notify } = useToast();
@@ -17,6 +18,8 @@ export default function InventoryCreate() {
     defaultValues: { action: "receive" }
   });
   const action = watch("action");
+  const { data: products } = useProducts({ page: 1, limit: 1000 });
+  const { data: warehouses } = useWarehouses({ page: 1, limit: 1000 });
 
   const onSubmit = async (values: any) => {
     try {
@@ -25,7 +28,6 @@ export default function InventoryCreate() {
           items: [{
             productId: values.productId,
             warehouseId: values.warehouseId,
-            locationId: values.locationId || undefined,
             countedQty: Number(values.qty)
           }]
         });
@@ -34,21 +36,18 @@ export default function InventoryCreate() {
           items: [{
             productId: values.productId,
             warehouseId: values.warehouseId,
-            locationId: values.locationId || undefined,
             qty: Number(values.qty),
             unitCost: Number(values.unitCost),
             refType: values.refType || undefined,
             refId: values.refId || undefined
           }],
-          toWarehouseId: values.toWarehouseId,
-          toLocationId: values.toLocationId || undefined
+          toWarehouseId: values.toWarehouseId
         });
       } else {
         await api.post(`/inventory/${action}`, {
           items: [{
             productId: values.productId,
             warehouseId: values.warehouseId,
-            locationId: values.locationId || undefined,
             qty: Number(values.qty),
             unitCost: Number(values.unitCost),
             refType: values.refType || undefined,
@@ -65,7 +64,7 @@ export default function InventoryCreate() {
 
   return (
     <Box>
-      <Typography variant="h5" gutterBottom>New Inventory Movement</Typography>
+      <Typography variant="h5" gutterBottom>Create Inventory</Typography>
       <Paper sx={{ p: 3, borderRadius: 3, boxShadow: "0 18px 40px rgba(15,23,42,0.08)" }}>
         <Grid container spacing={2} component="form" onSubmit={handleSubmit(onSubmit)}>
           <Grid item xs={12} md={3}>
@@ -84,27 +83,33 @@ export default function InventoryCreate() {
           </Grid>
           <Grid item xs={12} md={3}>
             <TextField
+              select
               fullWidth
-              label="Product ID"
+              label="Product"
               {...register("productId")}
               InputProps={{ startAdornment: (<InputAdornment position="start"><Inventory2Outlined /></InputAdornment>) }}
-            />
+            >
+              {(products?.items || []).map((item: any) => (
+                <MenuItem key={item._id} value={item._id}>
+                  {item.name} ({item.sku})
+                </MenuItem>
+              ))}
+            </TextField>
           </Grid>
           <Grid item xs={12} md={3}>
             <TextField
+              select
               fullWidth
-              label="Warehouse ID"
+              label="Warehouse"
               {...register("warehouseId")}
               InputProps={{ startAdornment: (<InputAdornment position="start"><WarehouseOutlined /></InputAdornment>) }}
-            />
-          </Grid>
-          <Grid item xs={12} md={3}>
-            <TextField
-              fullWidth
-              label="Location ID"
-              {...register("locationId")}
-              InputProps={{ startAdornment: (<InputAdornment position="start"><PlaceOutlined /></InputAdornment>) }}
-            />
+            >
+              {(warehouses?.items || []).map((item: any) => (
+                <MenuItem key={item._id} value={item._id}>
+                  {item.name}
+                </MenuItem>
+              ))}
+            </TextField>
           </Grid>
           <Grid item xs={12} md={3}>
             <TextField
@@ -137,11 +142,8 @@ export default function InventoryCreate() {
           </Grid>
           {action === "transfer" ? (
             <>
-              <Grid item xs={12} md={6}>
+              <Grid item xs={12} md={12}>
                 <TextField fullWidth label="To Warehouse" {...register("toWarehouseId")} />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField fullWidth label="To Location" {...register("toLocationId")} />
               </Grid>
             </>
           ) : null}
@@ -150,7 +152,7 @@ export default function InventoryCreate() {
           </Grid>
           <Grid item xs={12}>
             <Button type="submit" variant="contained" fullWidth sx={{ py: 1.4, fontWeight: 700 }}>
-              Submit Movement
+              Create Inventory
             </Button>
           </Grid>
         </Grid>

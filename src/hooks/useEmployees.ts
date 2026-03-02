@@ -32,3 +32,10 @@ export function useDeleteEmployee() {
     onSuccess: () => client.invalidateQueries({ queryKey: ["employees"] })
   });
 }
+
+export function useResetEmployeePassword() {
+  return useMutation({
+    mutationFn: async ({ id, password }: { id: string; password?: string }) =>
+      (await api.patch(`/employees/${id}/reset-password`, { password })).data.data
+  });
+}

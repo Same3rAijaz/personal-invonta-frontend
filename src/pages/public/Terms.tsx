@@ -38,7 +38,7 @@ export default function Terms() {
           <Typography variant="h6" gutterBottom>Account Responsibilities</Typography>
           <Typography paragraph>
             You are responsible for keeping your login credentials confidential and for all activity that occurs under your account. If you
-            suspect unauthorized access, you must notify us promptly. You agree to create accurate profiles for your organization, locations,
+            suspect unauthorized access, you must notify us promptly. You agree to create accurate profiles for your organization,
             and users, and to keep records up to date so that reports, invoices, and tax calculations remain reliable.
           </Typography>
           <Typography paragraph>

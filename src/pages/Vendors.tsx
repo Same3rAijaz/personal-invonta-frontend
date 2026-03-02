@@ -12,7 +12,7 @@ export default function Vendors() {
   const [rowsPerPage, setRowsPerPage] = React.useState(20);
   const [search, setSearch] = React.useState("");
   const debouncedSearch = useDebouncedValue(search.trim());
-  const { data } = useVendors({ page: page + 1, limit: rowsPerPage, search: debouncedSearch || undefined });
+  const { data, isLoading } = useVendors({ page: page + 1, limit: rowsPerPage, search: debouncedSearch || undefined });
   const deleteVendor = useDeleteVendor();
   const navigate = useNavigate();
   const { notify } = useToast();
@@ -58,6 +58,7 @@ export default function Vendors() {
           }
         ]}
         rows={data?.items || []}
+        loading={isLoading}
         actions={
           <TextField
             size="small"

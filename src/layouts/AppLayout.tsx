@@ -29,14 +29,11 @@ export default function AppLayout() {
     products: ["products"],
     inventory: ["inventory"],
     warehouses: ["warehouses"],
-    locations: ["locations"],
     customers: ["customers"],
     vendors: ["vendors"],
     purchasing: ["purchasing"],
     sales: ["sales"],
     employees: ["hr"],
-    attendance: ["hr"],
-    payroll: ["hr"],
     reports: ["reports"],
     udhaar: ["udhaar"]
   };
@@ -80,18 +77,15 @@ export default function AppLayout() {
             ...(isAllowed("products") ? [{ label: "Products", to: "/products" }] : []),
             ...(isAllowed("inventory") ? [{ label: "Inventory", to: "/inventory" }] : []),
             ...(isAllowed("warehouses") ? [{ label: "Warehouses", to: "/warehouses" }] : []),
-            ...(isAllowed("locations") ? [{ label: "Locations", to: "/locations" }] : []),
             ...(isAllowed("purchasing") ? [{ label: "Purchasing", to: "/purchasing" }] : []),
             ...(isAllowed("sales") ? [{ label: "Sales", to: "/sales" }] : [])
           ]
         },
         {
           id: "people",
-          label: "People & Payroll",
+          label: "People",
           items: [
-            ...(isAllowed("employees") ? [{ label: "Employees", to: "/employees" }] : []),
-            ...(isAllowed("attendance") ? [{ label: "Attendance", to: "/attendance" }] : []),
-            ...(isAllowed("payroll") ? [{ label: "Payroll", to: "/payroll" }] : [])
+            ...(isAllowed("employees") ? [{ label: "Employees", to: "/employees" }] : [])
           ]
         },
         {
@@ -407,10 +401,12 @@ export default function AppLayout() {
         component="main"
         sx={{
           flexGrow: 1,
+          minWidth: 0,
           px: { xs: 2, md: 4 },
           py: { xs: 3, md: 4 },
           mt: 9,
           minHeight: "100vh",
+          overflowX: "hidden",
           background: "radial-gradient(circle at top, #eff6ff 0%, #f8fafc 40%, #eef2f7 100%)",
           animation: "fadeInUp 420ms ease"
         }}

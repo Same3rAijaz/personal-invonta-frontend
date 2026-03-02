@@ -14,7 +14,7 @@ export default function Categories() {
   const debouncedSearch = useDebouncedValue(search.trim());
   const navigate = useNavigate();
   const { notify } = useToast();
-  const { data } = useSuperAdminCategories({ page: page + 1, limit: rowsPerPage, search: debouncedSearch || undefined });
+  const { data, isLoading } = useSuperAdminCategories({ page: page + 1, limit: rowsPerPage, search: debouncedSearch || undefined });
   const deleteCategory = useDeleteCategory();
 
   React.useEffect(() => {
@@ -60,6 +60,7 @@ export default function Categories() {
           }
         ]}
         rows={data?.items || []}
+        loading={isLoading}
         actions={
           <TextField
             size="small"

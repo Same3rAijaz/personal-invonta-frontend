@@ -7,7 +7,7 @@ export default function Tutorial() {
         <Paper sx={{ p: 4, borderRadius: 4, boxShadow: "0 30px 60px rgba(15,23,42,0.35)" }}>
           <Typography variant="h4" gutterBottom>Getting Started</Typography>
           <Typography paragraph>
-            1) Create products, warehouses, and locations. Keep SKUs unique for clean inventory tracking.
+            1) Create products and warehouses. Keep SKUs unique for clean inventory tracking.
           </Typography>
           <Typography paragraph>
             2) Receive inventory, then issue or transfer stock as you fulfill orders.

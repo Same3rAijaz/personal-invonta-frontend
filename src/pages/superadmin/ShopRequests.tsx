@@ -16,7 +16,7 @@ export default function ShopRequests() {
   const debouncedSearch = useDebouncedValue(search.trim());
   const { notify } = useToast();
   const client = useQueryClient();
-  const { data } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ["shop-requests", page, rowsPerPage, debouncedSearch],
     queryFn: async () =>
       (
@@ -156,6 +156,7 @@ export default function ShopRequests() {
           }
         ]}
         rows={rows}
+        loading={isLoading}
         actions={
           <TextField
             size="small"

@@ -11,7 +11,7 @@ export default function Inventory() {
   const [rowsPerPage, setRowsPerPage] = React.useState(20);
   const [search, setSearch] = React.useState("");
   const debouncedSearch = useDebouncedValue(search.trim());
-  const { data } = useInventoryBalances({ page: page + 1, limit: rowsPerPage, search: debouncedSearch || undefined });
+  const { data, isLoading } = useInventoryBalances({ page: page + 1, limit: rowsPerPage, search: debouncedSearch || undefined });
   const navigate = useNavigate();
 
   React.useEffect(() => {
@@ -20,16 +20,16 @@ export default function Inventory() {
 
   return (
     <Box>
-      <PageHeader title="Inventory" actionLabel="New Movement" onAction={() => navigate("/inventory/new")} />
+      <PageHeader title="Inventory" actionLabel="Create Inventory" onAction={() => navigate("/inventory/new")} />
       <DataTable
         columns={[
           { key: "productId", label: "Product" },
           { key: "warehouseId", label: "Warehouse" },
-          { key: "locationId", label: "Location" },
           { key: "qty", label: "Qty" },
           { key: "avgCost", label: "Avg Cost" }
         ]}
         rows={data?.items || []}
+        loading={isLoading}
         actions={
           <TextField
             size="small"

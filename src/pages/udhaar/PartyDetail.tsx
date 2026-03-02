@@ -12,7 +12,7 @@ export default function PartyDetail() {
   const { id } = useParams();
   const partyId = id || "";
   const { data: party } = useParty(partyId);
-  const { data: entries } = useEntries({ partyId });
+  const { data: entries, isLoading: entriesLoading } = useEntries({ partyId });
   const { data: statement } = useStatement(partyId, { includeOpeningBalance: "true" });
   const createEntry = useCreateEntry();
   const voidEntry = useVoidEntry();
@@ -118,7 +118,7 @@ export default function PartyDetail() {
         <Button variant="outlined" onClick={() => setEditOpen(true)}>Edit Party</Button>
       </Box>
 
-      <DataTable columns={columns} rows={rows} />
+      <DataTable columns={columns} rows={rows} loading={entriesLoading} />
 
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>Add Entry</DialogTitle>

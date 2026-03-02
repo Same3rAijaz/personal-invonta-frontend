@@ -1,10 +1,31 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 
-export function useProducts(params?: { page?: number; limit?: number; search?: string }) {
+export function useProducts(params?: { page?: number; limit?: number; search?: string; filters?: Record<string, string> }) {
   return useQuery({
-    queryKey: ["products", params?.page, params?.limit, params?.search],
-    queryFn: async () => (await api.get("/products", { params })).data.data
+    queryKey: ["products", params?.page, params?.limit, params?.search, params?.filters],
+    queryFn: async () =>
+      (
+        await api.get("/products", {
+          params: {
+            page: params?.page,
+            limit: params?.limit,
+            search: params?.search,
+            filters:
+              params?.filters && Object.keys(params.filters).length > 0
+                ? JSON.stringify(params.filters)
+                : undefined
+          }
+        })
+      ).data.data
+  });
+}
+
+export function useProduct(id?: string) {
+  return useQuery({
+    queryKey: ["product", id],
+    queryFn: async () => (await api.get(`/products/${id}`)).data.data,
+    enabled: !!id
   });
 }
 
@@ -33,10 +54,11 @@ export function useDeleteProduct() {
   });
 }
 
-export function useProductShareTargets(search?: string) {
+export function useProductShareTargets(search?: string, enabled = true) {
   return useQuery({
     queryKey: ["product-share-targets", search],
-    queryFn: async () => (await api.get("/products/share-targets/list", { params: { search } })).data.data
+    queryFn: async () => (await api.get("/products/share-targets/list", { params: { search } })).data.data,
+    enabled
   });
 }
 

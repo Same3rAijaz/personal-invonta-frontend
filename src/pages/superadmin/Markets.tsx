@@ -16,7 +16,7 @@ export default function Markets() {
   const navigate = useNavigate();
   const client = useQueryClient();
   const { notify } = useToast();
-  const { data } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ["markets", page, rowsPerPage, debouncedSearch],
     queryFn: async () =>
       (
@@ -69,6 +69,7 @@ export default function Markets() {
           }
         ]}
         rows={data?.items || []}
+        loading={isLoading}
         actions={
           <TextField
             size="small"

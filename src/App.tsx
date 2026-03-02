@@ -4,12 +4,10 @@ import Dashboard from "./pages/Dashboard";
 import Products from "./pages/Products";
 import ProductCreate from "./pages/products/ProductCreate";
 import ProductEdit from "./pages/products/ProductEdit";
+import ProductView from "./pages/products/ProductView";
 import Warehouses from "./pages/Warehouses";
 import WarehouseCreate from "./pages/warehouses/WarehouseCreate";
 import WarehouseEdit from "./pages/warehouses/WarehouseEdit";
-import Locations from "./pages/Locations";
-import LocationCreate from "./pages/locations/LocationCreate";
-import LocationEdit from "./pages/locations/LocationEdit";
 import Customers from "./pages/Customers";
 import CustomerCreate from "./pages/customers/CustomerCreate";
 import CustomerEdit from "./pages/customers/CustomerEdit";
@@ -27,9 +25,6 @@ import SalesOrderEdit from "./pages/sales/SalesOrderEdit";
 import Employees from "./pages/Employees";
 import EmployeeCreate from "./pages/employees/EmployeeCreate";
 import EmployeeEdit from "./pages/employees/EmployeeEdit";
-import Attendance from "./pages/attendance/Attendance";
-import AttendanceCreate from "./pages/attendance/AttendanceCreate";
-import Payroll from "./pages/payroll/Payroll";
 import Reports from "./pages/reports/Reports";
 import Markets from "./pages/superadmin/Markets";
 import MarketCreate from "./pages/superadmin/MarketCreate";
@@ -82,15 +77,13 @@ export default function App() {
           <Route element={<BusinessUserRoute />}>
             <Route path="/products" element={<Products />} />
             <Route path="/products/new" element={<ProductCreate />} />
+            <Route path="/products/:id" element={<ProductView />} />
             <Route path="/products/:id/edit" element={<ProductEdit />} />
             <Route path="/inventory" element={<Inventory />} />
             <Route path="/inventory/new" element={<InventoryCreate />} />
             <Route path="/warehouses" element={<Warehouses />} />
             <Route path="/warehouses/new" element={<WarehouseCreate />} />
             <Route path="/warehouses/:id/edit" element={<WarehouseEdit />} />
-            <Route path="/locations" element={<Locations />} />
-            <Route path="/locations/new" element={<LocationCreate />} />
-            <Route path="/locations/:id/edit" element={<LocationEdit />} />
             <Route path="/customers" element={<Customers />} />
             <Route path="/customers/new" element={<CustomerCreate />} />
             <Route path="/customers/:id/edit" element={<CustomerEdit />} />
@@ -106,9 +99,6 @@ export default function App() {
             <Route path="/employees" element={<Employees />} />
             <Route path="/employees/new" element={<EmployeeCreate />} />
             <Route path="/employees/:id/edit" element={<EmployeeEdit />} />
-            <Route path="/attendance" element={<Attendance />} />
-            <Route path="/attendance/new" element={<AttendanceCreate />} />
-            <Route path="/payroll" element={<Payroll />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/notifications" element={<Notifications />} />
             <Route path="/udhaar/parties" element={<UdhaarParties />} />

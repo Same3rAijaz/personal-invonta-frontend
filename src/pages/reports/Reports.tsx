@@ -10,10 +10,10 @@ export default function Reports() {
     <Box>
       <PageHeader title="Reports" />
       <Typography variant="subtitle1" sx={{ mt: 2 }}>Stock On Hand</Typography>
-      <DataTable columns={[{ key: "productId", label: "Product" }, { key: "qty", label: "Qty" }]} rows={reports.stockOnHand.data || []} />
+      <DataTable columns={[{ key: "productId", label: "Product" }, { key: "qty", label: "Qty" }]} rows={reports.stockOnHand.data || []} loading={reports.stockOnHand.isLoading} />
 
       <Typography variant="subtitle1" sx={{ mt: 3 }}>Low Stock</Typography>
-      <DataTable columns={[{ key: "name", label: "Product" }, { key: "qty", label: "Qty" }]} rows={reports.lowStock.data || []} />
+      <DataTable columns={[{ key: "name", label: "Product" }, { key: "qty", label: "Qty" }]} rows={reports.lowStock.data || []} loading={reports.lowStock.isLoading} />
     </Box>
   );
 }

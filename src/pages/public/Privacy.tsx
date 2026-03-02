@@ -29,7 +29,7 @@ export default function Privacy() {
           <Typography paragraph>
             We collect information you provide directly, such as name, email, phone number, business name, addresses, tax identifiers, and
             user role assignments. We also collect operational data you enter, including products, SKUs, stock counts, purchase orders, sales
-            orders, invoices, customers, vendors, locations, and attendance records.
+            orders, invoices, customers, vendors, and attendance records.
           </Typography>
           <Typography paragraph>
             We collect usage data, such as login history, feature usage, device type, browser type, IP address, and error logs. This helps us

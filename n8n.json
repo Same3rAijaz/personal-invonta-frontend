@@ -1,0 +1,319 @@
+{
+    "name": "Daily Series Agent (Sheets + Episode JSON + TTS + Auto Increment)",
+    "nodes": [{
+            "parameters": {
+                "rule": {
+                    "interval": [{
+                        "field": "days",
+                        "interval": 1
+                    }]
+                },
+                "timezone": "Asia/Karachi"
+            },
+            "id": "a1b9a4f3-4a7b-4d3c-a6f1-12a9f8b8c001",
+            "name": "Cron (Daily)",
+            "type": "n8n-nodes-base.cron",
+            "typeVersion": 1,
+            "position": [240, 260]
+        },
+        {
+            "parameters": {
+                "operation": "read",
+                "documentId": "YOUR_GOOGLE_SHEET_ID",
+                "sheetName": "series",
+                "filtersUI": {
+                    "values": [{
+                        "lookupColumn": "active",
+                        "lookupValue": "TRUE"
+                    }]
+                },
+                "options": {}
+            },
+            "id": "b2c1d1e2-3f4a-4d5e-8a0b-9c8d7e6f5002",
+            "name": "Sheets: Get Active Series",
+            "type": "n8n-nodes-base.googleSheets",
+            "typeVersion": 4,
+            "position": [460, 260],
+            "credentials": {
+                "googleSheetsOAuth2Api": {
+                    "name": "Google Sheets account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "jsCode": "/* Pick first active series and normalize fields */\nconst rows = $input.all().map(i => i.json);\nif (!rows.length) throw new Error('No active series found in series sheet (active=TRUE).');\nconst s = rows[0];\n\n// n8n Google Sheets node includes rowNumber in some modes; if not present, we can’t update next_part.\n// In practice, read operation provides 'rowNumber'. If it doesn't, change Sheets node to return row numbers.\nif (s.rowNumber === undefined) {\n  // Still continue, but update step will fail.\n  s.rowNumber = null;\n}\n\nconst nextPart = Number(s.next_part);\nif (!Number.isFinite(nextPart) || nextPart < 1) throw new Error('next_part must be a positive number in series sheet.');\n\nreturn [{\n  json: {\n    series_rowNumber: s.rowNumber,\n    series_id: String(s.series_id),\n    series_title: String(s.series_title || ''),\n    series_bible: String(s.series_bible || ''),\n    part: nextPart,\n    language: 'English',\n    platforms: 'YouTube Shorts, Instagram Reels, Facebook Reels',\n    length_sec: 30,\n    audio_mode: 'tts'\n  }\n}];"
+            },
+            "id": "c3d2e1f0-1111-4a22-9b33-4c55d66e7003",
+            "name": "Pick Series + Next Part",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [690, 260]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://api.openai.com/v1/chat/completions",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [{
+                            "name": "Authorization",
+                            "value": "={{'Bearer ' + $env.OPENAI_API_KEY}}"
+                        },
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={\n  \"model\": \"gpt-4.1-mini\",\n  \"temperature\": 0.7,\n  \"response_format\": {\"type\":\"json_object\"},\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a content publishing agent. Output ONLY valid JSON. No extra text. Use the schema exactly and do not add extra keys.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Create TODAY’S EPISODE package for a daily series.\\n\\nSeries info:\\n- series_id: \" + $json.series_id + \"\\n- series_title: \" + $json.series_title + \"\\n- series_bible: \" + $json.series_bible + \"\\n\\nToday:\\n- part: \" + $json.part + \"\\n- platforms: \" + $json.platforms + \"\\n- language: \" + $json.language + \"\\n- target length: \" + $json.length_sec + \" seconds\\n- audio mode: \" + $json.audio_mode + \"\\n\\nRules:\\n- Strong hook in first 1–2 seconds\\n- Short sentences, one clear idea\\n- End with cliffhanger + CTA for tomorrow\\n- Must include Audio Package (voiceover script + delivery notes + TTS settings + music direction + SFX cues + mix notes)\\n- No copyrighted songs, no celebrity voice imitation, no unsafe advice\\n\\nReturn JSON in THIS EXACT SCHEMA (no extra keys):\\n{\\n  \\\"series_id\\\": string,\\n  \\\"part\\\": number,\\n  \\\"episode_title\\\": string,\\n  \\\"short_video\\\": {\\n    \\\"length_sec\\\": number,\\n    \\\"hook\\\": string,\\n    \\\"spoken_script\\\": string,\\n    \\\"on_screen_text\\\": string[],\\n    \\\"cta\\\": string,\\n    \\\"caption\\\": string,\\n    \\\"hashtags\\\": string[],\\n    \\\"youtube\\\": {\\n      \\\"title_ideas\\\": string[],\\n      \\\"thumbnail_text\\\": string[]\\n    },\\n    \\\"visual_direction\\\": string[]\\n  },\\n  \\\"audio\\\": {\\n    \\\"mode\\\": \\\"tts\\\"|\\\"human\\\"|\\\"hybrid\\\",\\n    \\\"voiceover_script\\\": string,\\n    \\\"delivery_notes\\\": string,\\n    \\\"tts_settings\\\": {\\n      \\\"language\\\": string,\\n      \\\"accent\\\": string,\\n      \\\"style\\\": string,\\n      \\\"speed\\\": number,\\n      \\\"pitch\\\": number\\n    },\\n    \\\"pronunciation\\\": string[],\\n    \\\"music_direction\\\": string,\\n    \\\"sfx_cues\\\": string[],\\n    \\\"mix_notes\\\": string\\n  },\\n  \\\"tomorrow_teaser\\\": string\\n}\"\n    }\n  ]\n}\n"
+            },
+            "id": "d4e3f2a1-2222-4b33-8c44-5d66e77f8004",
+            "name": "OpenAI: Generate Episode JSON",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4,
+            "position": [930, 260]
+        },
+        {
+            "parameters": {
+                "jsCode": "/* Parse the model JSON */\nconst raw = $input.first().json;\nconst content = raw?.choices?.[0]?.message?.content;\nif (!content) throw new Error('No message.content in OpenAI response');\nlet parsed;\ntry { parsed = JSON.parse(content); } catch (e) {\n  const s = content.indexOf('{');\n  const e2 = content.lastIndexOf('}');\n  if (s === -1 || e2 === -1) throw new Error('Could not locate JSON in response: ' + content);\n  parsed = JSON.parse(content.slice(s, e2 + 1));\n}\n\n// Validate top-level\nfor (const k of ['series_id','part','episode_title','short_video','audio','tomorrow_teaser']) {\n  if (!(k in parsed)) throw new Error('Missing key: ' + k);\n}\n\nreturn [{ json: parsed }];"
+            },
+            "id": "e5f4a3b2-3333-4c44-9d55-6e77f88g9005",
+            "name": "Parse + Validate",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [1160, 260]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://api.openai.com/v1/audio/speech",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [{
+                            "name": "Authorization",
+                            "value": "={{'Bearer ' + $env.OPENAI_API_KEY}}"
+                        },
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={\n  \"model\": \"gpt-4o-mini-tts\",\n  \"voice\": \"alloy\",\n  \"format\": \"mp3\",\n  \"input\": $json.audio.voiceover_script\n}\n",
+                "options": {
+                    "response": {
+                        "responseFormat": "file"
+                    }
+                }
+            },
+            "id": "f6a5b4c3-4444-4d55-ae66-7f88g99h0006",
+            "name": "TTS: Generate Audio (mp3)",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4,
+            "position": [1390, 260]
+        },
+        {
+            "parameters": {
+                "jsCode": "/*\nAttach the audio binary as base64 so it can be stored in sheets (MVP).\nBetter: upload to Drive/S3 and store the URL.\n*/\nconst item = $input.first();\nconst json = item.json;\n\n// In n8n, binary will often be in item.binary.data\nif (!item.binary || !item.binary.data) {\n  throw new Error('No binary audio found. Check TTS node responseFormat=file.');\n}\n\nconst b = item.binary.data;\n// base64 already present in binary data structure; we want to store it as text\nconst base64 = b.data;\n\nreturn [{\n  json: {\n    ...json,\n    audio_file_base64: base64,\n    created_at: new Date().toISOString()\n  }\n}];"
+            },
+            "id": "0a1b2c3d-5555-4e66-bf77-8g99h00i1117",
+            "name": "Attach Audio Base64",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [1620, 260]
+        },
+        {
+            "parameters": {
+                "operation": "append",
+                "documentId": "YOUR_GOOGLE_SHEET_ID",
+                "sheetName": "episodes",
+                "columns": {
+                    "mappingMode": "defineBelow",
+                    "value": {
+                        "series_id": "={{$json.series_id}}",
+                        "part": "={{$json.part}}",
+                        "episode_title": "={{$json.episode_title}}",
+                        "package_json": "={{JSON.stringify({series_id:$json.series_id,part:$json.part,episode_title:$json.episode_title,short_video:$json.short_video,audio:$json.audio,tomorrow_teaser:$json.tomorrow_teaser})}}",
+                        "audio_file_base64": "={{$json.audio_file_base64}}",
+                        "created_at": "={{$json.created_at}}"
+                    }
+                },
+                "options": {}
+            },
+            "id": "1b2c3d4e-6666-4f77-c088-9h00i11j2228",
+            "name": "Sheets: Append Episode Row",
+            "type": "n8n-nodes-base.googleSheets",
+            "typeVersion": 4,
+            "position": [1850, 260],
+            "credentials": {
+                "googleSheetsOAuth2Api": {
+                    "name": "Google Sheets account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "operation": "read",
+                "documentId": "YOUR_GOOGLE_SHEET_ID",
+                "sheetName": "series",
+                "filtersUI": {
+                    "values": [{
+                        "lookupColumn": "series_id",
+                        "lookupValue": "={{$json.series_id}}"
+                    }]
+                },
+                "options": {}
+            },
+            "id": "2c3d4e5f-7777-4088-d199-0i11j22k3339",
+            "name": "Sheets: Find Series Row (for update)",
+            "type": "n8n-nodes-base.googleSheets",
+            "typeVersion": 4,
+            "position": [2070, 260],
+            "credentials": {
+                "googleSheetsOAuth2Api": {
+                    "name": "Google Sheets account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "jsCode": "/* Build update payload to increment next_part */\nconst seriesRows = $input.all().map(i => i.json);\nif (!seriesRows.length) throw new Error('Could not re-find series row for update.');\nconst s = seriesRows[0];\nif (s.rowNumber === undefined) throw new Error('rowNumber missing from Sheets read; enable returning row numbers in Sheets node.');\n\n// We need the generated episode from previous nodes; use $items() to access earlier node output\nconst episode = $items('Attach Audio Base64')[0].json;\n\nreturn [{\n  json: {\n    rowNumber: s.rowNumber,\n    series_id: s.series_id,\n    next_part: Number(episode.part) + 1\n  }\n}];"
+            },
+            "id": "3d4e5f60-8888-4199-e2aa-1j22k33l4440",
+            "name": "Prepare Series Update",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [2290, 260]
+        },
+        {
+            "parameters": {
+                "operation": "update",
+                "documentId": "YOUR_GOOGLE_SHEET_ID",
+                "sheetName": "series",
+                "rowNumber": "={{$json.rowNumber}}",
+                "columns": {
+                    "mappingMode": "defineBelow",
+                    "value": {
+                        "next_part": "={{$json.next_part}}"
+                    }
+                },
+                "options": {}
+            },
+            "id": "4e5f6071-9999-42aa-f3bb-2k33l44m5551",
+            "name": "Sheets: Update next_part",
+            "type": "n8n-nodes-base.googleSheets",
+            "typeVersion": 4,
+            "position": [2520, 260],
+            "credentials": {
+                "googleSheetsOAuth2Api": {
+                    "name": "Google Sheets account"
+                }
+            }
+        }
+    ],
+    "connections": {
+        "Cron (Daily)": {
+            "main": [
+                [{
+                    "node": "Sheets: Get Active Series",
+                    "type": "main",
+                    "index": 0
+                }]
+            ]
+        },
+        "Sheets: Get Active Series": {
+            "main": [
+                [{
+                    "node": "Pick Series + Next Part",
+                    "type": "main",
+                    "index": 0
+                }]
+            ]
+        },
+        "Pick Series + Next Part": {
+            "main": [
+                [{
+                    "node": "OpenAI: Generate Episode JSON",
+                    "type": "main",
+                    "index": 0
+                }]
+            ]
+        },
+        "OpenAI: Generate Episode JSON": {
+            "main": [
+                [{
+                    "node": "Parse + Validate",
+                    "type": "main",
+                    "index": 0
+                }]
+            ]
+        },
+        "Parse + Validate": {
+            "main": [
+                [{
+                    "node": "TTS: Generate Audio (mp3)",
+                    "type": "main",
+                    "index": 0
+                }]
+            ]
+        },
+        "TTS: Generate Audio (mp3)": {
+            "main": [
+                [{
+                    "node": "Attach Audio Base64",
+                    "type": "main",
+                    "index": 0
+                }]
+            ]
+        },
+        "Attach Audio Base64": {
+            "main": [
+                [{
+                    "node": "Sheets: Append Episode Row",
+                    "type": "main",
+                    "index": 0
+                }]
+            ]
+        },
+        "Sheets: Append Episode Row": {
+            "main": [
+                [{
+                    "node": "Sheets: Find Series Row (for update)",
+                    "type": "main",
+                    "index": 0
+                }]
+            ]
+        },
+        "Sheets: Find Series Row (for update)": {
+            "main": [
+                [{
+                    "node": "Prepare Series Update",
+                    "type": "main",
+                    "index": 0
+                }]
+            ]
+        },
+        "Prepare Series Update": {
+            "main": [
+                [{
+                    "node": "Sheets: Update next_part",
+                    "type": "main",
+                    "index": 0
+                }]
+            ]
+        }
+    },
+    "active": false,
+    "settings": {
+        "executionTimeout": 600,
+        "saveExecutionProgress": true,
+        "saveManualExecutions": true,
+        "timezone": "Asia/Karachi"
+    },
+    "versionId": "2"
+}

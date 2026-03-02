@@ -12,7 +12,7 @@ export default function Warehouses() {
   const [rowsPerPage, setRowsPerPage] = React.useState(20);
   const [search, setSearch] = React.useState("");
   const debouncedSearch = useDebouncedValue(search.trim());
-  const { data } = useWarehouses({ page: page + 1, limit: rowsPerPage, search: debouncedSearch || undefined });
+  const { data, isLoading } = useWarehouses({ page: page + 1, limit: rowsPerPage, search: debouncedSearch || undefined });
   const deleteWarehouse = useDeleteWarehouse();
   const navigate = useNavigate();
   const { notify } = useToast();
@@ -55,6 +55,7 @@ export default function Warehouses() {
           }
         ]}
         rows={data?.items || []}
+        loading={isLoading}
         actions={
           <TextField
             size="small"

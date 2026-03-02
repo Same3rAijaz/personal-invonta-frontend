@@ -1,10 +1,13 @@
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Box, Button, Container, Grid, Paper, TextField, Typography } from "@mui/material";
+import { Box, Button, Grid, IconButton, InputAdornment, Paper, TextField, Typography } from "@mui/material";
+import { useState } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { useToast } from "../hooks/useToast";
 import { Link, useNavigate } from "react-router-dom";
+import Visibility from "@mui/icons-material/Visibility";
+import VisibilityOff from "@mui/icons-material/VisibilityOff";
 
 const schema = z.object({
   email: z.string().email(),
@@ -17,6 +20,7 @@ export default function Login() {
   const { login } = useAuth();
   const { notify } = useToast();
   const navigate = useNavigate();
+  const [showPassword, setShowPassword] = useState(false);
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema)
   });
@@ -87,13 +91,22 @@ export default function Login() {
               />
               <TextField
                 fullWidth
-                type="password"
+                type={showPassword ? "text" : "password"}
                 label="Password"
                 margin="normal"
                 sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1 } }}
                 {...register("password")}
                 error={!!errors.password}
                 helperText={errors.password?.message}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton edge="end" onClick={() => setShowPassword((prev) => !prev)}>
+                        {showPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  )
+                }}
               />
               <Button type="submit" variant="contained" fullWidth disabled={isSubmitting} sx={{ mt: 2, borderRadius: 1, py: 1.3 }}>
                 Sign in

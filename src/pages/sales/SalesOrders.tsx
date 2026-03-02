@@ -14,7 +14,7 @@ export default function SalesOrders() {
   const [rowsPerPage, setRowsPerPage] = React.useState(20);
   const [search, setSearch] = React.useState("");
   const debouncedSearch = useDebouncedValue(search.trim());
-  const { data } = useSalesOrders({ page: page + 1, limit: rowsPerPage, search: debouncedSearch || undefined });
+  const { data, isLoading } = useSalesOrders({ page: page + 1, limit: rowsPerPage, search: debouncedSearch || undefined });
   const deleteSO = useDeleteSalesOrder();
   const { data: customers } = useCustomers({ page: 1, limit: 1000 });
   const navigate = useNavigate();
@@ -107,6 +107,7 @@ export default function SalesOrders() {
           }
         ]}
         rows={rows}
+        loading={isLoading}
         actions={
           <TextField
             size="small"

@@ -14,7 +14,7 @@ export default function UdhaarParties() {
   const [open, setOpen] = React.useState(false);
   const [form, setForm] = React.useState<any>({ partyType: "CUSTOMER", displayName: "" });
   const [selectedSourceId, setSelectedSourceId] = React.useState("");
-  const { data } = useParties({ search });
+  const { data, isLoading } = useParties({ search });
   const { data: customersData } = useCustomers();
   const { data: vendorsData } = useVendors();
   const createParty = useCreateParty();
@@ -48,7 +48,7 @@ export default function UdhaarParties() {
       <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
         <TextField size="small" placeholder="Search by name/phone/email" value={search} onChange={(e) => setSearch(e.target.value)} />
       </Box>
-      <DataTable columns={columns} rows={rows} />
+      <DataTable columns={columns} rows={rows} loading={isLoading} />
 
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>Add Party</DialogTitle>

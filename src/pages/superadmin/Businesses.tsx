@@ -20,7 +20,7 @@ export default function Businesses() {
   const [blockReason, setBlockReason] = React.useState("");
   const [blockReasonOther, setBlockReasonOther] = React.useState("");
   const [blockDays, setBlockDays] = React.useState("");
-  const { data } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ["businesses", page, rowsPerPage, debouncedSearch],
     queryFn: async () =>
       (
@@ -126,6 +126,7 @@ export default function Businesses() {
           }
         ]}
         rows={data?.items || []}
+        loading={isLoading}
         actions={
           <TextField
             size="small"

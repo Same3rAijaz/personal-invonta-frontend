@@ -27,6 +27,12 @@ export default function BusinessProfile() {
     reset: resetUser
   } = useForm();
 
+  const withCacheBust = (url?: string | null, version?: string | number) => {
+    if (!url) return null;
+    const separator = url.includes("?") ? "&" : "?";
+    return `${url}${separator}v=${version || Date.now()}`;
+  };
+
   useEffect(() => {
     if (businessData) {
       reset({
@@ -35,7 +41,7 @@ export default function BusinessProfile() {
         contactPhone: businessData.contactPhone || "",
         address: businessData.address || ""
       });
-      setLogoPreview(businessData.logoUrl || null);
+      setLogoPreview(withCacheBust(businessData.logoUrl, businessData.updatedAt || Date.now()));
     }
   }, [businessData, reset]);
 
@@ -55,7 +61,7 @@ export default function BusinessProfile() {
   });
 
   const profileMutation = useMutation({
-    mutationFn: async (payload: any) => (await api.patch("/auth/me", payload)).data
+    mutationFn: async (payload: any) => (await api.patch("/auth/me", payload)).data.data
   });
 
   const logoPath = useMemo(() => {
@@ -69,7 +75,9 @@ export default function BusinessProfile() {
       if (logoFile) {
         logoUrl = await uploadImage(logoFile, logoPath);
       }
-      await mutation.mutateAsync({ ...values, logoUrl });
+      const updatedBusiness = await mutation.mutateAsync({ ...values, logoUrl });
+      setLogoPreview(withCacheBust(updatedBusiness?.logoUrl || logoUrl, Date.now()));
+      setLogoFile(null);
       notify("Profile updated", "success");
     } catch (err: any) {
       notify(err?.response?.data?.error?.message || err?.message || "Failed", "error");
@@ -137,16 +145,16 @@ export default function BusinessProfile() {
                 </Typography>
                 <Grid container spacing={2} component="form" onSubmit={handleSubmit(onSubmit)}>
                   <Grid item xs={12} md={6}>
-                    <TextField fullWidth label="Business Name" {...register("name")} />
+                    <TextField fullWidth label="Business Name" InputLabelProps={{ shrink: true }} {...register("name")} />
                   </Grid>
                   <Grid item xs={12} md={6}>
-                    <TextField fullWidth label="Contact Name" {...register("contactName")} />
+                    <TextField fullWidth label="Contact Name" InputLabelProps={{ shrink: true }} {...register("contactName")} />
                   </Grid>
                   <Grid item xs={12} md={6}>
-                    <TextField fullWidth label="Contact Phone" {...register("contactPhone")} />
+                    <TextField fullWidth label="Contact Phone" InputLabelProps={{ shrink: true }} {...register("contactPhone")} />
                   </Grid>
                   <Grid item xs={12} md={6}>
-                    <TextField fullWidth label="Address" {...register("address")} />
+                    <TextField fullWidth label="Address" InputLabelProps={{ shrink: true }} {...register("address")} />
                   </Grid>
                   <Grid item xs={12}>
                     <Divider sx={{ my: 1 }} />
@@ -163,7 +171,7 @@ export default function BusinessProfile() {
                           onChange={(e) => {
                             const file = e.target.files?.[0] || null;
                             setLogoFile(file);
-                            setLogoPreview(file ? URL.createObjectURL(file) : businessData?.logoUrl || null);
+                            setLogoPreview(file ? URL.createObjectURL(file) : withCacheBust(businessData?.logoUrl, businessData?.updatedAt || Date.now()));
                           }}
                         />
                       </Button>
@@ -190,13 +198,13 @@ export default function BusinessProfile() {
             </Typography>
             <Grid container spacing={2} component="form" onSubmit={handleSubmitUser(onSubmitUser)}>
               <Grid item xs={12} md={6}>
-                <TextField fullWidth label="Full Name" {...registerUser("fullName")} />
+                <TextField fullWidth label="Full Name" InputLabelProps={{ shrink: true }} {...registerUser("fullName")} />
               </Grid>
               <Grid item xs={12} md={6}>
-                <TextField fullWidth label="Email" {...registerUser("email")} InputProps={{ readOnly: true }} />
+                <TextField fullWidth label="Email" InputLabelProps={{ shrink: true }} {...registerUser("email")} InputProps={{ readOnly: true }} />
               </Grid>
               <Grid item xs={12} md={6}>
-                <TextField fullWidth label="Phone Number (E.164)" {...registerUser("phoneNumber")} />
+                <TextField fullWidth label="Phone Number (E.164)" InputLabelProps={{ shrink: true }} {...registerUser("phoneNumber")} />
               </Grid>
               <Grid item xs={12}>
                 <Divider sx={{ my: 1 }} />

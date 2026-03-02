@@ -8,7 +8,7 @@ import React from "react";
 import { useCities, useCountries, useStates } from "../hooks/useGeo";
 import { DEFAULT_CITY, DEFAULT_COUNTRY, DEFAULT_STATE } from "../constants/locationDefaults";
 
-const AVAILABLE_MODULES = ["products", "inventory", "warehouses", "locations", "customers", "vendors", "purchasing", "sales", "hr", "reports"];
+const AVAILABLE_MODULES = ["products", "inventory", "warehouses", "customers", "vendors", "purchasing", "sales", "hr", "reports"];
 const labelize = (value: string) => (value === "hr" ? "HR" : value.charAt(0).toUpperCase() + value.slice(1));
 
 export default function Signup() {
@@ -117,7 +117,7 @@ export default function Signup() {
               </Typography>
               <Box sx={{ display: "grid", gap: 1, mt: 1, textAlign: { xs: "center", md: "left" } }}>
                 <Typography variant="body2">- Approvals and role-based access</Typography>
-                <Typography variant="body2">- Multi-location inventory control</Typography>
+                <Typography variant="body2">- Inventory control and stock tracking</Typography>
                 <Typography variant="body2">- Reports you can export instantly</Typography>
               </Box>
             </Box>

@@ -8,7 +8,7 @@ import { useAuth } from "../../hooks/useAuth";
 export default function MyReferrals() {
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(20);
-  const { data } = useMyReferrals({ page: page + 1, limit: rowsPerPage });
+  const { data, isLoading } = useMyReferrals({ page: page + 1, limit: rowsPerPage });
   const { user } = useAuth();
 
   return (
@@ -33,6 +33,7 @@ export default function MyReferrals() {
           isActive: row.isActive ? "Yes" : "No",
           createdAt: row.createdAt ? new Date(row.createdAt).toLocaleDateString() : "-"
         }))}
+        loading={isLoading}
         page={page}
         rowsPerPage={rowsPerPage}
         total={data?.total || 0}

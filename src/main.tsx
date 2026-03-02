@@ -8,6 +8,7 @@ import { theme } from "./theme";
 import { AuthProvider } from "./hooks/useAuth";
 import { MarketplaceAuthProvider } from "./hooks/useMarketplaceAuth";
 import { ToastProvider } from "./hooks/useToast";
+import { ApiActivityProvider } from "./hooks/useApiActivity";
 
 const queryClient = new QueryClient();
 
@@ -16,15 +17,17 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <QueryClientProvider client={queryClient}>
-        <ToastProvider>
-          <AuthProvider>
-            <MarketplaceAuthProvider>
-              <BrowserRouter>
-                <App />
-              </BrowserRouter>
-            </MarketplaceAuthProvider>
-          </AuthProvider>
-        </ToastProvider>
+        <ApiActivityProvider>
+          <ToastProvider>
+            <AuthProvider>
+              <MarketplaceAuthProvider>
+                <BrowserRouter>
+                  <App />
+                </BrowserRouter>
+              </MarketplaceAuthProvider>
+            </AuthProvider>
+          </ToastProvider>
+        </ApiActivityProvider>
       </QueryClientProvider>
     </ThemeProvider>
   </React.StrictMode>

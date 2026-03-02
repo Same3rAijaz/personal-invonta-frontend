@@ -13,7 +13,7 @@ export default function PurchaseOrders() {
   const [rowsPerPage, setRowsPerPage] = React.useState(20);
   const [search, setSearch] = React.useState("");
   const debouncedSearch = useDebouncedValue(search.trim());
-  const { data } = usePurchaseOrders({ page: page + 1, limit: rowsPerPage, search: debouncedSearch || undefined });
+  const { data, isLoading } = usePurchaseOrders({ page: page + 1, limit: rowsPerPage, search: debouncedSearch || undefined });
   const deletePO = useDeletePurchaseOrder();
   const { data: vendors } = useVendors({ page: 1, limit: 1000 });
   const navigate = useNavigate();
@@ -64,6 +64,7 @@ export default function PurchaseOrders() {
           }
         ]}
         rows={rows}
+        loading={isLoading}
         actions={
           <TextField
             size="small"

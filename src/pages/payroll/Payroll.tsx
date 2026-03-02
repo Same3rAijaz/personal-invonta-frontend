@@ -6,11 +6,6 @@ import {
   Grid,
   Paper,
   Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
   TextField,
   Typography
 } from "@mui/material";
@@ -23,6 +18,7 @@ import {
   usePayrollPreview,
   usePayrollRuns
 } from "../../hooks/usePayroll";
+import DataTable from "../../components/DataTable";
 
 function currentMonth() {
   const now = new Date();
@@ -37,7 +33,7 @@ export default function Payroll() {
   const createRun = useCreatePayrollRun();
   const finalizeRun = useFinalizePayrollRun();
   const markPaid = useMarkPayrollPaid();
-  const { data: runsData } = usePayrollRuns({ page: 1, limit: 20 });
+  const { data: runsData, isLoading: runsLoading } = usePayrollRuns({ page: 1, limit: 20 });
 
   const handlePreview = async () => {
     try {
@@ -132,49 +128,39 @@ export default function Payroll() {
         </Paper>
       ) : null}
 
-      <Paper sx={{ p: 2.5, borderRadius: 3 }}>
-        <Typography variant="h6" sx={{ mb: 1.5 }}>
-          Payroll Runs
-        </Typography>
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>Month</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Employees</TableCell>
-              <TableCell>Total Net</TableCell>
-              <TableCell align="right">Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {(runsData?.items || []).map((run: any) => (
-              <TableRow key={run._id}>
-                <TableCell>{run.month}</TableCell>
-                <TableCell>{run.status}</TableCell>
-                <TableCell>{(run.entries || []).length}</TableCell>
-                <TableCell>{Number(run.totalNetPay || 0).toLocaleString()}</TableCell>
-                <TableCell align="right">
-                  <Stack direction="row" spacing={1} justifyContent="flex-end">
-                    <Button size="small" onClick={() => handleExport(run._id)}>
-                      Export
-                    </Button>
-                    {run.status === "DRAFT" ? (
-                      <Button size="small" onClick={() => handleFinalize(run._id)}>
-                        Finalize
-                      </Button>
-                    ) : null}
-                    {run.status !== "PAID" ? (
-                      <Button size="small" variant="contained" onClick={() => handleMarkPaid(run._id)}>
-                        Mark Paid
-                      </Button>
-                    ) : null}
-                  </Stack>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Paper>
+      <DataTable
+        title="Payroll Runs"
+        subtitle={`${runsData?.items?.length || 0} records`}
+        columns={[
+          { key: "month", label: "Month" },
+          { key: "status", label: "Status" },
+          { key: "employees", label: "Employees", render: (row: any) => (row.entries || []).length },
+          { key: "totalNetPay", label: "Total Net", render: (row: any) => Number(row.totalNetPay || 0).toLocaleString() },
+          {
+            key: "actions",
+            label: "Actions",
+            render: (row: any) => (
+              <Stack direction="row" spacing={1}>
+                <Button size="small" onClick={() => handleExport(row._id)}>
+                  Export
+                </Button>
+                {row.status === "DRAFT" ? (
+                  <Button size="small" onClick={() => handleFinalize(row._id)}>
+                    Finalize
+                  </Button>
+                ) : null}
+                {row.status !== "PAID" ? (
+                  <Button size="small" variant="contained" onClick={() => handleMarkPaid(row._id)}>
+                    Mark Paid
+                  </Button>
+                ) : null}
+              </Stack>
+            )
+          }
+        ]}
+        rows={runsData?.items || []}
+        loading={runsLoading}
+      />
     </Box>
   );
 }

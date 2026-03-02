@@ -10,10 +10,31 @@ const ToastContext = React.createContext<{ notify: (message: string, severity?: 
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toast, setToast] = React.useState<ToastState>(null);
+  const lastToastRef = React.useRef<{ message: string; at: number } | null>(null);
 
-  const notify = (message: string, severity: ToastState["severity"] = "info") => {
+  const pushToast = (message: string, severity: NonNullable<ToastState>["severity"]) => {
+    const now = Date.now();
+    const last = lastToastRef.current;
+    if (last && last.message === message && now - last.at < 1200) {
+      return;
+    }
+    lastToastRef.current = { message, at: now };
     setToast({ message, severity });
   };
+
+  const notify = (message: string, severity: ToastState["severity"] = "info") => {
+    pushToast(message, severity || "info");
+  };
+
+  React.useEffect(() => {
+    const onApiError = (event: Event) => {
+      const custom = event as CustomEvent<{ message?: string }>;
+      const message = custom.detail?.message || "Request failed";
+      pushToast(message, "error");
+    };
+    window.addEventListener("api:error", onApiError as EventListener);
+    return () => window.removeEventListener("api:error", onApiError as EventListener);
+  }, []);
 
   return (
     <ToastContext.Provider value={{ notify }}>

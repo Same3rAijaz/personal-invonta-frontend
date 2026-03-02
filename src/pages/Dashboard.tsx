@@ -1,9 +1,10 @@
-import { Box, Grid, Paper, Stack, Table, TableBody, TableCell, TableHead, TableRow, Typography } from "@mui/material";
+import { Box, Grid, Paper, Stack, Typography } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../api/client";
 import { useAuth } from "../hooks/useAuth";
 import { useReports } from "../hooks/useReports";
 import PageHeader from "../components/PageHeader";
+import DataTable from "../components/DataTable";
 import {
   BarChart,
   Bar,
@@ -80,9 +81,9 @@ function ShopDashboard() {
         </Grid>
         <Grid item xs={12} md={3}>
           <Paper sx={{ p: 2, borderRadius: 3, boxShadow: "0 10px 24px rgba(15,23,42,0.08)" }}>
-            <Typography variant="subtitle2">Attendance Hours</Typography>
+            <Typography variant="subtitle2">Total Products</Typography>
             <Typography variant="h5" sx={{ fontWeight: 700 }}>
-              {reports.attendance.data?.totalHours ?? 0}
+              {totalProducts}
             </Typography>
           </Paper>
         </Grid>
@@ -256,39 +257,23 @@ function SuperAdminDashboard() {
         </Grid>
       </Grid>
 
-      <Paper sx={{ p: 2.5, borderRadius: 2, boxShadow: "0 14px 30px rgba(15,23,42,0.08)" }}>
-        <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1.5 }}>
-          Recent Shop Requests
-        </Typography>
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>Business</TableCell>
-              <TableCell>Admin Email</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>City</TableCell>
-              <TableCell>Submitted</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {recentRequests.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5}>No requests found.</TableCell>
-              </TableRow>
-            ) : (
-              recentRequests.map((item: any) => (
-                <TableRow key={item._id}>
-                  <TableCell>{item.businessName || "-"}</TableCell>
-                  <TableCell>{item.adminEmail || "-"}</TableCell>
-                  <TableCell>{item.status || "-"}</TableCell>
-                  <TableCell>{item.city || "-"}</TableCell>
-                  <TableCell>{item.createdAt ? new Date(item.createdAt).toLocaleString() : "-"}</TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </Paper>
+      <DataTable
+        title="Recent Shop Requests"
+        subtitle={`${recentRequests.length} records`}
+        columns={[
+          { key: "businessName", label: "Business", render: (row: any) => row.businessName || "-" },
+          { key: "adminEmail", label: "Admin Email", render: (row: any) => row.adminEmail || "-" },
+          { key: "status", label: "Status", render: (row: any) => row.status || "-" },
+          { key: "city", label: "City", render: (row: any) => row.city || "-" },
+          {
+            key: "createdAt",
+            label: "Submitted",
+            render: (row: any) => (row.createdAt ? new Date(row.createdAt).toLocaleString() : "-")
+          }
+        ]}
+        rows={recentRequests}
+        loading={requests.isLoading}
+      />
     </Box>
   );
 }

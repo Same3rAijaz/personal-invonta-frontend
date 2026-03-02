@@ -11,8 +11,14 @@ export default function Products() {
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(20);
   const [search, setSearch] = React.useState("");
+  const [filters, setFilters] = React.useState<Record<string, string>>({});
   const debouncedSearch = useDebouncedValue(search.trim());
-  const { data } = useProducts({ page: page + 1, limit: rowsPerPage, search: debouncedSearch || undefined });
+  const { data, isLoading } = useProducts({
+    page: page + 1,
+    limit: rowsPerPage,
+    search: debouncedSearch || undefined,
+    filters
+  });
   const deleteProduct = useDeleteProduct();
   const shareProduct = useShareProduct();
   const navigate = useNavigate();
@@ -20,11 +26,20 @@ export default function Products() {
   const [shareDialog, setShareDialog] = React.useState<{ open: boolean; product: any | null }>({ open: false, product: null });
   const [targetSearch, setTargetSearch] = React.useState("");
   const [selectedTargets, setSelectedTargets] = React.useState<any[]>([]);
-  const { data: shareTargets = [] } = useProductShareTargets(targetSearch || undefined);
+  const { data: shareTargets = [] } = useProductShareTargets(targetSearch || undefined, shareDialog.open);
 
   React.useEffect(() => {
     setPage(0);
-  }, [debouncedSearch]);
+  }, [debouncedSearch, filters]);
+
+  const tableRows = React.useMemo(
+    () =>
+      (data?.items || []).map((row: any) => ({
+        ...row,
+        ownership: row.isSharedWithMe ? "OWNED_BY_OTHERS" : "OWNED_BY_ME"
+      })),
+    [data?.items]
+  );
 
   const handleDelete = async (id: string) => {
     if (!window.confirm("Delete this product?")) return;
@@ -81,38 +96,31 @@ export default function Products() {
                 ""
               )
           },
-          { key: "sku", label: "SKU" },
-          { key: "barcode", label: "Barcode" },
-          { key: "name", label: "Name" },
-          { key: "category", label: "Category" },
-          { key: "unit", label: "Unit" },
-          { key: "costPrice", label: "Cost" },
-          { key: "salePrice", label: "Sale" },
-          { key: "reorderLevel", label: "Reorder" },
-          { key: "visibility", label: "Visibility" },
           {
-            key: "scope",
-            label: "Scope",
+            key: "name",
+            label: "Name",
             render: (row: any) => (
-              <Chip
-                size="small"
-                label={row.isSharedWithMe ? "Shared with me" : "My product"}
-                color={row.isSharedWithMe ? "secondary" : "primary"}
-                variant="outlined"
-              />
+              <Button size="small" sx={{ px: 0, minWidth: 0 }} onClick={() => navigate(`/products/${row._id}`)}>
+                {row.name}
+              </Button>
             )
           },
+          { key: "category", label: "Category" },
+          { key: "salePrice", label: "Price" },
+          { key: "visibility", label: "Visibility" },
           {
-            key: "owner",
-            label: "Owner Shop",
-            render: (row: any) => row.businessId?.name || "-"
+            key: "ownership",
+            label: "Ownership",
+            render: (row: any) => (row.isSharedWithMe ? "Owned by Others" : "Owned by Me")
           },
-          { key: "isActive", label: "Active" },
           {
             key: "actions",
             label: "Actions",
             render: (row: any) => (
               <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                <Button size="small" onClick={() => navigate(`/products/${row._id}`)}>
+                  View
+                </Button>
                 <Button size="small" disabled={row.isSharedWithMe} onClick={() => navigate(`/products/${row._id}/edit`)}>
                   Edit
                 </Button>
@@ -126,14 +134,40 @@ export default function Products() {
             )
           }
         ]}
-        rows={data?.items || []}
+        rows={tableRows}
+        loading={isLoading}
+        serverFiltering
+        filters={filters}
+        onFiltersChange={setFilters}
+        filterFields={[
+          { key: "category", label: "Category", type: "select" },
+          { type: "numberRange", label: "Price Range", minKey: "minPrice", maxKey: "maxPrice", minLabel: "Min", maxLabel: "Max" },
+          {
+            key: "visibility",
+            label: "Visibility",
+            type: "select",
+            options: [
+              { label: "Private", value: "PRIVATE" },
+              { label: "Public", value: "PUBLIC" }
+            ]
+          },
+          {
+            key: "ownership",
+            label: "Ownership",
+            type: "select",
+            options: [
+              { label: "Owned by Me", value: "OWNED_BY_ME" },
+              { label: "Owned by Others", value: "OWNED_BY_OTHERS" }
+            ]
+          }
+        ]}
         actions={
           <TextField
             size="small"
             placeholder="Search products"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            sx={{ minWidth: 240 }}
+            sx={{ width: { xs: "100%", sm: 260 } }}
           />
         }
         page={page}
@@ -155,8 +189,13 @@ export default function Products() {
             multiple
             options={shareTargets || []}
             value={selectedTargets}
+            inputValue={targetSearch}
             onChange={(_event, value) => setSelectedTargets(value)}
-            onInputChange={(_event, value) => setTargetSearch(value)}
+            onInputChange={(_event, value, reason) => {
+              if (reason === "input" || reason === "clear") {
+                setTargetSearch(value);
+              }
+            }}
             isOptionEqualToValue={(option: any, value: any) => String(option._id) === String(value._id)}
             getOptionLabel={(option: any) =>
               `${option.name}${option.marketId?.name ? ` (${option.marketId.name})` : ""}${option.city ? ` - ${option.city}` : ""}`
