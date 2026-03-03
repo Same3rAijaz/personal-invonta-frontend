@@ -4,7 +4,16 @@ import { api } from "../api/client";
 export function useCustomers(params?: { page?: number; limit?: number; search?: string }) {
   return useQuery({
     queryKey: ["customers", params?.page, params?.limit, params?.search],
-    queryFn: async () => (await api.get("/customers", { params })).data.data
+    queryFn: async () => {
+      if (params?.search) {
+        return (
+          await api.get("/customers/semantic-search", {
+            params: { query: params.search, limit: params.limit }
+          })
+        ).data.data;
+      }
+      return (await api.get("/customers", { params })).data.data;
+    }
   });
 }
 

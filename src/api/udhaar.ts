@@ -1,6 +1,12 @@
 import { api } from "./client";
 
 export async function listParties(params: any) {
+  if (params?.search) {
+    const { data } = await api.get("/udhaar/parties/semantic-search", {
+      params: { query: params.search, limit: params.limit }
+    });
+    return data.data;
+  }
   const { data } = await api.get("/udhaar/parties", { params });
   return data.data;
 }

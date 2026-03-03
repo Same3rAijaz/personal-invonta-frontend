@@ -4,7 +4,16 @@ import { api } from "../api/client";
 export function useWarehouses(params?: { page?: number; limit?: number; search?: string }) {
   return useQuery({
     queryKey: ["warehouses", params?.page, params?.limit, params?.search],
-    queryFn: async () => (await api.get("/warehouses", { params })).data.data
+    queryFn: async () => {
+      if (params?.search) {
+        return (
+          await api.get("/warehouses/semantic-search", {
+            params: { query: params.search, limit: params.limit }
+          })
+        ).data.data;
+      }
+      return (await api.get("/warehouses", { params })).data.data;
+    }
   });
 }
 

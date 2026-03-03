@@ -4,7 +4,16 @@ import { api } from "../api/client";
 export function useVendors(params?: { page?: number; limit?: number; search?: string }) {
   return useQuery({
     queryKey: ["vendors", params?.page, params?.limit, params?.search],
-    queryFn: async () => (await api.get("/vendors", { params })).data.data
+    queryFn: async () => {
+      if (params?.search) {
+        return (
+          await api.get("/vendors/semantic-search", {
+            params: { query: params.search, limit: params.limit }
+          })
+        ).data.data;
+      }
+      return (await api.get("/vendors", { params })).data.data;
+    }
   });
 }
 

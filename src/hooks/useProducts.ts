@@ -4,8 +4,15 @@ import { api } from "../api/client";
 export function useProducts(params?: { page?: number; limit?: number; search?: string; filters?: Record<string, string> }) {
   return useQuery({
     queryKey: ["products", params?.page, params?.limit, params?.search, params?.filters],
-    queryFn: async () =>
-      (
+    queryFn: async () => {
+      if (params?.search) {
+        return (
+          await api.get("/products/semantic-search", {
+            params: { query: params.search, limit: params.limit }
+          })
+        ).data.data;
+      }
+      return (
         await api.get("/products", {
           params: {
             page: params?.page,
@@ -17,7 +24,8 @@ export function useProducts(params?: { page?: number; limit?: number; search?: s
                 : undefined
           }
         })
-      ).data.data
+      ).data.data;
+    }
   });
 }
 

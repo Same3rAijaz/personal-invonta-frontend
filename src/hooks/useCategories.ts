@@ -4,7 +4,16 @@ import { api } from "../api/client";
 export function useCategories(params?: { page?: number; limit?: number; search?: string; activeOnly?: boolean }) {
   return useQuery({
     queryKey: ["categories", params?.page, params?.limit, params?.search, params?.activeOnly],
-    queryFn: async () => (await api.get("/categories", { params })).data.data
+    queryFn: async () => {
+      if (params?.search) {
+        return (
+          await api.get("/categories/semantic-search", {
+            params: { query: params.search, limit: params.limit }
+          })
+        ).data.data;
+      }
+      return (await api.get("/categories", { params })).data.data;
+    }
   });
 }
 

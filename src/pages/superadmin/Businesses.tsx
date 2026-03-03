@@ -39,17 +39,24 @@ export default function Businesses() {
   const { data: cityOptions = [] } = useCities(selectedCountry, selectedState);
   const { data, isLoading } = useQuery({
     queryKey: ["businesses", page, rowsPerPage, debouncedSearch, filtersKey],
-    queryFn: async () =>
-      (
+    queryFn: async () => {
+      if (debouncedSearch) {
+        return (
+          await api.get("/superadmin/businesses/semantic-search", {
+            params: { query: debouncedSearch, limit: rowsPerPage }
+          })
+        ).data.data;
+      }
+      return (
         await api.get("/superadmin/businesses", {
           params: {
             page: page + 1,
             limit: rowsPerPage,
-            search: debouncedSearch || undefined,
             filters: Object.keys(normalizedFilters).length > 0 ? JSON.stringify(normalizedFilters) : undefined
           }
         })
-      ).data.data
+      ).data.data;
+    }
   });
   const { data: marketsData } = useQuery({
     queryKey: ["markets-for-businesses"],

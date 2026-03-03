@@ -4,7 +4,16 @@ import { api } from "../api/client";
 export function useEmployees(params?: { page?: number; limit?: number; search?: string }) {
   return useQuery({
     queryKey: ["employees", params?.page, params?.limit, params?.search],
-    queryFn: async () => (await api.get("/employees", { params })).data.data
+    queryFn: async () => {
+      if (params?.search) {
+        return (
+          await api.get("/employees/semantic-search", {
+            params: { query: params.search, limit: params.limit }
+          })
+        ).data.data;
+      }
+      return (await api.get("/employees", { params })).data.data;
+    }
   });
 }
 

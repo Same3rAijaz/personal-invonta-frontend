@@ -63,6 +63,7 @@ export default function ProductCreate() {
         ...values,
         categoryId: values.categoryId || undefined,
         subcategory: undefined,
+        description: values.description || undefined,
         costPrice: Number(values.costPrice),
         salePrice: Number(values.salePrice),
         reorderLevel: Number(values.reorderLevel || 0),
@@ -87,8 +88,11 @@ export default function ProductCreate() {
           <Grid item xs={12} md={3}>
             <TextField fullWidth label="Barcode" {...register("barcode")} />
           </Grid>
-          <Grid item xs={12} md={3}>
+          <Grid item xs={12} md={6}>
             <TextField fullWidth label="Name" {...register("name")} />
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <TextField fullWidth multiline rows={3} label="Description" {...register("description")} />
           </Grid>
           <Grid item xs={12} md={3}>
             <TextField
