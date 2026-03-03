@@ -16,10 +16,17 @@ export type DetailItem = {
 
 export type SellerInfo = {
   id?: string;
+  shopSlug?: string;
   name: string;
+  adminName?: string;
+  adminEmail?: string;
   market?: string;
   address?: string;
   phone?: string;
+  whatsapp?: string;
+  websiteUrl?: string;
+  instagramUrl?: string;
+  facebookUrl?: string;
   memberSince?: string;
   activeAds?: number;
   adId?: string;

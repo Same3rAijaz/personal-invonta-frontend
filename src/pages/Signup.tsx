@@ -5,17 +5,20 @@ import { api } from "../api/client";
 import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import React from "react";
+import { PublicCategoryNode } from "../api/public";
 import { useCities, useCountries, useStates } from "../hooks/useGeo";
 import { DEFAULT_CITY, DEFAULT_COUNTRY, DEFAULT_STATE } from "../constants/locationDefaults";
 
 const AVAILABLE_MODULES = ["products", "inventory", "warehouses", "customers", "vendors", "purchasing", "sales", "hr", "reports"];
 const labelize = (value: string) => (value === "hr" ? "HR" : value.charAt(0).toUpperCase() + value.slice(1));
+const REQUEST_MARKET_VALUE = "__REQUEST_MARKET__";
 
 export default function Signup() {
   const { notify } = useToast();
   const navigate = useNavigate();
   const { register, handleSubmit, watch, setValue } = useForm({
     defaultValues: {
+      marketId: REQUEST_MARKET_VALUE,
       country: DEFAULT_COUNTRY,
       state: DEFAULT_STATE,
       city: DEFAULT_CITY
@@ -25,7 +28,12 @@ export default function Signup() {
     queryKey: ["public-markets-signup"],
     queryFn: async () => (await api.get("/public/markets")).data.data
   });
+  const { data: categories = [] } = useQuery<PublicCategoryNode[]>({
+    queryKey: ["public-categories-signup"],
+    queryFn: async () => (await api.get("/public/products/categories")).data.data || []
+  });
   const marketId = watch("marketId");
+  const businessCategoryId = watch("businessCategoryId");
   const country = watch("country", DEFAULT_COUNTRY);
   const state = watch("state", DEFAULT_STATE);
   const city = watch("city", DEFAULT_CITY);
@@ -38,7 +46,7 @@ export default function Signup() {
     setValue("city", DEFAULT_CITY, { shouldDirty: false, shouldTouch: false, shouldValidate: false });
   }, [setValue]);
   React.useEffect(() => {
-    if (marketId) {
+    if (marketId && marketId !== REQUEST_MARKET_VALUE) {
       setValue("marketName", "");
     }
   }, [marketId, setValue]);
@@ -57,6 +65,49 @@ export default function Signup() {
       setValue("city", DEFAULT_CITY);
     }
   }, [city, cityOptions, setValue]);
+
+  const categoriesById = React.useMemo(() => {
+    const map = new Map<string, PublicCategoryNode>();
+    (categories || []).forEach((item) => map.set(String(item._id), item));
+    return map;
+  }, [categories]);
+
+  const selectedCategory = React.useMemo(() => {
+    if (!businessCategoryId) return null;
+    return categoriesById.get(String(businessCategoryId)) || null;
+  }, [businessCategoryId, categoriesById]);
+
+  const childrenByParent = React.useMemo(() => {
+    const map = new Map<string, PublicCategoryNode[]>();
+    (categories || []).forEach((item) => {
+      const key = item.parentId ? String(item.parentId) : "root";
+      const list = map.get(key) || [];
+      list.push(item);
+      map.set(key, list);
+    });
+    map.forEach((list, key) => map.set(key, [...list].sort((a, b) => String(a.name).localeCompare(String(b.name)))));
+    return map;
+  }, [categories]);
+
+  const selectedPathIds = React.useMemo(() => {
+    if (!selectedCategory) return [] as string[];
+    const parentPathIds = selectedCategory.pathIds || [];
+    return [...parentPathIds, String(selectedCategory._id)];
+  }, [selectedCategory]);
+
+  const categoryLevels = React.useMemo(() => {
+    const levels: PublicCategoryNode[][] = [];
+    let parentKey = "root";
+    for (let level = 0; level < 10; level += 1) {
+      const options = childrenByParent.get(parentKey) || [];
+      if (options.length === 0) break;
+      levels.push(options);
+      const selectedId = selectedPathIds[level];
+      if (!selectedId) break;
+      parentKey = selectedId;
+    }
+    return levels;
+  }, [childrenByParent, selectedPathIds]);
   React.useEffect(() => {
     if (stateOptions.length > 0 && state && !stateOptions.some((item: string) => item === state)) {
       setValue("state", "");
@@ -79,7 +130,8 @@ export default function Signup() {
         if (key.startsWith("module_")) delete payload[key];
       });
 
-      const selectedMarketId = String(values.marketId || "").trim();
+      const selectedMarketIdRaw = String(values.marketId || "").trim();
+      const selectedMarketId = selectedMarketIdRaw === REQUEST_MARKET_VALUE ? "" : selectedMarketIdRaw;
       const requestedMarketName = String(values.marketName || "").trim();
       if (!selectedMarketId && !requestedMarketName) {
         notify("Select a market or request a new market name.", "error");
@@ -141,6 +193,7 @@ export default function Signup() {
               Tell us a little about your business to get started.
             </Typography>
             <Box component="form" onSubmit={handleSubmit(onSubmit)}>
+              <input type="hidden" {...register("businessCategoryId")} />
               <Grid container spacing={2}>
                 <Grid item xs={12} md={4}>
                   <TextField fullWidth label="Business Name" {...register("businessName")} sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1 } }} />
@@ -151,9 +204,44 @@ export default function Signup() {
                 <Grid item xs={12} md={4}>
                   <TextField fullWidth label="Contact Phone" {...register("contactPhone")} sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1 } }} />
                 </Grid>
+                <Grid item xs={12} md={12}>
+                  <TextField
+                    fullWidth
+                    label="Selected Business Category"
+                    value={selectedCategory?.path || (selectedCategory?.pathNames || []).join(" > ") || ""}
+                    placeholder="Choose business category"
+                    InputProps={{ readOnly: true }}
+                    sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1 } }}
+                  />
+                </Grid>
+                {categoryLevels.map((options, level) => (
+                  <Grid item xs={12} md={4} key={`signup-category-level-${level}`}>
+                    <TextField
+                      select
+                      fullWidth
+                      label={level === 0 ? "Business Category" : `Sub Category ${level}`}
+                      value={selectedPathIds[level] || ""}
+                      onChange={(event) => {
+                        const selectedId = String(event.target.value || "");
+                        const nextPath = selectedPathIds.slice(0, level);
+                        if (selectedId) nextPath[level] = selectedId;
+                        const finalId = nextPath[nextPath.length - 1] || "";
+                        setValue("businessCategoryId", finalId, { shouldDirty: true, shouldValidate: true });
+                      }}
+                      sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1 } }}
+                    >
+                      <MenuItem value="">None</MenuItem>
+                      {options.map((item) => (
+                        <MenuItem key={item._id} value={item._id}>
+                          {item.name}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                  </Grid>
+                ))}
                 <Grid item xs={12} md={4}>
                   <TextField select fullWidth label="Market" {...register("marketId")} sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1 } }}>
-                    <MenuItem value="">Not listed / Request market</MenuItem>
+                    <MenuItem value={REQUEST_MARKET_VALUE}>Not listed / Request market</MenuItem>
                     {(markets || []).map((m: any) => (
                       <MenuItem key={m._id} value={m._id}>{m.name}</MenuItem>
                     ))}
@@ -183,7 +271,7 @@ export default function Signup() {
                     ))}
                   </TextField>
                 </Grid>
-                {!marketId ? (
+                {marketId === REQUEST_MARKET_VALUE ? (
                   <Grid item xs={12} md={8}>
                     <TextField fullWidth label="Market Name (request new market)" {...register("marketName")} sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1 } }} />
                   </Grid>

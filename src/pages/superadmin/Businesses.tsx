@@ -8,12 +8,22 @@ import { useNavigate } from "react-router-dom";
 import { useToast } from "../../hooks/useToast";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import { useConfirmDialog } from "../../hooks/useConfirmDialog";
+import { useCities, useCountries, useStates } from "../../hooks/useGeo";
 
 export default function Businesses() {
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(20);
   const [search, setSearch] = React.useState("");
+  const [filters, setFilters] = React.useState<Record<string, string>>({});
   const debouncedSearch = useDebouncedValue(search.trim());
+  const normalizedFilters = React.useMemo(
+    () =>
+      Object.fromEntries(
+        Object.entries(filters).filter(([, value]) => value !== undefined && value !== null && String(value).trim() !== "")
+      ),
+    [filters]
+  );
+  const filtersKey = React.useMemo(() => JSON.stringify(normalizedFilters), [normalizedFilters]);
   const navigate = useNavigate();
   const client = useQueryClient();
   const { notify } = useToast();
@@ -22,15 +32,36 @@ export default function Businesses() {
   const [blockReason, setBlockReason] = React.useState("");
   const [blockReasonOther, setBlockReasonOther] = React.useState("");
   const [blockDays, setBlockDays] = React.useState("");
+  const selectedCountry = filters.country || "";
+  const selectedState = filters.state || "";
+  const { data: countryOptions = [] } = useCountries();
+  const { data: stateOptions = [] } = useStates(selectedCountry);
+  const { data: cityOptions = [] } = useCities(selectedCountry, selectedState);
   const { data, isLoading } = useQuery({
-    queryKey: ["businesses", page, rowsPerPage, debouncedSearch],
+    queryKey: ["businesses", page, rowsPerPage, debouncedSearch, filtersKey],
     queryFn: async () =>
       (
         await api.get("/superadmin/businesses", {
-          params: { page: page + 1, limit: rowsPerPage, search: debouncedSearch || undefined }
+          params: {
+            page: page + 1,
+            limit: rowsPerPage,
+            search: debouncedSearch || undefined,
+            filters: Object.keys(normalizedFilters).length > 0 ? JSON.stringify(normalizedFilters) : undefined
+          }
         })
       ).data.data
   });
+  const { data: marketsData } = useQuery({
+    queryKey: ["markets-for-businesses"],
+    queryFn: async () => (await api.get("/superadmin/markets", { params: { page: 1, limit: 1000 } })).data.data
+  });
+  const marketNameMap = React.useMemo(() => {
+    const map = new Map<string, string>();
+    (marketsData?.items || []).forEach((item: any) => {
+      map.set(String(item._id), item.name);
+    });
+    return map;
+  }, [marketsData]);
   const deleteBusiness = useMutation({
     mutationFn: async (id: string) => (await api.delete(`/superadmin/businesses/${id}`)).data.data,
     onSuccess: () => client.invalidateQueries({ queryKey: ["businesses"] })
@@ -48,6 +79,9 @@ export default function Businesses() {
   React.useEffect(() => {
     setPage(0);
   }, [debouncedSearch]);
+  React.useEffect(() => {
+    setPage(0);
+  }, [filtersKey]);
 
   const handleDelete = async (id: string) => {
     if (!(await confirm({ title: "Delete Business", message: "Are you sure you want to delete this business?", confirmText: "Delete" }))) return;
@@ -95,7 +129,17 @@ export default function Businesses() {
       <DataTable
         columns={[
           { key: "name", label: "Name" },
-          { key: "marketId", label: "Market" },
+          { key: "adminName", label: "Business Admin" },
+          { key: "adminEmail", label: "Admin Email" },
+          {
+            key: "marketId",
+            label: "Market",
+            render: (row: any) => row.marketId?.name || marketNameMap.get(String(row.marketId || "")) || row.marketName || "-"
+          },
+          { key: "businessCategoryPath", label: "Business Category", render: (row: any) => row.businessCategoryPath || "-" },
+          { key: "country", label: "Country", render: (row: any) => row.country || "-" },
+          { key: "state", label: "State", render: (row: any) => row.state || "-" },
+          { key: "city", label: "City", render: (row: any) => row.city || "-" },
           { key: "contactPhone", label: "Phone" },
           {
             key: "status",
@@ -129,6 +173,56 @@ export default function Businesses() {
         ]}
         rows={data?.items || []}
         loading={isLoading}
+        filters={filters}
+        onFiltersChange={(next) => {
+          const cleaned: Record<string, string> = { ...next };
+          if (!cleaned.country) {
+            cleaned.state = "";
+            cleaned.city = "";
+          }
+          if (!cleaned.state) {
+            cleaned.city = "";
+          }
+          setFilters(cleaned);
+        }}
+        serverFiltering
+        filterFields={[
+          {
+            key: "status",
+            label: "Status",
+            type: "select",
+            options: [
+              { label: "Active", value: "ACTIVE" },
+              { label: "Temporary Block", value: "TEMP_BLOCK" },
+              { label: "Blocked", value: "BLOCKED" }
+            ]
+          },
+          {
+            key: "marketId",
+            label: "Market",
+            type: "select",
+            options: (marketsData?.items || []).map((item: any) => ({ label: item.name, value: String(item._id) }))
+          },
+          { key: "businessCategoryPath", label: "Business Category", type: "text" },
+          {
+            key: "country",
+            label: "Country",
+            type: "select",
+            options: countryOptions.map((item: string) => ({ label: item, value: item }))
+          },
+          {
+            key: "state",
+            label: "State",
+            type: "select",
+            options: stateOptions.map((item: string) => ({ label: item, value: item }))
+          },
+          {
+            key: "city",
+            label: "City",
+            type: "select",
+            options: cityOptions.map((item: string) => ({ label: item, value: item }))
+          }
+        ]}
         actions={
           <TextField
             size="small"

@@ -9,6 +9,8 @@ import { useCities, useCountries, useStates } from "../../hooks/useGeo";
 import { DEFAULT_CITY, DEFAULT_COUNTRY, DEFAULT_STATE } from "../../constants/locationDefaults";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 
+const REQUEST_MARKET_VALUE = "__REQUEST_MARKET__";
+
 export default function ShopRequests() {
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(20);
@@ -130,7 +132,7 @@ export default function ShopRequests() {
                   onClick={() => {
                     setEditDialog({ open: true, row });
                     setEditValues({
-                      marketId: row.marketId?._id || row.marketId || "",
+                      marketId: row.marketId?._id || row.marketId || REQUEST_MARKET_VALUE,
                       marketName: row.marketName || "",
                       country: row.country || DEFAULT_COUNTRY,
                       state: row.state || DEFAULT_STATE,
@@ -202,16 +204,30 @@ export default function ShopRequests() {
             select
             fullWidth
             label="Market"
-            value={editValues.marketId || ""}
-            onChange={(e) => setEditValues((prev: any) => ({ ...prev, marketId: e.target.value }))}
+            value={editValues.marketId || REQUEST_MARKET_VALUE}
+            onChange={(e) =>
+              setEditValues((prev: any) => ({
+                ...prev,
+                marketId: e.target.value,
+                marketName: e.target.value === REQUEST_MARKET_VALUE ? prev.marketName : ""
+              }))
+            }
             sx={{ mt: 1 }}
+            SelectProps={{
+              displayEmpty: true,
+              renderValue: (value) => {
+                if (!value || value === REQUEST_MARKET_VALUE) return "Not listed / create from name";
+                const match = (markets?.items || []).find((m: any) => String(m._id) === String(value));
+                return match?.name || "Not listed / create from name";
+              }
+            }}
           >
-            <MenuItem value="">Not listed / create from name</MenuItem>
+            <MenuItem value={REQUEST_MARKET_VALUE}>Not listed / create from name</MenuItem>
             {(markets?.items || []).map((m: any) => (
               <MenuItem key={m._id} value={m._id}>{m.name}</MenuItem>
             ))}
           </TextField>
-          {!editValues.marketId ? (
+          {(editValues.marketId || REQUEST_MARKET_VALUE) === REQUEST_MARKET_VALUE ? (
             <TextField
               fullWidth
               label="Market Name"
@@ -269,7 +285,17 @@ export default function ShopRequests() {
             onClick={async () => {
               if (!editDialog.row?._id) return;
               try {
-                await updateRequest.mutateAsync({ id: editDialog.row._id, body: editValues });
+                const marketIdRaw = String(editValues.marketId || REQUEST_MARKET_VALUE).trim();
+                const marketId = marketIdRaw === REQUEST_MARKET_VALUE ? undefined : marketIdRaw;
+                const marketName = marketId ? undefined : String(editValues.marketName || "").trim() || undefined;
+                await updateRequest.mutateAsync({
+                  id: editDialog.row._id,
+                  body: {
+                    ...editValues,
+                    marketId,
+                    marketName
+                  }
+                });
                 notify("Request updated", "success");
                 setEditDialog({ open: false, row: null });
               } catch (err: any) {

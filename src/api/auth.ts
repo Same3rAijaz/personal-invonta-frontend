@@ -21,6 +21,10 @@ export async function resetPassword(token: string, password: string) {
 }
 
 export async function firebaseGoogleLogin(firebaseIdToken: string) {
-  const { data } = await api.post("/auth/firebase/google", { firebaseIdToken });
+  const { data } = await api.post(
+    "/auth/firebase/google",
+    { firebaseIdToken },
+    { skipAuth: true, skipGlobalErrorToast: true } as any
+  );
   return data.data;
 }

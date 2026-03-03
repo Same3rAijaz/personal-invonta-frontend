@@ -4,6 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import ProductDetailPage from "../../components/marketplace-detail/ProductDetailPage";
 import type { ProductDetailViewModel } from "../../components/marketplace-detail/types";
 import { getPublicProductDetail, listPublicMarkets } from "../../api/public";
+import { extractEntityId, toProductUrl, toShopUrl } from "../../utils/seo";
 
 function formatTimeAgo(input?: string) {
   if (!input) return "Recently posted";
@@ -110,10 +111,17 @@ function mapApiToViewModel(id: string, data: any): ProductDetailViewModel {
     description: product?.description || "No description provided.",
     seller: {
       id: business?._id,
+      shopSlug: business?.shopSlug,
       name: business?.name || "Seller",
+      adminName: business?.contactName || "",
+      adminEmail: business?.supportEmail || "",
       market: market?.name || "",
       address: business?.address || "",
       phone: business?.contactPhone || "",
+      whatsapp: business?.whatsappNumber || "",
+      websiteUrl: business?.websiteUrl || "",
+      instagramUrl: business?.instagramUrl || "",
+      facebookUrl: business?.facebookUrl || "",
       memberSince: business?.createdAt ? String(new Date(business.createdAt).getFullYear()) : undefined,
       activeAds: undefined,
       adId: product?._id
@@ -131,7 +139,8 @@ function mapApiToViewModel(id: string, data: any): ProductDetailViewModel {
 }
 
 export default function MarketplaceProductDetail() {
-  const { id = "" } = useParams();
+  const params = useParams();
+  const id = React.useMemo(() => extractEntityId(params.seo || params.id || ""), [params.seo, params.id]);
   const navigate = useNavigate();
   const [search, setSearch] = React.useState("");
   const [marketId, setMarketId] = React.useState("");
@@ -164,8 +173,8 @@ export default function MarketplaceProductDetail() {
       onSearchChange={setSearch}
       onSearchSubmit={() => navigate(`/marketplace?search=${encodeURIComponent(search)}${marketId ? `&marketId=${marketId}` : ""}`)}
       onBack={() => navigate("/marketplace")}
-      onOpenSellerProfile={() => model.seller.id ? navigate(`/marketplace/shops/${model.seller.id}`) : undefined}
-      onOpenRelatedProduct={(productId) => navigate(`/marketplace/${productId}`)}
+      onOpenSellerProfile={() => model.seller.id ? navigate(toShopUrl({ _id: model.seller.id, name: model.seller.name, shopSlug: model.seller.shopSlug })) : undefined}
+      onOpenRelatedProduct={(productId) => navigate(toProductUrl({ _id: productId, name: "product" }))}
     />
   );
 }

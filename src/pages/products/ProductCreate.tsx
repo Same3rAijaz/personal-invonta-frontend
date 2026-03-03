@@ -100,7 +100,7 @@ export default function ProductCreate() {
                   : ""
               }
               InputProps={{ readOnly: true }}
-              placeholder="Choose from category levels"
+              placeholder="Choose category and sub category"
             />
           </Grid>
 
@@ -109,7 +109,7 @@ export default function ProductCreate() {
               <TextField
                 select
                 fullWidth
-                label={level === 0 ? "Category Level 1" : `Category Level ${level + 1}`}
+                label={level === 0 ? "Category" : `Sub Category ${level}`}
                 value={selectedPathIds[level] || ""}
                 onChange={(event) => {
                   const selectedId = String(event.target.value || "");

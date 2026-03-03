@@ -1,4 +1,4 @@
-import { Box, Button, Checkbox, FormControl, FormControlLabel, Grid, InputLabel, MenuItem, Paper, Select, TextField, Typography } from "@mui/material";
+import { Box, Button, Checkbox, FormControlLabel, Grid, MenuItem, Paper, TextField, Typography } from "@mui/material";
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useNavigate, useParams } from "react-router-dom";
@@ -61,20 +61,21 @@ export default function CategoryEdit() {
               name="parentId"
               control={control}
               render={({ field }) => (
-                <FormControl fullWidth>
-                  <InputLabel id="edit-category-parent-label">Parent Category</InputLabel>
-                  <Select
-                    labelId="edit-category-parent-label"
-                    label="Parent Category"
-                    value={field.value || ROOT_VALUE}
-                    onChange={(event) => field.onChange(event.target.value)}
-                    displayEmpty
-                    renderValue={(value) => {
+                <TextField
+                  select
+                  fullWidth
+                  label="Parent Category"
+                  value={field.value || ROOT_VALUE}
+                  onChange={(event) => field.onChange(event.target.value)}
+                  SelectProps={{
+                    displayEmpty: true,
+                    renderValue: (value) => {
                       if (!value || value === ROOT_VALUE) return "Root Category";
                       const match = categories.find((item: any) => String(item._id) === String(value));
                       return match ? (match.pathNames || [match.name]).join(" > ") : "Root Category";
-                    }}
-                  >
+                    }
+                  }}
+                >
                     <MenuItem value={ROOT_VALUE}>Root Category</MenuItem>
                     {categories
                       .filter((item: any) => item._id !== id)
@@ -83,8 +84,7 @@ export default function CategoryEdit() {
                           {(item.pathNames || [item.name]).join(" > ")}
                         </MenuItem>
                       ))}
-                  </Select>
-                </FormControl>
+                </TextField>
               )}
             />
           </Grid>

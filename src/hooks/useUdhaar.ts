@@ -92,10 +92,11 @@ export function useStatement(partyId: string, params: any) {
   });
 }
 
-export function useReceivablesReport(params: any) {
+export function useReceivablesReport(params: any, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ["udhaar-receivables", params],
-    queryFn: () => receivablesReport(params)
+    queryFn: () => receivablesReport(params),
+    enabled: options?.enabled ?? true
   });
 }
 

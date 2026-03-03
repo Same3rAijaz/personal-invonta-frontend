@@ -26,9 +26,9 @@ const formatValue = (value: number | null | undefined, compact = false) => {
     : integerFormat.format(value);
 };
 
-function ShopDashboard() {
+function ShopDashboard({ udhaarEnabled }: { udhaarEnabled: boolean }) {
   const reports = useReports();
-  const receivables = useReceivablesReport({});
+  const receivables = useReceivablesReport({}, { enabled: udhaarEnabled });
 
   const stockRows = (reports.stockOnHand.data || []).slice(0, 8).map((row: any, idx: number) => ({
     name: row.productId?.slice(-6) || `P${idx + 1}`,
@@ -99,7 +99,7 @@ function ShopDashboard() {
           <Paper sx={{ p: 2, borderRadius: 3, boxShadow: "0 10px 24px rgba(15,23,42,0.08)" }}>
             <Typography variant="subtitle2">Receivables Due</Typography>
             <Typography variant="h5" sx={{ fontWeight: 700 }}>
-              {numberFormat.format(receivables.data?.dueTotal || 0)}
+              {udhaarEnabled ? numberFormat.format(receivables.data?.dueTotal || 0) : "-"}
             </Typography>
           </Paper>
         </Grid>
@@ -279,9 +279,11 @@ function SuperAdminDashboard() {
 }
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, business } = useAuth();
+  const enabledModules = Array.isArray(business?.enabledModules) ? business.enabledModules.map((item: string) => String(item).toLowerCase()) : [];
+  const udhaarEnabled = enabledModules.includes("udhaar");
   if (user?.role === "SUPER_ADMIN") {
     return <SuperAdminDashboard />;
   }
-  return <ShopDashboard />;
+  return <ShopDashboard udhaarEnabled={udhaarEnabled} />;
 }

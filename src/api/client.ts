@@ -85,6 +85,10 @@ api.interceptors.response.use(
     const status = error?.response?.status;
     const originalRequest: RetryableRequest | undefined = error?.config;
     if (status === 401) {
+      // Public/marketplace requests can opt out of business-auth redirects.
+      if (originalRequest?.skipAuth) {
+        return Promise.reject(error);
+      }
       if (originalRequest && !originalRequest._retry && !String(originalRequest.url || "").includes("/auth/refresh")) {
         originalRequest._retry = true;
         try {

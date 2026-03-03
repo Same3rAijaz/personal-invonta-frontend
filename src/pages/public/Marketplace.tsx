@@ -1,5 +1,6 @@
 import React from "react";
 import {
+  Avatar,
   Box,
   Button,
   Card,
@@ -19,17 +20,23 @@ import {
   Typography
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
-import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import ViewListIcon from "@mui/icons-material/ViewList";
 import GridViewIcon from "@mui/icons-material/GridView";
 import StorefrontIcon from "@mui/icons-material/Storefront";
 import PlaceOutlinedIcon from "@mui/icons-material/PlaceOutlined";
+import PhoneIcon from "@mui/icons-material/Phone";
+import LanguageIcon from "@mui/icons-material/Language";
+import InstagramIcon from "@mui/icons-material/Instagram";
+import FacebookIcon from "@mui/icons-material/Facebook";
+import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
+import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getPublicProductDetail, getPublicShopDetail, listPublicCategories, listPublicMarkets, listPublicProducts, listPublicShops } from "../../api/public";
+import { PublicCategoryNode, getPublicProductDetail, getPublicShopDetail, listPublicCategories, listPublicMarkets, listPublicProducts, listPublicShops } from "../../api/public";
 import { useCities, useCountries, useStates } from "../../hooks/useGeo";
 import MarketplaceHeader from "../../components/marketplace-detail/MarketplaceHeader";
+import { toMarketUrl, toProductUrl, toShopUrl } from "../../utils/seo";
 
 const LIMIT = 12;
 
@@ -84,7 +91,7 @@ export default function Marketplace() {
     queryFn: () => listPublicMarkets()
   });
 
-  const { data: categories = [] } = useQuery({
+  const { data: categories = [] } = useQuery<PublicCategoryNode[]>({
     queryKey: ["public-categories", marketId],
     queryFn: () => listPublicCategories(marketId || undefined),
     enabled: resultType !== "markets"
@@ -164,6 +171,26 @@ export default function Marketplace() {
   const total = resultType === "markets" ? marketResults.length : data?.total || 0;
   const pages = Math.max(1, Math.ceil(total / LIMIT));
   const items = resultType === "markets" ? marketPagedItems : data?.items || [];
+  const currentSortValue = resultType === "shops" ? shopSort : resultType === "markets" ? marketSort : sort;
+
+  const getSortLabel = (value: string) => {
+    if (value === "newest") return resultType === "markets" ? "Newest markets" : "Most relevant";
+    if (value === "price_asc") return "Price low to high";
+    if (value === "price_desc") return "Price high to low";
+    if (value === "name_desc") return "Name Z-A";
+    return "Name A-Z";
+  };
+
+  const handleSortChange = (value: string) => {
+    if (resultType === "shops") {
+      setShopSort(value as "newest" | "name_asc");
+    } else if (resultType === "markets") {
+      setMarketSort(value as "newest" | "name_asc" | "name_desc");
+    } else {
+      setSort(value as "newest" | "price_asc" | "price_desc" | "name_asc");
+    }
+    setPage(1);
+  };
 
   const resetFilters = () => {
     setSearch("");
@@ -210,6 +237,13 @@ export default function Marketplace() {
     [queryClient]
   );
 
+  const toHref = (value?: string) => {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+    if (/^https?:\/\//i.test(raw)) return raw;
+    return `https://${raw}`;
+  };
+
   return (
     <Box sx={{ minHeight: "100vh", backgroundColor: palette.canvas }}>
       <MarketplaceHeader
@@ -255,16 +289,21 @@ export default function Marketplace() {
                   >
                     All categories
                   </Button>
-                  {categories.map((item: string) => (
+                  {categories.map((item) => (
                     <Button
-                      key={item}
+                      key={item._id}
                       onClick={() => {
-                        setCategory(item);
+                        setCategory(item.path || (item.pathNames || [item.name]).join(" > "));
                         setPage(1);
                       }}
-                      sx={{ justifyContent: "flex-start", color: category === item ? palette.ink : palette.muted, fontWeight: category === item ? 700 : 500 }}
+                      sx={{
+                        justifyContent: "flex-start",
+                        pl: 1.4 + Number(item.level || 0) * 1.8,
+                        color: category === (item.path || (item.pathNames || [item.name]).join(" > ")) ? palette.ink : palette.muted,
+                        fontWeight: category === (item.path || (item.pathNames || [item.name]).join(" > ")) ? 700 : 500
+                      }}
                     >
-                      {item}
+                      {item.name}
                     </Button>
                   ))}
                 </Stack>
@@ -372,18 +411,9 @@ export default function Marketplace() {
               <FormControl fullWidth size="small" sx={{ mb: 1.5 }}>
                 <InputLabel>Sort by</InputLabel>
                 <Select
-                  value={resultType === "shops" ? shopSort : resultType === "markets" ? marketSort : sort}
+                  value={currentSortValue}
                   label="Sort by"
-                  onChange={(event) => {
-                    if (resultType === "shops") {
-                      setShopSort(event.target.value as "newest" | "name_asc");
-                    } else if (resultType === "markets") {
-                      setMarketSort(event.target.value as "newest" | "name_asc" | "name_desc");
-                    } else {
-                      setSort(event.target.value as "newest" | "price_asc" | "price_desc" | "name_asc");
-                    }
-                    setPage(1);
-                  }}
+                  onChange={(event) => handleSortChange(event.target.value)}
                 >
                   <MenuItem value="newest">{resultType === "markets" ? "Newest markets" : "Most relevant"}</MenuItem>
                   {resultType === "products" ? <MenuItem value="price_asc">Price: Low to High</MenuItem> : null}
@@ -451,18 +481,26 @@ export default function Marketplace() {
               </Stack>
               <Stack direction="row" spacing={1} alignItems="center">
                 <Typography sx={{ color: palette.ink, fontWeight: 700 }}>Sort by:</Typography>
-                <Typography sx={{ color: palette.muted }}>
-                  {(resultType === "shops" ? shopSort : resultType === "markets" ? marketSort : sort) === "newest"
-                    ? resultType === "markets" ? "Newest markets" : "Most relevant"
-                    : (resultType === "shops" ? shopSort : resultType === "markets" ? marketSort : sort) === "price_asc"
-                      ? "Price low to high"
-                      : (resultType === "shops" ? shopSort : resultType === "markets" ? marketSort : sort) === "price_desc"
-                        ? "Price high to low"
-                        : (resultType === "shops" ? shopSort : resultType === "markets" ? marketSort : sort) === "name_desc"
-                          ? "Name Z-A"
-                          : "Name A-Z"}
-                </Typography>
-                <KeyboardArrowDownIcon />
+                <FormControl size="small" sx={{ minWidth: 180 }}>
+                  <Select
+                    value={currentSortValue}
+                    onChange={(event) => handleSortChange(event.target.value)}
+                    variant="standard"
+                    disableUnderline
+                    renderValue={(value) => getSortLabel(String(value))}
+                    sx={{
+                      color: palette.muted,
+                      "& .MuiSelect-select": { py: 0.25, pr: 3.5 },
+                      "& .MuiSelect-icon": { color: palette.ink }
+                    }}
+                  >
+                    <MenuItem value="newest">{resultType === "markets" ? "Newest markets" : "Most relevant"}</MenuItem>
+                    {resultType === "products" ? <MenuItem value="price_asc">Price: Low to High</MenuItem> : null}
+                    {resultType === "products" ? <MenuItem value="price_desc">Price: High to Low</MenuItem> : null}
+                    <MenuItem value="name_asc">Name A-Z</MenuItem>
+                    {resultType === "markets" ? <MenuItem value="name_desc">Name Z-A</MenuItem> : null}
+                  </Select>
+                </FormControl>
               </Stack>
             </Stack>
             <Divider sx={{ mb: 2 }} />
@@ -481,31 +519,145 @@ export default function Marketplace() {
                 {items.map((shop: any) => {
                   const market = shop.marketId || {};
                   return (
-                    <Card key={shop._id} sx={{ borderRadius: 1, border: `1px solid ${palette.line}`, cursor: "pointer" }} onClick={() => navigate(`/marketplace/shops/${shop._id}`)}>
+                    <Card
+                      key={shop._id}
+                      sx={{ borderRadius: 1.5, border: `1px solid ${palette.line}`, cursor: "pointer", overflow: "hidden" }}
+                      onClick={() => navigate(toShopUrl(shop))}
+                    >
                       <Box onMouseEnter={() => prefetchShopDetail(shop._id)} onFocus={() => prefetchShopDetail(shop._id)} onTouchStart={() => prefetchShopDetail(shop._id)}>
-                      <Box sx={{ p: 2.2 }}>
-                        <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
-                          <Box>
-                            <Typography sx={{ fontSize: 31, lineHeight: 1.1, fontWeight: 800, color: palette.ink }}>
-                              {shop.name}
-                            </Typography>
-                            <Typography sx={{ mt: 0.9, color: palette.muted, fontSize: 17 }}>
-                              {market.name || "Market"} - {shop.city || "City"}{shop.state ? `, ${shop.state}` : ""}
-                            </Typography>
-                            <Typography sx={{ mt: 1.2, color: palette.muted, fontSize: 16 }}>
-                              {shop.address || "Shop address not available"}
-                            </Typography>
-                            <Typography sx={{ mt: 1.1, color: palette.ink, fontWeight: 800, fontSize: 17 }}>
-                              {shop.contactPhone || "Contact not available"}
-                            </Typography>
-                          </Box>
-                          <Chip
-                            icon={<StorefrontIcon />}
-                            label={`${Number(shop.publicProductsCount || 0).toLocaleString()} public products`}
-                            sx={{ bgcolor: alpha(palette.accent, 0.18), color: palette.ink, fontWeight: 700 }}
+                        <Box
+                          sx={{
+                            position: "relative",
+                            height: 140,
+                            background: shop.bannerUrl
+                              ? `url(${shop.bannerUrl}) center/cover no-repeat`
+                              : `linear-gradient(135deg, ${alpha(palette.accent, 0.45)} 0%, ${alpha("#0b1220", 0.92)} 100%)`
+                          }}
+                        >
+                          <Box
+                            sx={{
+                              position: "absolute",
+                              inset: 0,
+                              background: "linear-gradient(180deg, rgba(0,0,0,0.06) 0%, rgba(0,0,0,0.62) 100%)"
+                            }}
                           />
-                        </Stack>
-                      </Box>
+                          <Stack
+                            direction="row"
+                            alignItems="center"
+                            spacing={1.2}
+                            sx={{ position: "absolute", left: 14, right: 14, bottom: 12 }}
+                          >
+                            <Avatar src={shop.logoUrl || undefined} sx={{ width: 48, height: 48, border: "2px solid #fff" }} />
+                            <Box sx={{ minWidth: 0 }}>
+                              <Typography
+                                sx={{
+                                  color: "#fff",
+                                  fontSize: 24,
+                                  fontWeight: 800,
+                                  lineHeight: 1.05,
+                                  textShadow: "0 2px 8px rgba(0,0,0,0.45)",
+                                  whiteSpace: "nowrap",
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis"
+                                }}
+                              >
+                                {shop.name}
+                              </Typography>
+                              <Typography
+                                sx={{
+                                  color: "rgba(255,255,255,0.92)",
+                                  fontSize: 13.5,
+                                  textShadow: "0 1px 5px rgba(0,0,0,0.4)",
+                                  whiteSpace: "nowrap",
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis"
+                                }}
+                              >
+                                {shop.tagline || "Digital storefront"}
+                              </Typography>
+                            </Box>
+                          </Stack>
+                        </Box>
+
+                        <Box sx={{ p: 1.6 }}>
+                          <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1.2}>
+                            <Stack direction="row" spacing={0.8} flexWrap="wrap">
+                              <Chip
+                                icon={<StorefrontIcon />}
+                                label={`${Number(shop.publicProductsCount || 0).toLocaleString()} public products`}
+                                sx={{ bgcolor: alpha(palette.accent, 0.18), color: palette.ink, fontWeight: 700 }}
+                              />
+                              <Chip
+                                icon={<PlaceOutlinedIcon sx={{ fontSize: 16 }} />}
+                                label={market.name || "No market"}
+                                variant="outlined"
+                                sx={{ color: palette.ink, borderColor: palette.line, fontWeight: 600 }}
+                              />
+                            </Stack>
+                            <Stack direction="row" spacing={0.6} alignItems="center">
+                              {shop.websiteUrl ? (
+                                <IconButton component="a" href={toHref(shop.websiteUrl)} target="_blank" rel="noreferrer" size="small" onClick={(event) => event.stopPropagation()} sx={{ bgcolor: alpha("#2563eb", 0.14), color: "#2563eb", "&:hover": { bgcolor: alpha("#2563eb", 0.22) } }}>
+                                  <LanguageIcon fontSize="small" />
+                                </IconButton>
+                              ) : null}
+                              {shop.instagramUrl ? (
+                                <IconButton component="a" href={toHref(shop.instagramUrl)} target="_blank" rel="noreferrer" size="small" onClick={(event) => event.stopPropagation()} sx={{ bgcolor: alpha("#e1306c", 0.14), color: "#e1306c", "&:hover": { bgcolor: alpha("#e1306c", 0.22) } }}>
+                                  <InstagramIcon fontSize="small" />
+                                </IconButton>
+                              ) : null}
+                              {shop.facebookUrl ? (
+                                <IconButton component="a" href={toHref(shop.facebookUrl)} target="_blank" rel="noreferrer" size="small" onClick={(event) => event.stopPropagation()} sx={{ bgcolor: alpha("#1877f2", 0.14), color: "#1877f2", "&:hover": { bgcolor: alpha("#1877f2", 0.22) } }}>
+                                  <FacebookIcon fontSize="small" />
+                                </IconButton>
+                              ) : null}
+                            </Stack>
+                          </Stack>
+
+                          <Stack direction={{ xs: "column", md: "row" }} spacing={{ xs: 0.5, md: 1.6 }} sx={{ mt: 1.2 }}>
+                            <Stack direction="row" spacing={0.7} alignItems="center" sx={{ minWidth: 0 }}>
+                              <PlaceOutlinedIcon sx={{ color: palette.accent, fontSize: 18 }} />
+                              <Typography sx={{ color: palette.muted, fontSize: 14.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                {[shop.city, shop.state, shop.country].filter(Boolean).join(", ") || "Location unavailable"}
+                              </Typography>
+                            </Stack>
+                            <Stack direction="row" spacing={0.7} alignItems="center" sx={{ minWidth: 0 }}>
+                              <PhoneIcon sx={{ color: palette.accent, fontSize: 18 }} />
+                              <Typography sx={{ color: palette.ink, fontSize: 14.5, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                {shop.contactPhone || "Contact unavailable"}
+                              </Typography>
+                            </Stack>
+                            {shop.contactName ? (
+                              <Stack direction="row" spacing={0.7} alignItems="center" sx={{ minWidth: 0 }}>
+                                <PersonOutlineIcon sx={{ color: palette.accent, fontSize: 18 }} />
+                                <Typography sx={{ color: palette.muted, fontSize: 14.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                  {shop.contactName}
+                                </Typography>
+                              </Stack>
+                            ) : null}
+                          </Stack>
+
+                          {shop.address ? (
+                            <Typography
+                              sx={{
+                                mt: 0.9,
+                                color: palette.muted,
+                                fontSize: 14.5,
+                                display: "-webkit-box",
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: "vertical",
+                                overflow: "hidden"
+                              }}
+                            >
+                              {shop.address}
+                            </Typography>
+                          ) : null}
+
+                          <Stack direction="row" justifyContent="flex-end" alignItems="center" sx={{ mt: 1 }}>
+                            <Typography sx={{ color: palette.ink, fontWeight: 700, fontSize: 14.5, display: "inline-flex", alignItems: "center", gap: 0.3 }}>
+                              Open shop <ArrowForwardRoundedIcon sx={{ fontSize: 17 }} />
+                            </Typography>
+                          </Stack>
+                        </Box>
                       </Box>
                     </Card>
                   );
@@ -529,6 +681,12 @@ export default function Marketplace() {
                           </Stack>
                         </Box>
                         <Stack direction="row" spacing={1} flexWrap="wrap">
+                          <Button
+                            variant="text"
+                            onClick={() => navigate(toMarketUrl(market))}
+                          >
+                            Open Market
+                          </Button>
                           <Button
                             variant="contained"
                             onClick={() => {
@@ -564,7 +722,7 @@ export default function Marketplace() {
                     <Card
                       key={product._id}
                       sx={{ borderRadius: 1, border: `1px solid ${palette.line}`, cursor: "pointer" }}
-                      onClick={() => navigate(`/marketplace/${product._id}`)}
+                      onClick={() => navigate(toProductUrl(product))}
                       onMouseEnter={() => prefetchProductDetail(product._id)}
                       onFocus={() => prefetchProductDetail(product._id)}
                       onTouchStart={() => prefetchProductDetail(product._id)}
@@ -618,7 +776,7 @@ export default function Marketplace() {
                     <Grid key={product._id} item xs={12} sm={6}>
                       <Card
                         sx={{ borderRadius: 1, border: `1px solid ${palette.line}`, height: "100%", cursor: "pointer" }}
-                        onClick={() => navigate(`/marketplace/${product._id}`)}
+                        onClick={() => navigate(toProductUrl(product))}
                         onMouseEnter={() => prefetchProductDetail(product._id)}
                         onFocus={() => prefetchProductDetail(product._id)}
                         onTouchStart={() => prefetchProductDetail(product._id)}

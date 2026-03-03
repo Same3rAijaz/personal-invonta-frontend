@@ -50,6 +50,7 @@ import Tutorial from "./pages/public/Tutorial";
 import Marketplace from "./pages/public/Marketplace";
 import MarketplaceProductDetail from "./pages/public/MarketplaceProductDetail";
 import MarketplaceShopDetail from "./pages/public/MarketplaceShopDetail";
+import MarketplaceMarketDetail from "./pages/public/MarketplaceMarketDetail";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Notifications from "./pages/Notifications";
@@ -68,8 +69,11 @@ export default function App() {
       <Route path="/terms" element={<Terms />} />
       <Route path="/tutorial" element={<Tutorial />} />
       <Route path="/marketplace" element={<Marketplace />} />
-      <Route path="/marketplace/:id" element={<MarketplaceProductDetail />} />
-      <Route path="/marketplace/shops/:id" element={<MarketplaceShopDetail />} />
+      <Route path="/marketplace/products/:seo" element={<MarketplaceProductDetail />} />
+      <Route path="/marketplace/markets/:seo" element={<MarketplaceMarketDetail />} />
+      <Route path="/:shopSlug" element={<MarketplaceShopDetail />} />
+      <Route path="/marketplace/:shopSlug" element={<MarketplaceShopDetail />} />
+      <Route path="/marketplace/shops/:seo" element={<MarketplaceShopDetail />} />
       <Route element={<ProtectedRoute />}
       >
         <Route element={<AppLayout />}>

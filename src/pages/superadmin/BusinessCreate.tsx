@@ -7,6 +7,7 @@ import { api } from "../../api/client";
 import React from "react";
 import { useCities, useCountries, useStates } from "../../hooks/useGeo";
 import { DEFAULT_CITY, DEFAULT_COUNTRY, DEFAULT_STATE } from "../../constants/locationDefaults";
+import { PublicCategoryNode } from "../../api/public";
 
 export default function BusinessCreate() {
   const { notify } = useToast();
@@ -16,15 +17,21 @@ export default function BusinessCreate() {
     queryKey: ["markets"],
     queryFn: async () => (await api.get("/superadmin/markets", { params: { page: 1, limit: 1000 } })).data.data
   });
+  const { data: categoriesData } = useQuery({
+    queryKey: ["superadmin-categories-for-business-create"],
+    queryFn: async () => (await api.get("/superadmin/categories", { params: { page: 1, limit: 1000 } })).data.data
+  });
   const { register, handleSubmit, watch, setValue } = useForm({
     defaultValues: {
       isActive: true,
       country: DEFAULT_COUNTRY,
       state: DEFAULT_STATE,
-      city: DEFAULT_CITY
+      city: DEFAULT_CITY,
+      businessCategoryId: ""
     }
   });
   const marketId = watch("marketId");
+  const businessCategoryId = watch("businessCategoryId");
   const country = watch("country");
   const state = watch("state");
   const city = watch("city");
@@ -42,6 +49,44 @@ export default function BusinessCreate() {
       setValue("city", "");
     }
   }, [city, cityOptions, setValue]);
+  const categories = (categoriesData?.items || []) as PublicCategoryNode[];
+  const categoriesById = React.useMemo(() => {
+    const map = new Map<string, PublicCategoryNode>();
+    categories.forEach((item) => map.set(String(item._id), item));
+    return map;
+  }, [categories]);
+  const selectedCategory = React.useMemo(() => {
+    if (!businessCategoryId) return null;
+    return categoriesById.get(String(businessCategoryId)) || null;
+  }, [businessCategoryId, categoriesById]);
+  const selectedPathIds = React.useMemo(() => {
+    if (!selectedCategory) return [] as string[];
+    return [...(selectedCategory.pathIds || []), String(selectedCategory._id)];
+  }, [selectedCategory]);
+  const childrenByParent = React.useMemo(() => {
+    const map = new Map<string, PublicCategoryNode[]>();
+    categories.forEach((item) => {
+      const key = item.parentId ? String(item.parentId) : "root";
+      const list = map.get(key) || [];
+      list.push(item);
+      map.set(key, list);
+    });
+    map.forEach((list, key) => map.set(key, [...list].sort((a, b) => String(a.name).localeCompare(String(b.name)))));
+    return map;
+  }, [categories]);
+  const categoryLevels = React.useMemo(() => {
+    const levels: PublicCategoryNode[][] = [];
+    let parentKey = "root";
+    for (let level = 0; level < 10; level += 1) {
+      const options = childrenByParent.get(parentKey) || [];
+      if (options.length === 0) break;
+      levels.push(options);
+      const selectedId = selectedPathIds[level];
+      if (!selectedId) break;
+      parentKey = selectedId;
+    }
+    return levels;
+  }, [childrenByParent, selectedPathIds]);
 
   const mutation = useMutation({
     mutationFn: async (payload: any) => (await api.post("/superadmin/businesses", payload)).data.data,
@@ -73,6 +118,7 @@ export default function BusinessCreate() {
       <Typography variant="h5" gutterBottom>Create Business</Typography>
       <Paper sx={{ p: 3, borderRadius: 3, boxShadow: "0 18px 40px rgba(15,23,42,0.08)" }}>
         <Grid container spacing={2} component="form" onSubmit={handleSubmit(onSubmit)}>
+          <input type="hidden" {...register("businessCategoryId")} />
           <Grid item xs={12} md={6}>
             <TextField fullWidth label="Business Name" {...register("name")} />
           </Grid>
@@ -84,6 +130,39 @@ export default function BusinessCreate() {
               ))}
             </TextField>
           </Grid>
+          <Grid item xs={12}>
+            <TextField
+              fullWidth
+              label="Selected Business Category"
+              value={selectedCategory?.path || (selectedCategory?.pathNames || []).join(" > ") || ""}
+              placeholder="Choose business category"
+              InputProps={{ readOnly: true }}
+            />
+          </Grid>
+          {categoryLevels.map((options, level) => (
+            <Grid item xs={12} md={4} key={`business-create-category-level-${level}`}>
+              <TextField
+                select
+                fullWidth
+                label={level === 0 ? "Business Category" : `Sub Category ${level}`}
+                value={selectedPathIds[level] || ""}
+                onChange={(event) => {
+                  const selectedId = String(event.target.value || "");
+                  const nextPath = selectedPathIds.slice(0, level);
+                  if (selectedId) nextPath[level] = selectedId;
+                  const finalId = nextPath[nextPath.length - 1] || "";
+                  setValue("businessCategoryId", finalId, { shouldDirty: true, shouldValidate: true });
+                }}
+              >
+                <MenuItem value="">None</MenuItem>
+                {options.map((item) => (
+                  <MenuItem key={item._id} value={item._id}>
+                    {item.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+          ))}
           {!marketId ? (
             <Grid item xs={12} md={6}>
               <TextField fullWidth label="Market Name (create if missing)" {...register("marketName")} />
