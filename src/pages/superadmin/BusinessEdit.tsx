@@ -9,7 +9,7 @@ import { useCities, useCountries, useStates } from "../../hooks/useGeo";
 import { DEFAULT_CITY, DEFAULT_COUNTRY, DEFAULT_STATE } from "../../constants/locationDefaults";
 import { PublicCategoryNode } from "../../api/public";
 
-const AVAILABLE_MODULES = ["products", "inventory", "warehouses", "customers", "vendors", "purchasing", "sales", "hr", "reports", "udhaar"];
+const AVAILABLE_MODULES = ["products", "inventory", "warehouses", "customers", "vendors", "purchasing", "sales", "reports", "udhaar"];
 const labelize = (value: string) => (value === "hr" ? "HR" : value.charAt(0).toUpperCase() + value.slice(1));
 
 export default function BusinessEdit() {

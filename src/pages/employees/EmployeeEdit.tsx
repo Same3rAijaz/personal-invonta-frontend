@@ -68,7 +68,7 @@ export default function EmployeeEdit() {
 
   const availableModules = business?.enabledModules?.length
     ? business.enabledModules
-    : ["products", "inventory", "warehouses", "customers", "vendors", "purchasing", "sales", "hr", "reports"];
+    : ["products", "inventory", "warehouses", "customers", "vendors", "purchasing", "sales", "reports"];
 
   return (
     <Box>

@@ -19,7 +19,7 @@ export default function EmployeeCreate() {
   const loginEmail = watch("loginEmail");
   const availableModules = business?.enabledModules?.length
     ? business.enabledModules
-    : ["products", "inventory", "warehouses", "customers", "vendors", "purchasing", "sales", "hr", "reports"];
+    : ["products", "inventory", "warehouses", "customers", "vendors", "purchasing", "sales", "reports"];
 
   const onSubmit = async (values: any) => {
     try {
