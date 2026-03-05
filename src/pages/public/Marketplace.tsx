@@ -265,18 +265,18 @@ export default function Marketplace() {
         <Typography variant="body2" sx={{ color: palette.muted, mb: 1 }}>
           Home
         </Typography>
-        <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 3 }}>
-          <Typography variant="h4" sx={{ color: palette.ink, fontWeight: 800 }}>
+        <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 2.5 }}>
+          <Typography variant="h5" sx={{ color: palette.ink, fontWeight: 800, fontSize: { xs: 18, md: 22 } }}>
             {resultType === "shops" ? "Shops in Marketplace" : resultType === "markets" ? "Markets Directory" : "Products in Marketplace"}
           </Typography>
-          <Chip label={`${total.toLocaleString()} Results`} sx={{ bgcolor: alpha(palette.accent, 0.18), color: palette.ink, fontWeight: 700 }} />
+          <Chip label={`${total.toLocaleString()} Results`} size="small" sx={{ bgcolor: alpha(palette.accent, 0.18), color: palette.ink, fontWeight: 700, fontSize: 12 }} />
         </Stack>
 
-        <Grid container spacing={2.5} alignItems="flex-start">
-          <Grid item xs={12} md={3.3}>
+        <Grid container spacing={2} alignItems="flex-start">
+          <Grid item xs={12} md={2.8}>
             {resultType !== "markets" ? (
-              <Paper sx={{ borderRadius: 1, p: 2, mb: 1.8 }}>
-                <Typography variant="h6" sx={{ color: palette.ink, fontWeight: 800, mb: 2 }}>
+              <Paper sx={{ borderRadius: 1, p: 1.5, mb: 1.5 }}>
+                <Typography variant="subtitle1" sx={{ color: palette.ink, fontWeight: 800, mb: 1.5, fontSize: 14 }}>
                   Categories
                 </Typography>
                 <Stack spacing={1}>
@@ -310,8 +310,8 @@ export default function Marketplace() {
               </Paper>
             ) : null}
 
-            <Paper sx={{ borderRadius: 1, p: 2, mb: 1.8 }}>
-              <Typography variant="h6" sx={{ color: palette.ink, fontWeight: 800, mb: 1.5 }}>
+            <Paper sx={{ borderRadius: 1, p: 1.5, mb: 1.5 }}>
+              <Typography variant="subtitle1" sx={{ color: palette.ink, fontWeight: 800, mb: 1, fontSize: 14 }}>
                 Location
               </Typography>
               <Stack spacing={1}>
@@ -375,8 +375,8 @@ export default function Marketplace() {
             </Paper>
 
             {resultType === "products" ? (
-              <Paper sx={{ borderRadius: 1, p: 2, mb: 1.8 }}>
-                <Typography variant="h6" sx={{ color: palette.ink, fontWeight: 800, mb: 1.5 }}>
+              <Paper sx={{ borderRadius: 1, p: 1.5, mb: 1.5 }}>
+                <Typography variant="subtitle1" sx={{ color: palette.ink, fontWeight: 800, mb: 1, fontSize: 14 }}>
                   Price
                 </Typography>
                 <Stack direction="row" spacing={1}>
@@ -404,8 +404,8 @@ export default function Marketplace() {
               </Paper>
             ) : null}
 
-            <Paper sx={{ borderRadius: 1, p: 2 }}>
-              <Typography variant="h6" sx={{ color: palette.ink, fontWeight: 800, mb: 1.5 }}>
+            <Paper sx={{ borderRadius: 1, p: 1.5 }}>
+              <Typography variant="subtitle1" sx={{ color: palette.ink, fontWeight: 800, mb: 1, fontSize: 14 }}>
                 Filters
               </Typography>
               <FormControl fullWidth size="small" sx={{ mb: 1.5 }}>
@@ -428,7 +428,7 @@ export default function Marketplace() {
             </Paper>
           </Grid>
 
-          <Grid item xs={12} md={8.7}>
+          <Grid item xs={12} md={9.2}>
             <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5, px: 0.5 }}>
               <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
                 <Button
@@ -437,7 +437,8 @@ export default function Marketplace() {
                     setResultType("products");
                     setPage(1);
                   }}
-                  sx={{ minWidth: 110 }}
+                  size="small"
+                  sx={{ minWidth: 90, fontSize: 13 }}
                 >
                   Products
                 </Button>
@@ -447,7 +448,8 @@ export default function Marketplace() {
                     setResultType("shops");
                     setPage(1);
                   }}
-                  sx={{ minWidth: 110 }}
+                  size="small"
+                  sx={{ minWidth: 90, fontSize: 13 }}
                 >
                   Shops
                 </Button>
@@ -457,13 +459,14 @@ export default function Marketplace() {
                     setResultType("markets");
                     setPage(1);
                   }}
-                  sx={{ minWidth: 110 }}
+                  size="small"
+                  sx={{ minWidth: 90, fontSize: 13 }}
                 >
                   Markets
                 </Button>
                 {resultType === "products" ? (
                   <>
-                    <Typography sx={{ color: palette.ink, fontWeight: 700, ml: 1 }}>View</Typography>
+                    <Typography sx={{ color: palette.ink, fontWeight: 700, ml: 1, fontSize: 13 }}>View</Typography>
                     <IconButton
                       onClick={() => setViewMode("list")}
                       sx={{ bgcolor: viewMode === "list" ? alpha(palette.accent, 0.18) : "transparent" }}
@@ -480,7 +483,7 @@ export default function Marketplace() {
                 ) : null}
               </Stack>
               <Stack direction="row" spacing={1} alignItems="center">
-                <Typography sx={{ color: palette.ink, fontWeight: 700 }}>Sort by:</Typography>
+                <Typography sx={{ color: palette.ink, fontWeight: 700, fontSize: 13 }}>Sort by:</Typography>
                 <FormControl size="small" sx={{ minWidth: 180 }}>
                   <Select
                     value={currentSortValue}
@@ -521,14 +524,14 @@ export default function Marketplace() {
                   return (
                     <Card
                       key={shop._id}
-                      sx={{ borderRadius: 1.5, border: `1px solid ${palette.line}`, cursor: "pointer", overflow: "hidden" }}
+                      sx={{ borderRadius: 1.5, border: `1px solid ${palette.line}`, cursor: "pointer", overflow: "hidden", transition: "box-shadow 0.2s ease, transform 0.2s ease", "&:hover": { boxShadow: "0 8px 24px rgba(15,23,42,0.12)", transform: "translateY(-2px)" } }}
                       onClick={() => navigate(toShopUrl(shop))}
                     >
                       <Box onMouseEnter={() => prefetchShopDetail(shop._id)} onFocus={() => prefetchShopDetail(shop._id)} onTouchStart={() => prefetchShopDetail(shop._id)}>
                         <Box
                           sx={{
                             position: "relative",
-                            height: 140,
+                            height: 110,
                             background: shop.bannerUrl
                               ? `url(${shop.bannerUrl}) center/cover no-repeat`
                               : `linear-gradient(135deg, ${alpha(palette.accent, 0.45)} 0%, ${alpha("#0b1220", 0.92)} 100%)`
@@ -547,12 +550,12 @@ export default function Marketplace() {
                             spacing={1.2}
                             sx={{ position: "absolute", left: 14, right: 14, bottom: 12 }}
                           >
-                            <Avatar src={shop.logoUrl || undefined} sx={{ width: 48, height: 48, border: "2px solid #fff" }} />
+                            <Avatar src={shop.logoUrl || undefined} sx={{ width: 38, height: 38, border: "2px solid #fff" }} />
                             <Box sx={{ minWidth: 0 }}>
                               <Typography
                                 sx={{
                                   color: "#fff",
-                                  fontSize: 24,
+                                  fontSize: 17,
                                   fontWeight: 800,
                                   lineHeight: 1.05,
                                   textShadow: "0 2px 8px rgba(0,0,0,0.45)",
@@ -566,7 +569,7 @@ export default function Marketplace() {
                               <Typography
                                 sx={{
                                   color: "rgba(255,255,255,0.92)",
-                                  fontSize: 13.5,
+                                  fontSize: 12,
                                   textShadow: "0 1px 5px rgba(0,0,0,0.4)",
                                   whiteSpace: "nowrap",
                                   overflow: "hidden",
@@ -579,19 +582,21 @@ export default function Marketplace() {
                           </Stack>
                         </Box>
 
-                        <Box sx={{ p: 1.6 }}>
+                        <Box sx={{ p: 1.2 }}>
                           <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1.2}>
                             <Stack direction="row" spacing={0.8} flexWrap="wrap">
                               <Chip
                                 icon={<StorefrontIcon />}
                                 label={`${Number(shop.publicProductsCount || 0).toLocaleString()} public products`}
-                                sx={{ bgcolor: alpha(palette.accent, 0.18), color: palette.ink, fontWeight: 700 }}
+                                size="small"
+                                sx={{ bgcolor: alpha(palette.accent, 0.18), color: palette.ink, fontWeight: 700, fontSize: 12 }}
                               />
                               <Chip
                                 icon={<PlaceOutlinedIcon sx={{ fontSize: 16 }} />}
                                 label={market.name || "No market"}
                                 variant="outlined"
-                                sx={{ color: palette.ink, borderColor: palette.line, fontWeight: 600 }}
+                                size="small"
+                                sx={{ color: palette.ink, borderColor: palette.line, fontWeight: 600, fontSize: 12 }}
                               />
                             </Stack>
                             <Stack direction="row" spacing={0.6} alignItems="center">
@@ -616,20 +621,20 @@ export default function Marketplace() {
                           <Stack direction={{ xs: "column", md: "row" }} spacing={{ xs: 0.5, md: 1.6 }} sx={{ mt: 1.2 }}>
                             <Stack direction="row" spacing={0.7} alignItems="center" sx={{ minWidth: 0 }}>
                               <PlaceOutlinedIcon sx={{ color: palette.accent, fontSize: 18 }} />
-                              <Typography sx={{ color: palette.muted, fontSize: 14.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                              <Typography sx={{ color: palette.muted, fontSize: 12.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                                 {[shop.city, shop.state, shop.country].filter(Boolean).join(", ") || "Location unavailable"}
                               </Typography>
                             </Stack>
                             <Stack direction="row" spacing={0.7} alignItems="center" sx={{ minWidth: 0 }}>
                               <PhoneIcon sx={{ color: palette.accent, fontSize: 18 }} />
-                              <Typography sx={{ color: palette.ink, fontSize: 14.5, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                              <Typography sx={{ color: palette.ink, fontSize: 12.5, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                                 {shop.contactPhone || "Contact unavailable"}
                               </Typography>
                             </Stack>
                             {shop.contactName ? (
                               <Stack direction="row" spacing={0.7} alignItems="center" sx={{ minWidth: 0 }}>
                                 <PersonOutlineIcon sx={{ color: palette.accent, fontSize: 18 }} />
-                                <Typography sx={{ color: palette.muted, fontSize: 14.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                <Typography sx={{ color: palette.muted, fontSize: 12.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                                   {shop.contactName}
                                 </Typography>
                               </Stack>
@@ -641,7 +646,7 @@ export default function Marketplace() {
                               sx={{
                                 mt: 0.9,
                                 color: palette.muted,
-                                fontSize: 14.5,
+                                fontSize: 12.5,
                                 display: "-webkit-box",
                                 WebkitLineClamp: 2,
                                 WebkitBoxOrient: "vertical",
@@ -653,8 +658,8 @@ export default function Marketplace() {
                           ) : null}
 
                           <Stack direction="row" justifyContent="flex-end" alignItems="center" sx={{ mt: 1 }}>
-                            <Typography sx={{ color: palette.ink, fontWeight: 700, fontSize: 14.5, display: "inline-flex", alignItems: "center", gap: 0.3 }}>
-                              Open shop <ArrowForwardRoundedIcon sx={{ fontSize: 17 }} />
+                            <Typography sx={{ color: palette.ink, fontWeight: 700, fontSize: 13, display: "inline-flex", alignItems: "center", gap: 0.3 }}>
+                              Open shop <ArrowForwardRoundedIcon sx={{ fontSize: 15 }} />
                             </Typography>
                           </Stack>
                         </Box>
@@ -666,28 +671,30 @@ export default function Marketplace() {
             ) : resultType === "markets" ? (
               <Stack spacing={1.8}>
                 {items.map((market: any) => (
-                  <Card key={market._id} sx={{ borderRadius: 1, border: `1px solid ${palette.line}` }}>
-                    <Box sx={{ p: 2.2 }}>
+                  <Card key={market._id} sx={{ borderRadius: 1, border: `1px solid ${palette.line}`, transition: "box-shadow 0.2s ease, transform 0.2s ease", "&:hover": { boxShadow: "0 8px 24px rgba(15,23,42,0.12)", transform: "translateY(-2px)" } }}>
+                    <Box sx={{ p: 1.8 }}>
                       <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} spacing={1.5}>
                         <Box>
-                          <Typography sx={{ fontSize: 28, lineHeight: 1.1, fontWeight: 800, color: palette.ink }}>
+                          <Typography sx={{ fontSize: 18, lineHeight: 1.1, fontWeight: 800, color: palette.ink }}>
                             {market.name}
                           </Typography>
                           <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
                             <PlaceOutlinedIcon sx={{ color: palette.accent, fontSize: 18 }} />
-                            <Typography sx={{ color: palette.muted, fontSize: 16 }}>
+                            <Typography sx={{ color: palette.muted, fontSize: 13 }}>
                               {[market.city, market.state, market.country].filter(Boolean).join(", ") || "Location not available"}
                             </Typography>
                           </Stack>
                         </Box>
                         <Stack direction="row" spacing={1} flexWrap="wrap">
                           <Button
+                            size="small"
                             variant="text"
                             onClick={() => navigate(toMarketUrl(market))}
                           >
                             Open Market
                           </Button>
                           <Button
+                            size="small"
                             variant="contained"
                             onClick={() => {
                               setMarketId(String(market._id));
@@ -698,6 +705,7 @@ export default function Marketplace() {
                             Search Products
                           </Button>
                           <Button
+                            size="small"
                             variant="outlined"
                             onClick={() => {
                               setMarketId(String(market._id));
@@ -721,29 +729,29 @@ export default function Marketplace() {
                   return (
                     <Card
                       key={product._id}
-                      sx={{ borderRadius: 1, border: `1px solid ${palette.line}`, cursor: "pointer" }}
+                      sx={{ borderRadius: 1, border: `1px solid ${palette.line}`, cursor: "pointer", transition: "box-shadow 0.2s ease, transform 0.2s ease", "&:hover": { boxShadow: "0 8px 24px rgba(15,23,42,0.12)", transform: "translateY(-2px)" } }}
                       onClick={() => navigate(toProductUrl(product))}
                       onMouseEnter={() => prefetchProductDetail(product._id)}
                       onFocus={() => prefetchProductDetail(product._id)}
                       onTouchStart={() => prefetchProductDetail(product._id)}
                     >
                       <Grid container>
-                        <Grid item xs={12} sm={4.2}>
+                        <Grid item xs={12} sm={3.5}>
                           <Box
                             component="img"
                             src={product.thumbnailUrl || "/Invonta.png"}
                             alt={product.name}
-                            sx={{ width: "100%", height: { xs: 220, sm: 210 }, objectFit: "cover", display: "block" }}
+                            sx={{ width: "100%", height: { xs: 180, sm: 170 }, objectFit: "cover", display: "block" }}
                           />
                         </Grid>
-                        <Grid item xs={12} sm={7.8}>
-                          <Box sx={{ p: 2 }}>
+                        <Grid item xs={12} sm={8.5}>
+                          <Box sx={{ p: 1.5 }}>
                             <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
                               <Box>
-                                <Typography sx={{ fontSize: 38, lineHeight: 1, fontWeight: 800, color: palette.ink }}>
+                                <Typography sx={{ fontSize: 18, lineHeight: 1, fontWeight: 800, color: palette.ink }}>
                                   Rs {Number(product.salePrice || 0).toLocaleString()}
                                 </Typography>
-                                <Typography sx={{ mt: 0.8, fontSize: 31, fontWeight: 500, color: palette.ink }}>
+                                <Typography sx={{ mt: 0.5, fontSize: 15, fontWeight: 600, color: palette.ink }}>
                                   {product.name}
                                 </Typography>
                               </Box>
@@ -751,13 +759,13 @@ export default function Marketplace() {
                                 <FavoriteBorderIcon />
                               </IconButton>
                             </Stack>
-                            <Typography sx={{ mt: 1, color: palette.muted, fontSize: 18 }}>
+                            <Typography sx={{ mt: 0.5, color: palette.muted, fontSize: 12.5 }}>
                               SKU: {product.sku || "-"} {product.category ? `- ${product.category}` : ""}
                             </Typography>
-                            <Typography sx={{ mt: 2, color: palette.muted, fontSize: 17 }}>
+                            <Typography sx={{ mt: 0.8, color: palette.muted, fontSize: 12.5 }}>
                               {business.address || "Shop address not available"} - {market.name || "Market"} - {business.name || "Shop"}
                             </Typography>
-                            <Typography sx={{ mt: 1.4, color: palette.ink, fontWeight: 800, fontSize: 18 }}>
+                            <Typography sx={{ mt: 0.6, color: palette.ink, fontWeight: 700, fontSize: 13 }}>
                               {business.contactPhone || "Contact not available"}
                             </Typography>
                           </Box>
@@ -773,9 +781,9 @@ export default function Marketplace() {
                   const business = product.businessId || {};
                   const market = business.marketId || {};
                   return (
-                    <Grid key={product._id} item xs={12} sm={6}>
+                    <Grid key={product._id} item xs={12} sm={6} md={4}>
                       <Card
-                        sx={{ borderRadius: 1, border: `1px solid ${palette.line}`, height: "100%", cursor: "pointer" }}
+                        sx={{ borderRadius: 1, border: `1px solid ${palette.line}`, height: "100%", cursor: "pointer", transition: "box-shadow 0.2s ease, transform 0.2s ease", "&:hover": { boxShadow: "0 8px 24px rgba(15,23,42,0.12)", transform: "translateY(-2px)" } }}
                         onClick={() => navigate(toProductUrl(product))}
                         onMouseEnter={() => prefetchProductDetail(product._id)}
                         onFocus={() => prefetchProductDetail(product._id)}
@@ -785,27 +793,27 @@ export default function Marketplace() {
                           component="img"
                           src={product.thumbnailUrl || "/Invonta.png"}
                           alt={product.name}
-                          sx={{ width: "100%", height: 210, objectFit: "cover", display: "block" }}
+                          sx={{ width: "100%", height: 170, objectFit: "cover", display: "block" }}
                         />
-                        <Box sx={{ p: 1.8 }}>
+                        <Box sx={{ p: 1.2 }}>
                           <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
-                            <Typography sx={{ fontSize: 26, lineHeight: 1, fontWeight: 800, color: palette.ink }}>
+                            <Typography sx={{ fontSize: 16, lineHeight: 1, fontWeight: 800, color: palette.ink }}>
                               Rs {Number(product.salePrice || 0).toLocaleString()}
                             </Typography>
                             <IconButton size="small" onClick={(event) => event.stopPropagation()}>
                               <FavoriteBorderIcon fontSize="small" />
                             </IconButton>
                           </Stack>
-                          <Typography sx={{ mt: 0.7, fontSize: 22, fontWeight: 600, color: palette.ink }}>
+                          <Typography sx={{ mt: 0.5, fontSize: 14, fontWeight: 600, color: palette.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                             {product.name}
                           </Typography>
-                          <Typography sx={{ mt: 0.6, color: palette.muted, fontSize: 15 }}>
+                          <Typography sx={{ mt: 0.4, color: palette.muted, fontSize: 11.5 }}>
                             SKU: {product.sku || "-"} {product.category ? `- ${product.category}` : ""}
                           </Typography>
-                          <Typography sx={{ mt: 1.2, color: palette.muted, fontSize: 14 }}>
+                          <Typography sx={{ mt: 0.6, color: palette.muted, fontSize: 11.5 }}>
                             {market.name || "Market"} - {business.name || "Shop"}
                           </Typography>
-                          <Typography sx={{ mt: 0.6, color: palette.ink, fontWeight: 700, fontSize: 15 }}>
+                          <Typography sx={{ mt: 0.4, color: palette.ink, fontWeight: 700, fontSize: 12 }}>
                             {business.contactPhone || "Contact not available"}
                           </Typography>
                         </Box>
