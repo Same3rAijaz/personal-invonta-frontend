@@ -9,7 +9,7 @@ import { useCities, useCountries, useStates } from "../../hooks/useGeo";
 import { DEFAULT_CITY, DEFAULT_COUNTRY, DEFAULT_STATE } from "../../constants/locationDefaults";
 import { PublicCategoryNode } from "../../api/public";
 
-const AVAILABLE_MODULES = ["products", "inventory", "warehouses", "customers", "vendors", "purchasing", "sales", "hr", "reports", "udhaar"];
+const AVAILABLE_MODULES = ["products", "inventory", "warehouses", "customers", "vendors", "purchasing", "sales", "reports", "udhaar"];
 const labelize = (value: string) => (value === "hr" ? "HR" : value.charAt(0).toUpperCase() + value.slice(1));
 
 export default function BusinessEdit() {
@@ -29,7 +29,7 @@ export default function BusinessEdit() {
     queryKey: ["superadmin-categories-for-business-edit"],
     queryFn: async () => (await api.get("/superadmin/categories", { params: { page: 1, limit: 1000 } })).data.data
   });
-  const { register, handleSubmit, reset, control, watch, setValue } = useForm({ defaultValues: { isActive: true, marketId: "" } });
+  const { register, handleSubmit, reset, control, watch, setValue, formState: { errors } } = useForm({ defaultValues: { isActive: true, marketId: "" } });
   const country = watch("country");
   const state = watch("state");
   const city = watch("city");
@@ -164,9 +164,14 @@ export default function BusinessEdit() {
       <Typography variant="h5" gutterBottom>Edit Business</Typography>
       <Paper sx={{ p: 3, borderRadius: 3, boxShadow: "0 18px 40px rgba(15,23,42,0.08)" }}>
         <Grid container spacing={2} component="form" onSubmit={handleSubmit(onSubmit)}>
-          <input type="hidden" {...register("businessCategoryId")} />
           <Grid item xs={12} md={6}>
-            <TextField fullWidth label="Business Name" {...register("name")} />
+            <TextField 
+              fullWidth 
+              label="Business Name *" 
+              {...register("name", { required: "Name is required" })} 
+              error={!!errors.name}
+              helperText={errors.name?.message as string}
+            />
           </Grid>
           <Grid item xs={12} md={6}>
             <Controller
@@ -221,11 +226,15 @@ export default function BusinessEdit() {
           <Grid item xs={12}>
             <TextField
               fullWidth
-              label="Selected Business Category"
+              label="Selected Business Category *"
               value={selectedCategory?.path || (selectedCategory?.pathNames || []).join(" > ") || ""}
               placeholder="Choose business category"
               InputProps={{ readOnly: true }}
+              error={!businessCategoryId && !!errors.businessCategoryId}
+              helperText={!businessCategoryId && errors.businessCategoryId ? "Business category is required" : undefined}
             />
+            {/* hidden input triggers validation on submit */}
+            <input type="hidden" {...register("businessCategoryId", { required: "Category is required" })} />
           </Grid>
           {categoryLevels.map((options, level) => (
             <Grid item xs={12} md={4} key={`business-edit-category-level-${level}`}>

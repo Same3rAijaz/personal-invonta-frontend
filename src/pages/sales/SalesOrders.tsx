@@ -1,4 +1,4 @@
-import { Box, Button, TextField } from "@mui/material";
+import { Box, Button, CircularProgress, FormControl, MenuItem, Select, TextField } from "@mui/material";
 import React from "react";
 import { api } from "../../api/client";
 import { useDeleteSalesOrder, useSalesOrders } from "../../hooks/useSales";
@@ -14,6 +14,8 @@ export default function SalesOrders() {
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(20);
   const [search, setSearch] = React.useState("");
+  const [invoiceSize, setInvoiceSize] = React.useState<"A4" | "A5" | "80mm">("A4");
+  const [loadingInvoiceId, setLoadingInvoiceId] = React.useState<string | null>(null);
   const debouncedSearch = useDebouncedValue(search.trim());
   const { data, isLoading } = useSalesOrders({ page: page + 1, limit: rowsPerPage, search: debouncedSearch || undefined });
   const deleteSO = useDeleteSalesOrder();
@@ -21,14 +23,21 @@ export default function SalesOrders() {
   const navigate = useNavigate();
   const customerMap = new Map((customers?.items || []).map((c: any) => [c._id, c.name]));
   const baseUrl = api.defaults.baseURL || "/api";
+  const { notify } = useToast();
+  const { confirm, confirmDialog } = useConfirmDialog();
+
   const openInvoice = async (id: string, download: boolean) => {
     const token = localStorage.getItem("accessToken");
     if (!token) {
       notify("Please sign in again", "error");
       return;
     }
+    setLoadingInvoiceId(id + (download ? "-dl" : "-view"));
     try {
-      const url = `${baseUrl}/sales/sos/${id}/invoice${download ? "?download=1" : ""}`;
+      const params = new URLSearchParams();
+      if (download) params.set("download", "1");
+      params.set("size", invoiceSize);
+      const url = `${baseUrl}/sales/sos/${id}/invoice?${params.toString()}`;
       const response = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -51,15 +60,16 @@ export default function SalesOrders() {
       }
     } catch (err: any) {
       notify(err?.message || "Failed", "error");
+    } finally {
+      setLoadingInvoiceId(null);
     }
   };
+
   const rows = (data?.items || []).map((so: any) => ({
     ...so,
     itemsCount: so.items?.length || 0,
     customerName: customerMap.get(so.customerId) || so.customerId
   }));
-  const { notify } = useToast();
-  const { confirm, confirmDialog } = useConfirmDialog();
 
   React.useEffect(() => {
     setPage(0);
@@ -89,19 +99,43 @@ export default function SalesOrders() {
             label: "Actions",
             render: (row: any) => {
               const canEdit = row.status === "DRAFT";
+              const isViewLoading = loadingInvoiceId === row._id + "-view";
+              const isDownloadLoading = loadingInvoiceId === row._id + "-dl";
               return (
-                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
                   <Button size="small" disabled={!canEdit} onClick={() => navigate(`/sales/${row._id}/edit`)}>
                     Edit
                   </Button>
                   <Button size="small" color="error" disabled={!canEdit} onClick={() => handleDelete(row._id)}>
                     Delete
                   </Button>
-                  <Button size="small" onClick={() => openInvoice(row._id, false)}>
-                    View Invoice
+                  <FormControl size="small" sx={{ minWidth: 160 }}>
+                    <Select
+                      value={invoiceSize}
+                      onChange={(e) => setInvoiceSize(e.target.value as any)}
+                      variant="outlined"
+                      sx={{ fontSize: 13 }}
+                    >
+                      <MenuItem value="A4">A4</MenuItem>
+                      <MenuItem value="A5">A5</MenuItem>
+                      <MenuItem value="80mm">Thermal Receipt (80mm)</MenuItem>
+                    </Select>
+                  </FormControl>
+                  <Button
+                    size="small"
+                    disabled={!!loadingInvoiceId}
+                    onClick={() => openInvoice(row._id, false)}
+                    startIcon={isViewLoading ? <CircularProgress size={14} /> : undefined}
+                  >
+                    {isViewLoading ? "Loading\u2026" : "View Invoice"}
                   </Button>
-                  <Button size="small" onClick={() => openInvoice(row._id, true)}>
-                    Download
+                  <Button
+                    size="small"
+                    disabled={!!loadingInvoiceId}
+                    onClick={() => openInvoice(row._id, true)}
+                    startIcon={isDownloadLoading ? <CircularProgress size={14} /> : undefined}
+                  >
+                    {isDownloadLoading ? "Loading\u2026" : "Download"}
                   </Button>
                 </Box>
               );

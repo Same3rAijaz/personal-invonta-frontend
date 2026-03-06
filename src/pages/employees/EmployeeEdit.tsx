@@ -14,7 +14,7 @@ export default function EmployeeEdit() {
   const navigate = useNavigate();
   const { business, user } = useAuth();
   const labelize = (value: string) => (value === "hr" ? "HR" : value.charAt(0).toUpperCase() + value.slice(1));
-  const { register, handleSubmit, reset, formState: { errors } } = useForm({ defaultValues: { isActive: true } });
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<any>({ defaultValues: { isActive: true } });
 
   const employee = (data?.items || []).find((item: any) => item._id === id);
   const isBusinessAdminEmployee =
@@ -68,7 +68,7 @@ export default function EmployeeEdit() {
 
   const availableModules = business?.enabledModules?.length
     ? business.enabledModules
-    : ["products", "inventory", "warehouses", "customers", "vendors", "purchasing", "sales", "hr", "reports"];
+    : ["products", "inventory", "warehouses", "customers", "vendors", "purchasing", "sales", "reports"];
 
   return (
     <Box>

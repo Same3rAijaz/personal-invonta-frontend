@@ -14,7 +14,7 @@ export default function SalesOrderCreate() {
   const navigate = useNavigate();
   const { data: customers } = useCustomers({ page: 1, limit: 1000 });
   const { data: products } = useProducts({ page: 1, limit: 1000 });
-  const { register, handleSubmit, control } = useForm({
+  const { register, handleSubmit, control, formState: { errors } } = useForm<any>({
     defaultValues: { status: "DRAFT", items: [{ productId: "", qty: 1, unitPrice: 0 }] }
   });
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
@@ -40,7 +40,14 @@ export default function SalesOrderCreate() {
       <Paper sx={{ p: 3, borderRadius: 3, boxShadow: "0 18px 40px rgba(15,23,42,0.08)" }}>
         <Grid container spacing={2} component="form" onSubmit={handleSubmit(onSubmit)}>
           <Grid item xs={12} md={6}>
-            <TextField select fullWidth label="Customer" {...register("customerId")}>
+            <TextField 
+              select 
+              fullWidth 
+              label="Customer *" 
+              {...register("customerId", { required: "Customer is required" })}
+              error={!!errors.customerId}
+              helperText={errors.customerId?.message as string}
+            >
               {(customers?.items || []).map((c: any) => (
                 <MenuItem key={c._id} value={c._id}>{c.name}</MenuItem>
               ))}
@@ -59,17 +66,38 @@ export default function SalesOrderCreate() {
           {fields.map((field, index) => (
             <Grid container spacing={2} item xs={12} key={field.id}>
               <Grid item xs={12} md={6}>
-                <TextField select fullWidth label="Product" {...register(`items.${index}.productId` as const)}>
+                <TextField 
+                  select 
+                  fullWidth 
+                  label="Product *" 
+                  {...register(`items.${index}.productId` as const, { required: "Product is required" })}
+                  error={!!errors.items?.[index]?.productId}
+                  helperText={errors.items?.[index]?.productId?.message as string}
+                >
                   {(products?.items || []).map((p: any) => (
                     <MenuItem key={p._id} value={p._id}>{p.name}</MenuItem>
                   ))}
                 </TextField>
               </Grid>
               <Grid item xs={6} md={2}>
-                <TextField fullWidth label="Qty" type="number" {...register(`items.${index}.qty` as const)} />
+                <TextField 
+                  fullWidth 
+                  label="Qty *" 
+                  type="number" 
+                  {...register(`items.${index}.qty` as const, { required: "Required", min: { value: 1, message: "> 0" } })} 
+                  error={!!errors.items?.[index]?.qty}
+                  helperText={errors.items?.[index]?.qty?.message as string}
+                />
               </Grid>
               <Grid item xs={6} md={3}>
-                <TextField fullWidth label="Unit Price" type="number" {...register(`items.${index}.unitPrice` as const)} />
+                <TextField 
+                  fullWidth 
+                  label="Unit Price *" 
+                  type="number" 
+                  {...register(`items.${index}.unitPrice` as const, { required: "Required", min: { value: 0, message: ">= 0" } })}
+                  error={!!errors.items?.[index]?.unitPrice}
+                  helperText={errors.items?.[index]?.unitPrice?.message as string}
+                />
               </Grid>
               <Grid item xs={12} md={1} sx={{ display: "flex", alignItems: "center" }}>
                 <IconButton onClick={() => remove(index)} color="error">

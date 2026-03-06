@@ -14,7 +14,7 @@ import { useWarehouses } from "../../hooks/useWarehouses";
 export default function InventoryCreate() {
   const { notify } = useToast();
   const navigate = useNavigate();
-  const { register, handleSubmit, watch } = useForm({
+  const { register, handleSubmit, watch, formState: { errors } } = useForm<any>({
     defaultValues: { action: "receive" }
   });
   const action = watch("action");
@@ -71,8 +71,10 @@ export default function InventoryCreate() {
             <TextField
               select
               fullWidth
-              label="Action"
-              {...register("action")}
+              label="Action *"
+              {...register("action", { required: "Action is required" })}
+              error={!!errors.action}
+              helperText={errors.action?.message as string}
             >
               <MenuItem value="receive">Receive</MenuItem>
               <MenuItem value="issue">Issue</MenuItem>
@@ -85,9 +87,11 @@ export default function InventoryCreate() {
             <TextField
               select
               fullWidth
-              label="Product"
-              {...register("productId")}
+              label="Product *"
+              {...register("productId", { required: "Product is required" })}
               InputProps={{ startAdornment: (<InputAdornment position="start"><Inventory2Outlined /></InputAdornment>) }}
+              error={!!errors.productId}
+              helperText={errors.productId?.message as string}
             >
               {(products?.items || []).map((item: any) => (
                 <MenuItem key={item._id} value={item._id}>
@@ -100,9 +104,11 @@ export default function InventoryCreate() {
             <TextField
               select
               fullWidth
-              label="Warehouse"
-              {...register("warehouseId")}
+              label="Warehouse *"
+              {...register("warehouseId", { required: "Warehouse is required" })}
               InputProps={{ startAdornment: (<InputAdornment position="start"><WarehouseOutlined /></InputAdornment>) }}
+              error={!!errors.warehouseId}
+              helperText={errors.warehouseId?.message as string}
             >
               {(warehouses?.items || []).map((item: any) => (
                 <MenuItem key={item._id} value={item._id}>
@@ -114,10 +120,12 @@ export default function InventoryCreate() {
           <Grid item xs={12} md={3}>
             <TextField
               fullWidth
-              label="Qty"
+              label="Qty *"
               type="number"
-              {...register("qty")}
+              {...register("qty", { required: "Quantity is required", min: { value: 1, message: "Qty must be > 0" } })}
               InputProps={{ startAdornment: (<InputAdornment position="start"><NumbersOutlined /></InputAdornment>) }}
+              error={!!errors.qty}
+              helperText={errors.qty?.message as string}
             />
           </Grid>
           <Grid item xs={12} md={3}>
@@ -143,7 +151,20 @@ export default function InventoryCreate() {
           {action === "transfer" ? (
             <>
               <Grid item xs={12} md={12}>
-                <TextField fullWidth label="To Warehouse" {...register("toWarehouseId")} />
+                <TextField 
+                  select
+                  fullWidth 
+                  label="To Warehouse *" 
+                  {...register("toWarehouseId", { required: action === "transfer" ? "Destination warehouse is required" : false })} 
+                  error={action === "transfer" && !!errors.toWarehouseId}
+                  helperText={action === "transfer" ? errors.toWarehouseId?.message as string : undefined}
+                >
+                  {(warehouses?.items || []).map((item: any) => (
+                    <MenuItem key={item._id} value={item._id}>
+                      {item.name}
+                    </MenuItem>
+                  ))}
+                </TextField>
               </Grid>
             </>
           ) : null}

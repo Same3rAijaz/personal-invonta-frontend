@@ -21,7 +21,7 @@ export default function BusinessCreate() {
     queryKey: ["superadmin-categories-for-business-create"],
     queryFn: async () => (await api.get("/superadmin/categories", { params: { page: 1, limit: 1000 } })).data.data
   });
-  const { register, handleSubmit, watch, setValue } = useForm({
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm({
     defaultValues: {
       isActive: true,
       country: DEFAULT_COUNTRY,
@@ -93,7 +93,7 @@ export default function BusinessCreate() {
     onSuccess: () => client.invalidateQueries({ queryKey: ["businesses"] })
   });
 
-  const availableModules = ["products", "inventory", "warehouses", "customers", "vendors", "purchasing", "sales", "hr", "reports", "udhaar"];
+  const availableModules = ["products", "inventory", "warehouses", "customers", "vendors", "purchasing", "sales", "reports", "udhaar"];
   const labelize = (value: string) => (value === "hr" ? "HR" : value.charAt(0).toUpperCase() + value.slice(1));
 
   const onSubmit = async (values: any) => {
@@ -118,9 +118,14 @@ export default function BusinessCreate() {
       <Typography variant="h5" gutterBottom>Create Business</Typography>
       <Paper sx={{ p: 3, borderRadius: 3, boxShadow: "0 18px 40px rgba(15,23,42,0.08)" }}>
         <Grid container spacing={2} component="form" onSubmit={handleSubmit(onSubmit)}>
-          <input type="hidden" {...register("businessCategoryId")} />
           <Grid item xs={12} md={6}>
-            <TextField fullWidth label="Business Name" {...register("name")} />
+            <TextField 
+              fullWidth 
+              label="Business Name *" 
+              {...register("name", { required: "Name is required" })} 
+              error={!!errors.name}
+              helperText={errors.name?.message as string}
+            />
           </Grid>
           <Grid item xs={12} md={6}>
             <TextField select fullWidth label="Market (optional)" {...register("marketId")}>
@@ -133,11 +138,15 @@ export default function BusinessCreate() {
           <Grid item xs={12}>
             <TextField
               fullWidth
-              label="Selected Business Category"
+              label="Selected Business Category *"
               value={selectedCategory?.path || (selectedCategory?.pathNames || []).join(" > ") || ""}
               placeholder="Choose business category"
               InputProps={{ readOnly: true }}
+              error={!businessCategoryId && !!errors.businessCategoryId}
+              helperText={!businessCategoryId && errors.businessCategoryId ? "Business category is required" : undefined}
             />
+            {/* hidden input triggers validation on submit */}
+            <input type="hidden" {...register("businessCategoryId", { required: "Category is required" })} />
           </Grid>
           {categoryLevels.map((options, level) => (
             <Grid item xs={12} md={4} key={`business-create-category-level-${level}`}>
@@ -214,13 +223,33 @@ export default function BusinessCreate() {
             </Stack>
           </Grid>
           <Grid item xs={12} md={4}>
-            <TextField fullWidth label="Admin Name" {...register("adminName")} />
+            <TextField 
+              fullWidth 
+              label="Admin Name *" 
+              {...register("adminName", { required: "Admin name is required" })}
+              error={!!errors.adminName}
+              helperText={errors.adminName?.message as string} 
+            />
           </Grid>
           <Grid item xs={12} md={4}>
-            <TextField fullWidth label="Admin Email" {...register("adminEmail")} />
+            <TextField 
+              fullWidth 
+              label="Admin Email *" 
+              type="email"
+              {...register("adminEmail", { required: "Admin email is required", pattern: { value: /^\S+@\S+$/i, message: "Invalid email" } })}
+              error={!!errors.adminEmail}
+              helperText={errors.adminEmail?.message as string} 
+            />
           </Grid>
           <Grid item xs={12} md={4}>
-            <TextField fullWidth label="Admin Password" type="password" {...register("adminPassword")} />
+            <TextField 
+              fullWidth 
+              label="Admin Password *" 
+              type="password" 
+              {...register("adminPassword", { required: "Admin password is required", minLength: { value: 6, message: "Min 6 characters" } })}
+              error={!!errors.adminPassword}
+              helperText={errors.adminPassword?.message as string}
+            />
           </Grid>
           <Grid item xs={12}>
             <FormControlLabel control={<Checkbox defaultChecked {...register("isActive")} />} label="Active" />

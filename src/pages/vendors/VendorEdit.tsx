@@ -11,7 +11,7 @@ export default function VendorEdit() {
   const updateVendor = useUpdateVendor();
   const { notify } = useToast();
   const navigate = useNavigate();
-  const { register, handleSubmit, reset } = useForm({ defaultValues: { isActive: true } });
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<any>({ defaultValues: { isActive: true } });
 
   const vendor = (data?.items || []).find((item: any) => item._id === id);
 
@@ -49,10 +49,23 @@ export default function VendorEdit() {
       <Paper sx={{ p: 3, borderRadius: 3, boxShadow: "0 18px 40px rgba(15,23,42,0.08)" }}>
         <Grid container spacing={2} component="form" onSubmit={handleSubmit(onSubmit)}>
           <Grid item xs={12} md={4}>
-            <TextField fullWidth label="Name" {...register("name")} />
+            <TextField 
+              fullWidth 
+              label="Name *" 
+              {...register("name", { required: "Name is required" })}
+              error={!!errors.name}
+              helperText={errors.name?.message as string} 
+            />
           </Grid>
           <Grid item xs={12} md={4}>
-            <TextField fullWidth label="Email" {...register("email")} />
+            <TextField 
+              fullWidth 
+              label="Email *" 
+              type="email"
+              {...register("email", { required: "Email is required", pattern: { value: /^\S+@\S+$/i, message: "Invalid email schema" } })}
+              error={!!errors.email}
+              helperText={errors.email?.message as string} 
+            />
           </Grid>
           <Grid item xs={12} md={4}>
             <TextField fullWidth label="Phone" {...register("phone")} />

@@ -14,7 +14,7 @@ export default function CategoryEdit() {
   const { data } = useSuperAdminCategories({ page: 1, limit: 1000 });
   const categories = data?.items || [];
   const category = categories.find((item: any) => item._id === id);
-  const { register, handleSubmit, reset, control } = useForm({ defaultValues: { name: "", parentId: ROOT_VALUE, isActive: true } });
+  const { register, handleSubmit, reset, control, formState: { errors } } = useForm({ defaultValues: { name: "", parentId: ROOT_VALUE, isActive: true } });
 
   useEffect(() => {
     if (!category) return;
@@ -54,7 +54,13 @@ export default function CategoryEdit() {
       <Paper sx={{ p: 3, borderRadius: 4, boxShadow: "0 18px 40px rgba(15,23,42,0.08)" }}>
         <Grid container spacing={2} component="form" onSubmit={handleSubmit(onSubmit)}>
           <Grid item xs={12} md={6}>
-            <TextField fullWidth label="Category Name" {...register("name")} />
+            <TextField 
+              fullWidth 
+              label="Category Name *" 
+              {...register("name", { required: "Name is required" })}
+              error={!!errors.name}
+              helperText={errors.name?.message as string} 
+            />
           </Grid>
           <Grid item xs={12} md={6}>
             <Controller

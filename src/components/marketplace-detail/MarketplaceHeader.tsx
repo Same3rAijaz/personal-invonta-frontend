@@ -86,10 +86,10 @@ export default function MarketplaceHeader(props: MarketplaceHeaderProps) {
     <Box>
       <AppBar position="static" elevation={0} sx={{ background: `linear-gradient(90deg, ${theme.palette.primary.main} 0%, ${alpha(theme.palette.primary.main, 0.88)} 100%)` }}>
         <Container maxWidth="xl">
-          <Toolbar disableGutters sx={{ minHeight: 68, gap: 2, justifyContent: "space-between" }}>
+          <Toolbar disableGutters sx={{ minHeight: 52, gap: 2, justifyContent: "space-between" }}>
             <Stack direction="row" spacing={1.1} alignItems="center">
               <Box component="img" src="/Invonta.png" alt="Invonta" sx={{ width: 34, height: 34 }} />
-              <Typography sx={{ color: "#fff", fontWeight: 800, fontSize: 34, lineHeight: 1 }}>
+              <Typography sx={{ color: "#fff", fontWeight: 800, fontSize: 22, lineHeight: 1 }}>
                 Invonta
               </Typography>
               <Typography sx={{ color: alpha("#fff", 0.9), fontWeight: 700, display: { xs: "none", md: "block" } }}>
@@ -133,12 +133,19 @@ export default function MarketplaceHeader(props: MarketplaceHeaderProps) {
                       color: "#0b1220",
                       bgcolor: "#ffffff",
                       fontWeight: 700,
+                      minWidth: { xs: 40, sm: "auto" },
+                      px: { xs: 1, sm: 2 },
+                      "& .MuiButton-startIcon": {
+                        margin: { xs: 0, sm: "0 8px 0 -4px" }
+                      },
                       "&:hover": { bgcolor: alpha("#ffffff", 0.92) }
                     }}
                   >
-                    Continue with Google
+                    <Box component="span" sx={{ display: { xs: "none", sm: "block" } }}>
+                      Continue with Google
+                    </Box>
                   </Button>
-                  <Typography component={Link} to="/login" sx={{ color: "#ffffff", fontWeight: 700, textDecoration: "underline" }}>
+                  <Typography component={Link} to="/login" sx={{ color: "#ffffff", fontWeight: 700, textDecoration: "underline", fontSize: { xs: "0.8rem", sm: "1rem" } }}>
                     Business Login
                   </Typography>
                 </>

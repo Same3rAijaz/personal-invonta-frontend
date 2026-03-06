@@ -309,7 +309,7 @@ export default function AppLayout() {
           </Box>
           <Box sx={{ flexGrow: 1 }} />
           <Stack direction="row" spacing={1.5} alignItems="center">
-            <Box sx={{ textAlign: "right" }}>
+            <Box sx={{ textAlign: "right", display: { xs: "none", sm: "block" } }}>
               <Typography variant="caption" sx={{ color: "rgba(226,232,240,0.7)", display: "block" }}>
                 {isSuperAdmin ? "Super Admin Workspace" : (business?.name || "Your Workspace")}
               </Typography>

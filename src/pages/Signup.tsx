@@ -1,5 +1,7 @@
 ﻿import { useForm } from "react-hook-form";
-import { Box, Button, Container, Grid, Paper, TextField, Typography, FormControlLabel, Checkbox, Stack, MenuItem } from "@mui/material";
+import { Box, Button, Container, Grid, IconButton, InputAdornment, Paper, TextField, Typography, FormControlLabel, Checkbox, Stack, MenuItem } from "@mui/material";
+import Visibility from "@mui/icons-material/Visibility";
+import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import { useToast } from "../hooks/useToast";
 import { api } from "../api/client";
 import { Link, useNavigate } from "react-router-dom";
@@ -9,14 +11,15 @@ import { PublicCategoryNode } from "../api/public";
 import { useCities, useCountries, useStates } from "../hooks/useGeo";
 import { DEFAULT_CITY, DEFAULT_COUNTRY, DEFAULT_STATE } from "../constants/locationDefaults";
 
-const AVAILABLE_MODULES = ["products", "inventory", "warehouses", "customers", "vendors", "purchasing", "sales", "hr", "reports"];
+const AVAILABLE_MODULES = ["products", "inventory", "warehouses", "customers", "vendors", "purchasing", "sales", "reports"];
 const labelize = (value: string) => (value === "hr" ? "HR" : value.charAt(0).toUpperCase() + value.slice(1));
 const REQUEST_MARKET_VALUE = "__REQUEST_MARKET__";
 
 export default function Signup() {
   const { notify } = useToast();
   const navigate = useNavigate();
-  const { register, handleSubmit, watch, setValue } = useForm({
+  const [showPassword, setShowPassword] = React.useState(false);
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<any>({
     defaultValues: {
       marketId: REQUEST_MARKET_VALUE,
       country: DEFAULT_COUNTRY,
@@ -149,9 +152,9 @@ export default function Signup() {
   };
 
   return (
-    <Box sx={{ minHeight: "100vh", display: "flex", background: "radial-gradient(circle at top left, rgba(14,165,233,0.18) 0%, #0b1220 40%, #0f172a 100%)" }}>
-      <Grid container sx={{ minHeight: "100vh" }}>
-        <Grid item xs={12} md={6} sx={{ display: "flex", alignItems: "center", justifyContent: "center", px: { xs: 3, md: 8 }, py: { xs: 6, md: 0 } }}>
+    <Box sx={{ height: "100vh", display: "flex", overflow: "hidden", background: "radial-gradient(circle at top left, rgba(14,165,233,0.18) 0%, #0b1220 40%, #0f172a 100%)" }}>
+      <Grid container sx={{ height: "100vh" }}>
+        <Grid item xs={12} md={6} sx={{ display: { xs: "none", md: "flex" }, alignItems: "center", justifyContent: "center", px: { xs: 3, md: 8 }, py: { xs: 6, md: 0 }, height: "100vh", overflow: "hidden" }}>
           <Box sx={{ maxWidth: 460, textAlign: { xs: "center", md: "left" } }}>
             <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2, justifyContent: { xs: "center", md: "flex-start" } }}>
               <img src="/Invonta.png" alt="Invonta" style={{ width: 52, height: 52 }} />
@@ -182,9 +185,11 @@ export default function Signup() {
           sx={{
             background: "linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%)",
             display: "flex",
-            alignItems: "center",
+            alignItems: "flex-start",
             px: { xs: 3, md: 8 },
-            py: { xs: 6, md: 0 }
+            py: { xs: 4, md: 4 },
+            height: "100vh",
+            overflowY: "auto"
           }}
         >
           <Paper sx={{ p: { xs: 3, md: 5 }, borderRadius: 2, boxShadow: "0 18px 40px rgba(15,23,42,0.12)", width: "100%", maxWidth: 640, mx: "auto", backgroundColor: "#ffffff" }}>
@@ -196,23 +201,56 @@ export default function Signup() {
               <input type="hidden" {...register("businessCategoryId")} />
               <Grid container spacing={2}>
                 <Grid item xs={12} md={4}>
-                  <TextField fullWidth label="Business Name" {...register("businessName")} sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1 } }} />
+                  <TextField 
+                    fullWidth 
+                    label="Business Name *" 
+                    {...register("businessName", { required: "Business Name is required" })} 
+                    error={!!errors.businessName}
+                    helperText={errors.businessName?.message as string}
+                    sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1 } }} 
+                  />
                 </Grid>
                 <Grid item xs={12} md={4}>
-                  <TextField fullWidth label="Contact Name" {...register("contactName")} sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1 } }} />
+                  <TextField 
+                    fullWidth 
+                    label="Contact Name *" 
+                    {...register("contactName", { required: "Contact Name is required" })} 
+                    error={!!errors.contactName}
+                    helperText={errors.contactName?.message as string}
+                    sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1 } }} 
+                  />
                 </Grid>
                 <Grid item xs={12} md={4}>
-                  <TextField fullWidth label="Contact Phone" {...register("contactPhone")} sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1 } }} />
+                  <TextField 
+                    fullWidth 
+                    label="Contact Phone *" 
+                    {...register("contactPhone", { required: "Contact Phone is required" })} 
+                    error={!!errors.contactPhone}
+                    helperText={errors.contactPhone?.message as string}
+                    sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1 } }} 
+                  />
                 </Grid>
                 <Grid item xs={12} md={12}>
-                  <TextField
-                    fullWidth
-                    label="Selected Business Category"
-                    value={selectedCategory?.path || (selectedCategory?.pathNames || []).join(" > ") || ""}
-                    placeholder="Choose business category"
-                    InputProps={{ readOnly: true }}
-                    sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1 } }}
-                  />
+                  <Box
+                    sx={{
+                      minHeight: 40,
+                      px: 1.5,
+                      py: 1,
+                      borderRadius: 1,
+                      border: "1px solid rgba(148,163,184,0.35)",
+                      backgroundColor: "rgba(248,250,252,0.9)",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1
+                    }}
+                  >
+                    <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 600, mr: 0.5 }}>
+                      Selected Category:
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: "#0f172a", fontWeight: 600 }}>
+                      {selectedCategory?.path || (selectedCategory?.pathNames || []).join(" > ") || "None selected"}
+                    </Typography>
+                  </Box>
                 </Grid>
                 {categoryLevels.map((options, level) => (
                   <Grid item xs={12} md={4} key={`signup-category-level-${level}`}>
@@ -281,19 +319,53 @@ export default function Signup() {
                     fullWidth
                     multiline
                     minRows={3}
-                    label="Address"
-                    {...register("address")}
+                    label="Address *"
+                    {...register("address", { required: "Address is required" })}
+                    error={!!errors.address}
+                    helperText={errors.address?.message as string}
                     sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1 } }}
                   />
                 </Grid>
                 <Grid item xs={12} md={6}>
-                  <TextField fullWidth label="Admin Name" {...register("adminName")} sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1 } }} />
+                  <TextField 
+                    fullWidth 
+                    label="Admin Name *" 
+                    {...register("adminName", { required: "Admin Name is required" })} 
+                    error={!!errors.adminName}
+                    helperText={errors.adminName?.message as string}
+                    sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1 } }} 
+                  />
                 </Grid>
                 <Grid item xs={12} md={6}>
-                  <TextField fullWidth label="Admin Email" {...register("adminEmail")} sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1 } }} />
+                  <TextField 
+                    fullWidth 
+                    label="Admin Email *" 
+                    type="email"
+                    {...register("adminEmail", { required: "Admin Email is required", pattern: { value: /^\S+@\S+$/i, message: "Invalid email schema" } })} 
+                    error={!!errors.adminEmail}
+                    helperText={errors.adminEmail?.message as string}
+                    sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1 } }} 
+                  />
                 </Grid>
                 <Grid item xs={12}>
-                  <TextField fullWidth label="Admin Password" type="password" {...register("adminPassword")} sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1 } }} />
+                  <TextField
+                    fullWidth
+                    label="Admin Password *"
+                    type={showPassword ? "text" : "password"}
+                    {...register("adminPassword", { required: "Admin Password is required", minLength: { value: 6, message: "Minimum 6 characters" } })}
+                    error={!!errors.adminPassword}
+                    helperText={errors.adminPassword?.message as string}
+                    sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1 } }}
+                    InputProps={{
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton edge="end" onClick={() => setShowPassword((prev) => !prev)}>
+                            {showPassword ? <VisibilityOff /> : <Visibility />}
+                          </IconButton>
+                        </InputAdornment>
+                      )
+                    }}
+                  />
                 </Grid>
                 <Grid item xs={12}>
                   <TextField fullWidth label="Referral Code (optional)" {...register("referralCode")} sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1 } }} />
