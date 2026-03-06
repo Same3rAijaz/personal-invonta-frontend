@@ -19,7 +19,7 @@ export default function Signup() {
   const { notify } = useToast();
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = React.useState(false);
-  const { register, handleSubmit, watch, setValue } = useForm({
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<any>({
     defaultValues: {
       marketId: REQUEST_MARKET_VALUE,
       country: DEFAULT_COUNTRY,
@@ -201,13 +201,34 @@ export default function Signup() {
               <input type="hidden" {...register("businessCategoryId")} />
               <Grid container spacing={2}>
                 <Grid item xs={12} md={4}>
-                  <TextField fullWidth label="Business Name" {...register("businessName")} sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1 } }} />
+                  <TextField 
+                    fullWidth 
+                    label="Business Name *" 
+                    {...register("businessName", { required: "Business Name is required" })} 
+                    error={!!errors.businessName}
+                    helperText={errors.businessName?.message as string}
+                    sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1 } }} 
+                  />
                 </Grid>
                 <Grid item xs={12} md={4}>
-                  <TextField fullWidth label="Contact Name" {...register("contactName")} sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1 } }} />
+                  <TextField 
+                    fullWidth 
+                    label="Contact Name *" 
+                    {...register("contactName", { required: "Contact Name is required" })} 
+                    error={!!errors.contactName}
+                    helperText={errors.contactName?.message as string}
+                    sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1 } }} 
+                  />
                 </Grid>
                 <Grid item xs={12} md={4}>
-                  <TextField fullWidth label="Contact Phone" {...register("contactPhone")} sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1 } }} />
+                  <TextField 
+                    fullWidth 
+                    label="Contact Phone *" 
+                    {...register("contactPhone", { required: "Contact Phone is required" })} 
+                    error={!!errors.contactPhone}
+                    helperText={errors.contactPhone?.message as string}
+                    sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1 } }} 
+                  />
                 </Grid>
                 <Grid item xs={12} md={12}>
                   <Box
@@ -298,23 +319,42 @@ export default function Signup() {
                     fullWidth
                     multiline
                     minRows={3}
-                    label="Address"
-                    {...register("address")}
+                    label="Address *"
+                    {...register("address", { required: "Address is required" })}
+                    error={!!errors.address}
+                    helperText={errors.address?.message as string}
                     sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1 } }}
                   />
                 </Grid>
                 <Grid item xs={12} md={6}>
-                  <TextField fullWidth label="Admin Name" {...register("adminName")} sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1 } }} />
+                  <TextField 
+                    fullWidth 
+                    label="Admin Name *" 
+                    {...register("adminName", { required: "Admin Name is required" })} 
+                    error={!!errors.adminName}
+                    helperText={errors.adminName?.message as string}
+                    sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1 } }} 
+                  />
                 </Grid>
                 <Grid item xs={12} md={6}>
-                  <TextField fullWidth label="Admin Email" {...register("adminEmail")} sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1 } }} />
+                  <TextField 
+                    fullWidth 
+                    label="Admin Email *" 
+                    type="email"
+                    {...register("adminEmail", { required: "Admin Email is required", pattern: { value: /^\S+@\S+$/i, message: "Invalid email schema" } })} 
+                    error={!!errors.adminEmail}
+                    helperText={errors.adminEmail?.message as string}
+                    sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1 } }} 
+                  />
                 </Grid>
                 <Grid item xs={12}>
                   <TextField
                     fullWidth
-                    label="Admin Password"
+                    label="Admin Password *"
                     type={showPassword ? "text" : "password"}
-                    {...register("adminPassword")}
+                    {...register("adminPassword", { required: "Admin Password is required", minLength: { value: 6, message: "Minimum 6 characters" } })}
+                    error={!!errors.adminPassword}
+                    helperText={errors.adminPassword?.message as string}
                     sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1 } }}
                     InputProps={{
                       endAdornment: (

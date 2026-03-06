@@ -13,7 +13,7 @@ export default function ProductEdit() {
   const updateProduct = useUpdateProduct();
   const { notify } = useToast();
   const navigate = useNavigate();
-  const { register, handleSubmit, reset, watch, setValue, control } = useForm({ defaultValues: { isActive: true, visibility: "PRIVATE" } });
+  const { register, handleSubmit, reset, watch, setValue, control, formState: { errors } } = useForm<any>({ defaultValues: { isActive: true, visibility: "PRIVATE" } });
   const { data: categories = [] } = useCategories({ activeOnly: true });
   const [existingImages, setExistingImages] = useState<string[]>([]);
   const [newFiles, setNewFiles] = useState<File[]>([]);
@@ -148,13 +148,25 @@ export default function ProductEdit() {
       <Paper sx={{ p: 3, borderRadius: 3, boxShadow: "0 18px 40px rgba(15,23,42,0.08)" }}>
         <Grid container spacing={2} component="form" onSubmit={handleSubmit(onSubmit)}>
           <Grid item xs={12} md={3}>
-            <TextField fullWidth label="SKU" {...register("sku")} />
+            <TextField 
+              fullWidth 
+              label="SKU *" 
+              {...register("sku", { required: "SKU is required" })}
+              error={!!errors.sku}
+              helperText={errors.sku?.message as string} 
+            />
           </Grid>
           <Grid item xs={12} md={3}>
             <TextField fullWidth label="Barcode" {...register("barcode")} />
           </Grid>
           <Grid item xs={12} md={6}>
-            <TextField fullWidth label="Name" {...register("name")} />
+            <TextField 
+              fullWidth 
+              label="Name *" 
+              {...register("name", { required: "Name is required" })}
+              error={!!errors.name}
+              helperText={errors.name?.message as string} 
+            />
           </Grid>
           <Grid item xs={12} md={6}>
             <TextField fullWidth multiline rows={3} label="Description" {...register("description")} />
@@ -203,10 +215,24 @@ export default function ProductEdit() {
             <TextField fullWidth label="Unit" {...register("unit")} />
           </Grid>
           <Grid item xs={12} md={3}>
-            <TextField fullWidth label="Cost Price" type="number" {...register("costPrice")} />
+            <TextField 
+              fullWidth 
+              label="Cost Price *" 
+              type="number" 
+              {...register("costPrice", { required: "Cost Price is required" })}
+              error={!!errors.costPrice}
+              helperText={errors.costPrice?.message as string} 
+            />
           </Grid>
           <Grid item xs={12} md={3}>
-            <TextField fullWidth label="Sale Price" type="number" {...register("salePrice")} />
+            <TextField 
+              fullWidth 
+              label="Sale Price *" 
+              type="number" 
+              {...register("salePrice", { required: "Sale Price is required" })}
+              error={!!errors.salePrice}
+              helperText={errors.salePrice?.message as string} 
+            />
           </Grid>
           <Grid item xs={12} md={3}>
             <TextField fullWidth label="Reorder Level" type="number" {...register("reorderLevel")} />

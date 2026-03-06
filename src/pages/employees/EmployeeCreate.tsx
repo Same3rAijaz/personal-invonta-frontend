@@ -15,7 +15,7 @@ export default function EmployeeCreate() {
   const { business } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const labelize = (value: string) => (value === "hr" ? "HR" : value.charAt(0).toUpperCase() + value.slice(1));
-  const { register, handleSubmit, watch, formState: { errors } } = useForm({ defaultValues: { isActive: true } });
+  const { register, handleSubmit, watch, formState: { errors } } = useForm<any>({ defaultValues: { isActive: true } });
   const loginEmail = watch("loginEmail");
   const availableModules = business?.enabledModules?.length
     ? business.enabledModules

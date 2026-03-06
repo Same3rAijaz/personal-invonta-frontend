@@ -17,7 +17,7 @@ export default function MarketEdit() {
     queryKey: ["markets"],
     queryFn: async () => (await api.get("/superadmin/markets", { params: { page: 1, limit: 1000 } })).data.data
   });
-  const { register, handleSubmit, reset, watch, setValue } = useForm({ defaultValues: { isActive: true } });
+  const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm({ defaultValues: { isActive: true } });
   const country = watch("country");
   const state = watch("state");
   const city = watch("city");
@@ -74,7 +74,13 @@ export default function MarketEdit() {
       <Paper sx={{ p: 3, borderRadius: 3, boxShadow: "0 18px 40px rgba(15,23,42,0.08)" }}>
         <Grid container spacing={2} component="form" onSubmit={handleSubmit(onSubmit)}>
           <Grid item xs={12} md={3}>
-            <TextField fullWidth label="Name" {...register("name")} />
+            <TextField 
+              fullWidth 
+              label="Name *" 
+              {...register("name", { required: "Name is required" })}
+              error={!!errors.name}
+              helperText={errors.name?.message as string}
+            />
           </Grid>
           <Grid item xs={12} md={3}>
             <TextField select fullWidth label="Country" {...register("country")}>

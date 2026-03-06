@@ -13,7 +13,7 @@ export default function MarketCreate() {
   const { notify } = useToast();
   const navigate = useNavigate();
   const client = useQueryClient();
-  const { register, handleSubmit, watch, setValue } = useForm({
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm({
     defaultValues: {
       isActive: true,
       country: DEFAULT_COUNTRY,
@@ -60,7 +60,13 @@ export default function MarketCreate() {
       <Paper sx={{ p: 3, borderRadius: 3, boxShadow: "0 18px 40px rgba(15,23,42,0.08)" }}>
         <Grid container spacing={2} component="form" onSubmit={handleSubmit(onSubmit)}>
           <Grid item xs={12} md={3}>
-            <TextField fullWidth label="Name" {...register("name")} />
+            <TextField 
+              fullWidth 
+              label="Name *" 
+              {...register("name", { required: "Name is required" })}
+              error={!!errors.name}
+              helperText={errors.name?.message as string}
+            />
           </Grid>
           <Grid item xs={12} md={3}>
             <TextField select fullWidth label="Country" {...register("country")}>

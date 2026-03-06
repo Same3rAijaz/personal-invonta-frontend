@@ -133,12 +133,19 @@ export default function MarketplaceHeader(props: MarketplaceHeaderProps) {
                       color: "#0b1220",
                       bgcolor: "#ffffff",
                       fontWeight: 700,
+                      minWidth: { xs: 40, sm: "auto" },
+                      px: { xs: 1, sm: 2 },
+                      "& .MuiButton-startIcon": {
+                        margin: { xs: 0, sm: "0 8px 0 -4px" }
+                      },
                       "&:hover": { bgcolor: alpha("#ffffff", 0.92) }
                     }}
                   >
-                    Continue with Google
+                    <Box component="span" sx={{ display: { xs: "none", sm: "block" } }}>
+                      Continue with Google
+                    </Box>
                   </Button>
-                  <Typography component={Link} to="/login" sx={{ color: "#ffffff", fontWeight: 700, textDecoration: "underline" }}>
+                  <Typography component={Link} to="/login" sx={{ color: "#ffffff", fontWeight: 700, textDecoration: "underline", fontSize: { xs: "0.8rem", sm: "1rem" } }}>
                     Business Login
                   </Typography>
                 </>
