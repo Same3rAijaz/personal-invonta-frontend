@@ -8,7 +8,9 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { listPublicMarkets, listPublicProducts, listPublicShops } from "../../api/public";
 import MarketplaceHeader from "../../components/marketplace-detail/MarketplaceHeader";
+import PublicFooter from "../../components/marketplace-detail/PublicFooter";
 import { extractEntityId, toProductUrl, toShopUrl } from "../../utils/seo";
+
 
 export default function MarketplaceMarketDetail() {
   const params = useParams();
@@ -138,6 +140,8 @@ export default function MarketplaceMarketDetail() {
           </Stack>
         )}
       </Container>
+      <PublicFooter />
     </Box>
+
   );
 }

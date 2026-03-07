@@ -32,7 +32,9 @@ import { getPublicProductDetail, getPublicShopDetail, getPublicShopDetailBySlug,
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import { Switch, FormControlLabel } from "@mui/material";
 import MarketplaceHeader from "../../components/marketplace-detail/MarketplaceHeader";
+import PublicFooter from "../../components/marketplace-detail/PublicFooter";
 import { extractEntityId, toProductUrl } from "../../utils/seo";
+
 import { useMarketplaceAuth } from "../../hooks/useMarketplaceAuth";
 import { useToast } from "../../hooks/useToast";
 
@@ -639,6 +641,7 @@ export default function MarketplaceShopDetail() {
           </Stack>
         )}
       </Container>
+      <PublicFooter />
     </Box>
   );
 }

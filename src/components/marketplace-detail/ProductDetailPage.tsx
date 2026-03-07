@@ -27,6 +27,8 @@ import { alpha, useTheme } from "@mui/material/styles";
 import MarketplaceHeader from "./MarketplaceHeader";
 import Breadcrumbs from "./Breadcrumbs";
 import type { ProductDetailViewModel } from "./types";
+import PublicFooter from "./PublicFooter";
+
 
 type MarketOption = { _id: string; name: string };
 
@@ -99,6 +101,7 @@ export default function ProductDetailPage(props: ProductDetailPageProps) {
       </Box>
 
       <Container maxWidth="xl" sx={{ py: { xs: 2, md: 2.5 } }}>
+
         <Breadcrumbs items={model.breadcrumbs} />
 
         {isLoading ? (
@@ -352,7 +355,9 @@ export default function ProductDetailPage(props: ProductDetailPageProps) {
           </Grid>
         )}
       </Container>
+      <PublicFooter />
     </Box>
+
   );
 }
 

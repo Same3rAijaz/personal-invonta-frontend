@@ -1,4 +1,6 @@
 import { Box, Container, Paper, Typography } from "@mui/material";
+import PublicFooter from "../../components/marketplace-detail/PublicFooter";
+
 
 export default function Privacy() {
   return (
@@ -7,7 +9,7 @@ export default function Privacy() {
         <Paper sx={{ p: 4, borderRadius: 4, boxShadow: "0 30px 60px rgba(15,23,42,0.35)" }}>
           <Typography variant="h4" gutterBottom>Privacy Policy</Typography>
           <Typography paragraph>
-            Effective date: February 28, 2026. We collect account details, business profile data, and activity logs to deliver inventory,
+            Effective date: March 7, 2026. Invonta is a product by ASASA Tech (www.asasatech.com). We collect account details, business profile data, and activity logs to deliver inventory,
             sales, and billing features. We do not sell your data.
           </Typography>
           <Typography paragraph>
@@ -118,10 +120,11 @@ export default function Privacy() {
           </Typography>
           <Typography variant="h6" gutterBottom>Contact</Typography>
           <Typography paragraph>
-            For privacy questions, contact support through the channels listed on our website or within your account.
+            For privacy questions, contact support through the channels listed on our website or within your account. You can also contact ASASA Tech at info@asasatech.com.
           </Typography>
         </Paper>
       </Container>
+      <PublicFooter />
     </Box>
   );
 }

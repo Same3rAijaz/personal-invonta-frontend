@@ -38,7 +38,9 @@ import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import { Switch, FormControlLabel } from "@mui/material";
 import { useCities, useCountries, useStates } from "../../hooks/useGeo";
 import MarketplaceHeader from "../../components/marketplace-detail/MarketplaceHeader";
+import PublicFooter from "../../components/marketplace-detail/PublicFooter";
 import { toMarketUrl, toProductUrl, toShopUrl } from "../../utils/seo";
+
 
 const LIMIT = 12;
 
@@ -910,6 +912,7 @@ export default function Marketplace() {
           </Grid>
         </Grid>
       </Container>
+      <PublicFooter />
     </Box>
   );
 }

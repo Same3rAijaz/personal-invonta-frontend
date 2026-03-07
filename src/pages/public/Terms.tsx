@@ -1,4 +1,6 @@
 import { Box, Container, Paper, Typography } from "@mui/material";
+import PublicFooter from "../../components/marketplace-detail/PublicFooter";
+
 
 export default function Terms() {
   return (
@@ -7,12 +9,16 @@ export default function Terms() {
         <Paper sx={{ p: 4, borderRadius: 4, boxShadow: "0 30px 60px rgba(15,23,42,0.35)" }}>
           <Typography variant="h4" gutterBottom>Terms & Conditions</Typography>
           <Typography paragraph>
-            Effective date: February 28, 2026. These terms govern your use of the platform, including inventory, sales, attendance, and
+            Effective date: March 7, 2026. Invonta is a product owned and operated by ASASA Tech (www.asasatech.com). These terms govern your use of the platform, including inventory, sales, attendance, and
             billing features. You are responsible for data accuracy, user access, and complying with applicable laws.
+          </Typography>
+          <Typography variant="h6" gutterBottom>Registered Office</Typography>
+          <Typography paragraph>
+            ASASA Tech is registered at: **B6.4 Pak colony Mangopir road Karachi, Pakistan**.
           </Typography>
           <Typography variant="h6" gutterBottom>Description of Services</Typography>
           <Typography paragraph>
-            Invonta is a software platform for businesses to manage operations such as inventory, sales, customers, vendors, payroll,
+            Invonta is a premium software platform developed by ASASA Tech for businesses to manage operations such as inventory, sales, customers, vendors, payroll,
             attendance, and reporting. Access to paid features is provided after successful payment authorization.
           </Typography>
           <Typography variant="h6" gutterBottom>Payment Methods and Billing Authorization</Typography>
@@ -140,10 +146,11 @@ export default function Terms() {
           </Typography>
           <Typography variant="h6" gutterBottom>Contact</Typography>
           <Typography paragraph>
-            If you have questions about these terms, contact support through the channels listed on our website or within your account.
+            If you have questions about these terms, contact support through the channels listed on our website or within your account, or contact ASASA Tech directly at www.asasatech.com.
           </Typography>
         </Paper>
       </Container>
+      <PublicFooter />
     </Box>
   );
 }
