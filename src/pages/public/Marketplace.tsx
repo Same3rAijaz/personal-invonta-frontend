@@ -33,7 +33,9 @@ import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
 import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { PublicCategoryNode, getPublicProductDetail, getPublicShopDetail, listPublicCategories, listPublicMarkets, listPublicProducts, listPublicShops } from "../../api/public";
+import { PublicCategoryNode, getPublicProductDetail, getPublicShopDetail, listPublicCategories, listPublicMarkets, listPublicProducts, listPublicShops, semanticSearchPublicProducts, semanticSearchPublicShops } from "../../api/public";
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
+import { Switch, FormControlLabel } from "@mui/material";
 import { useCities, useCountries, useStates } from "../../hooks/useGeo";
 import MarketplaceHeader from "../../components/marketplace-detail/MarketplaceHeader";
 import { toMarketUrl, toProductUrl, toShopUrl } from "../../utils/seo";
@@ -67,6 +69,7 @@ export default function Marketplace() {
   const [marketSort, setMarketSort] = React.useState<"name_asc" | "name_desc" | "newest">("name_asc");
   const [viewMode, setViewMode] = React.useState<"list" | "grid">("list");
   const [page, setPage] = React.useState(1);
+  const [semanticMode, setSemanticMode] = React.useState(false);
   const { data: countryOptions = [] } = useCountries();
   const { data: stateOptions = [] } = useStates(country);
   const { data: cityOptions = [] } = useCities(country, state);
@@ -98,9 +101,22 @@ export default function Marketplace() {
   });
 
   const { data: productData, isLoading: isProductsLoading } = useQuery({
-    queryKey: ["public-products", page, LIMIT, search, marketId, country, state, city, category, minPrice, maxPrice, sort],
-    queryFn: () =>
-      listPublicProducts({
+    queryKey: ["public-products", page, LIMIT, search, marketId, country, state, city, category, minPrice, maxPrice, sort, semanticMode],
+    queryFn: () => {
+      if (semanticMode && search.trim()) {
+        return semanticSearchPublicProducts({
+          query: search,
+          limit: LIMIT,
+          marketId: marketId || undefined,
+          country: country || undefined,
+          state: state || undefined,
+          city: city || undefined,
+          category: category || undefined,
+          minPrice: minPrice ? Number(minPrice) : undefined,
+          maxPrice: maxPrice ? Number(maxPrice) : undefined
+        });
+      }
+      return listPublicProducts({
         page,
         limit: LIMIT,
         search: search || undefined,
@@ -112,14 +128,26 @@ export default function Marketplace() {
         minPrice: minPrice ? Number(minPrice) : undefined,
         maxPrice: maxPrice ? Number(maxPrice) : undefined,
         sort
-      }),
+      });
+    },
     enabled: resultType === "products"
   });
 
   const { data: shopData, isLoading: isShopsLoading } = useQuery({
-    queryKey: ["public-shops", page, LIMIT, search, marketId, country, state, city, category, shopSort],
-    queryFn: () =>
-      listPublicShops({
+    queryKey: ["public-shops", page, LIMIT, search, marketId, country, state, city, category, shopSort, semanticMode],
+    queryFn: () => {
+      if (semanticMode && search.trim()) {
+        return semanticSearchPublicShops({
+          query: search,
+          limit: LIMIT,
+          marketId: marketId || undefined,
+          country: country || undefined,
+          state: state || undefined,
+          city: city || undefined,
+          category: category || undefined
+        });
+      }
+      return listPublicShops({
         page,
         limit: LIMIT,
         search: search || undefined,
@@ -129,7 +157,8 @@ export default function Marketplace() {
         city: city || undefined,
         category: category || undefined,
         sort: shopSort
-      }),
+      });
+    },
     enabled: resultType === "shops"
   });
 
@@ -404,6 +433,31 @@ export default function Marketplace() {
               </Paper>
             ) : null}
 
+            {resultType !== "markets" && (
+              <Paper sx={{ borderRadius: 1, p: 1.5, mb: 1.5, background: semanticMode ? alpha(palette.accent, 0.05) : undefined, border: semanticMode ? `1px solid ${palette.accent}` : undefined }}>
+                <Stack direction="row" alignItems="center" justifyContent="space-between">
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <AutoAwesomeIcon sx={{ color: semanticMode ? palette.accent : palette.muted, fontSize: 18 }} />
+                    <Typography variant="subtitle1" sx={{ color: palette.ink, fontWeight: 800, fontSize: 14 }}>
+                      AI Search
+                    </Typography>
+                  </Stack>
+                  <Switch 
+                    checked={semanticMode} 
+                    onChange={(e) => {
+                      setSemanticMode(e.target.checked);
+                      setPage(1);
+                    }} 
+                    size="small"
+                    color="primary"
+                  />
+                </Stack>
+                <Typography variant="caption" sx={{ color: palette.muted, display: "block", mt: 0.5 }}>
+                  Find products naturally by description, skip exact keywords.
+                </Typography>
+              </Paper>
+            )}
+
             <Paper sx={{ borderRadius: 1, p: 1.5 }}>
               <Typography variant="subtitle1" sx={{ color: palette.ink, fontWeight: 800, mb: 1, fontSize: 14 }}>
                 Filters
@@ -578,6 +632,14 @@ export default function Marketplace() {
                               >
                                 {shop.tagline || "Digital storefront"}
                               </Typography>
+                              {shop.semanticScore && (
+                                <Stack direction="row" spacing={0.4} alignItems="center" sx={{ mt: 0.3 }}>
+                                  <AutoAwesomeIcon sx={{ color: palette.accent, fontSize: 10 }} />
+                                  <Typography sx={{ color: "rgba(255,255,255,0.9)", fontSize: 10, fontWeight: 700 }}>
+                                    {Math.round(shop.semanticScore * 100)}% Match
+                                  </Typography>
+                                </Stack>
+                              )}
                             </Box>
                           </Stack>
                         </Box>
@@ -759,6 +821,14 @@ export default function Marketplace() {
                                 <FavoriteBorderIcon />
                               </IconButton>
                             </Stack>
+                            {product.semanticScore && (
+                              <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mt: 0.2 }}>
+                                <AutoAwesomeIcon sx={{ color: palette.accent, fontSize: 13 }} />
+                                <Typography sx={{ color: palette.accent, fontSize: 12, fontWeight: 800 }}>
+                                  {Math.round(product.semanticScore * 100)}% AI Match
+                                </Typography>
+                              </Stack>
+                            )}
                             <Typography sx={{ mt: 0.5, color: palette.muted, fontSize: 12.5 }}>
                               SKU: {product.sku || "-"} {product.category ? `- ${product.category}` : ""}
                             </Typography>
@@ -804,6 +874,14 @@ export default function Marketplace() {
                               <FavoriteBorderIcon fontSize="small" />
                             </IconButton>
                           </Stack>
+                          {product.semanticScore && (
+                            <Stack direction="row" spacing={0.4} alignItems="center" sx={{ mt: 0.2, mb: 0.2 }}>
+                              <AutoAwesomeIcon sx={{ color: palette.accent, fontSize: 11 }} />
+                              <Typography sx={{ color: palette.accent, fontSize: 11, fontWeight: 800 }}>
+                                {Math.round(product.semanticScore * 100)}% AI Match
+                              </Typography>
+                            </Stack>
+                          )}
                           <Typography sx={{ mt: 0.5, fontSize: 14, fontWeight: 600, color: palette.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                             {product.name}
                           </Typography>

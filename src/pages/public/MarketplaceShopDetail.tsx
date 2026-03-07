@@ -28,7 +28,9 @@ import InstagramIcon from "@mui/icons-material/Instagram";
 import FacebookIcon from "@mui/icons-material/Facebook";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getPublicProductDetail, getPublicShopDetail, getPublicShopDetailBySlug, listPublicMarkets, listPublicShopReviews, listPublicShopReviewsBySlug, upsertPublicShopReview, upsertPublicShopReviewBySlug } from "../../api/public";
+import { getPublicProductDetail, getPublicShopDetail, getPublicShopDetailBySlug, listPublicMarkets, listPublicShopReviews, listPublicShopReviewsBySlug, upsertPublicShopReview, upsertPublicShopReviewBySlug, semanticSearchPublicProducts } from "../../api/public";
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
+import { Switch, FormControlLabel } from "@mui/material";
 import MarketplaceHeader from "../../components/marketplace-detail/MarketplaceHeader";
 import { extractEntityId, toProductUrl } from "../../utils/seo";
 import { useMarketplaceAuth } from "../../hooks/useMarketplaceAuth";
@@ -65,6 +67,7 @@ export default function MarketplaceShopDetail() {
   const [activeTab, setActiveTab] = React.useState<ShopTab>("products");
   const [reviewRating, setReviewRating] = React.useState<number | null>(0);
   const [reviewComment, setReviewComment] = React.useState("");
+  const [semanticMode, setSemanticMode] = React.useState(false);
 
   React.useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -75,9 +78,27 @@ export default function MarketplaceShopDetail() {
   }, [searchInput]);
 
   const { data, isLoading, isFetching } = useQuery({
-    queryKey: ["public-shop-detail", shopSlug, legacyId, page, search, category, sort],
-    queryFn: () =>
-      isLegacyIdRoute
+    queryKey: ["public-shop-detail", shopSlug, legacyId, page, search, category, sort, semanticMode],
+    queryFn: async () => {
+      if (semanticMode && search.trim() && shop?._id) {
+        const result = await semanticSearchPublicProducts({
+          query: search,
+          limit: LIMIT,
+          businessId: String(shop._id),
+          category: category || undefined
+        });
+        // We need to fetch the shop detail separately or merge it because semanticSearchPublicProducts only returns items
+        // But getPublicShopDetail returns more info. To keep it simple, we'll fetch shop detail always and override items if semantic
+        const base = isLegacyIdRoute ? await getPublicShopDetail(legacyId) : await getPublicShopDetailBySlug(shopSlug);
+        return {
+          ...base,
+          inventory: {
+            items: result.items,
+            total: result.total
+          }
+        };
+      }
+      return isLegacyIdRoute
         ? getPublicShopDetail(legacyId, {
             page,
             limit: LIMIT,
@@ -91,7 +112,8 @@ export default function MarketplaceShopDetail() {
             search: search || undefined,
             category: category || undefined,
             sort
-          }),
+          });
+    },
     enabled: Boolean(shopSlug || legacyId),
     placeholderData: (previousData) => previousData
   });
@@ -279,6 +301,35 @@ export default function MarketplaceShopDetail() {
                             <MenuItem value="price_desc">Price high to low</MenuItem>
                           </TextField>
                         </Grid>
+                        <Grid item xs={12}>
+                          <Stack direction="row" alignItems="center" spacing={2} sx={{ mt: 0.5, px: 0.5 }}>
+                            <FormControlLabel
+                              control={
+                                <Switch
+                                  size="small"
+                                  checked={semanticMode}
+                                  onChange={(e) => {
+                                    setSemanticMode(e.target.checked);
+                                    setPage(1);
+                                  }}
+                                />
+                              }
+                              label={
+                                <Stack direction="row" spacing={0.5} alignItems="center">
+                                  <AutoAwesomeIcon sx={{ color: semanticMode ? palette.accent : palette.muted, fontSize: 16 }} />
+                                  <Typography sx={{ color: palette.ink, fontWeight: 700, fontSize: 13 }}>
+                                    AI Search
+                                  </Typography>
+                                </Stack>
+                              }
+                            />
+                            {semanticMode && (
+                              <Typography variant="caption" sx={{ color: palette.muted }}>
+                                Find products by description naturally.
+                              </Typography>
+                            )}
+                          </Stack>
+                        </Grid>
                       </Grid>
                     </Paper>
 
@@ -366,6 +417,14 @@ export default function MarketplaceShopDetail() {
                                     <Typography sx={{ color: palette.ink, fontWeight: 800, fontSize: 18 }}>
                                       Rs {Number(item.salePrice || 0).toLocaleString()}
                                     </Typography>
+                                    {item.semanticScore && (
+                                      <Stack direction="row" spacing={0.4} alignItems="center" sx={{ mt: 0.3 }}>
+                                        <AutoAwesomeIcon sx={{ color: palette.accent, fontSize: 11 }} />
+                                        <Typography sx={{ color: palette.accent, fontSize: 11, fontWeight: 800 }}>
+                                          {Math.round(item.semanticScore * 100)}% Match
+                                        </Typography>
+                                      </Stack>
+                                    )}
                                   </Box>
                                 </Card>
                               </Grid>

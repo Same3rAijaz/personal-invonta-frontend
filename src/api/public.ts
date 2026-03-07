@@ -14,6 +14,7 @@ export type PublicProductFilters = {
   minPrice?: number;
   maxPrice?: number;
   sort?: "newest" | "price_asc" | "price_desc" | "name_asc";
+  businessId?: string;
 };
 
 export type PublicShopFilters = {
@@ -63,6 +64,17 @@ export async function getPublicProductDetail(id: string, relatedLimit = 6) {
 
 export async function listPublicShops(params: PublicShopFilters) {
   const { data } = await api.get("/public/shops", { params });
+  return data.data;
+}
+
+
+export async function semanticSearchPublicProducts(params: PublicProductFilters & { query: string }) {
+  const { data } = await api.get("/public/products/semantic-search", { params });
+  return data.data;
+}
+
+export async function semanticSearchPublicShops(params: PublicShopFilters & { query: string }) {
+  const { data } = await api.get("/public/shops/semantic-search", { params });
   return data.data;
 }
 
