@@ -31,7 +31,7 @@ import InstagramIcon from "@mui/icons-material/Instagram";
 import FacebookIcon from "@mui/icons-material/Facebook";
 import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
 import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PublicCategoryNode, getPublicProductDetail, getPublicShopDetail, listPublicCategories, listPublicMarkets, listPublicProducts, listPublicShops, semanticSearchPublicProducts, semanticSearchPublicShops } from "../../api/public";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
@@ -72,6 +72,17 @@ export default function Marketplace() {
   const [viewMode, setViewMode] = React.useState<"list" | "grid">("list");
   const [page, setPage] = React.useState(1);
   const [semanticMode, setSemanticMode] = React.useState(false);
+  const { search: urlSearch } = useLocation();
+
+  React.useEffect(() => {
+    const params = new URLSearchParams(urlSearch);
+    if (params.get("search")) setSearch(params.get("search") || "");
+    if (params.get("marketId")) setMarketId(params.get("marketId") || "");
+    if (params.get("semantic") === "true") setSemanticMode(true);
+    if (params.get("category")) setCategory(params.get("category") || "");
+    if (params.get("resultType") === "shops") setResultType("shops");
+    if (params.get("resultType") === "markets") setResultType("markets");
+  }, [urlSearch]);
   const { data: countryOptions = [] } = useCountries();
   const { data: stateOptions = [] } = useStates(country);
   const { data: cityOptions = [] } = useCities(country, state);
@@ -290,6 +301,11 @@ export default function Marketplace() {
           setPage(1);
         }}
         onSearchSubmit={() => setPage(1)}
+        semanticMode={semanticMode}
+        onSemanticModeChange={(value) => {
+          setSemanticMode(value);
+          setPage(1);
+        }}
       />
 
       <Container maxWidth="xl" sx={{ py: 4 }}>
@@ -436,28 +452,7 @@ export default function Marketplace() {
             ) : null}
 
             {resultType !== "markets" && (
-              <Paper sx={{ borderRadius: 1, p: 1.5, mb: 1.5, background: semanticMode ? alpha(palette.accent, 0.05) : undefined, border: semanticMode ? `1px solid ${palette.accent}` : undefined }}>
-                <Stack direction="row" alignItems="center" justifyContent="space-between">
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    <AutoAwesomeIcon sx={{ color: semanticMode ? palette.accent : palette.muted, fontSize: 18 }} />
-                    <Typography variant="subtitle1" sx={{ color: palette.ink, fontWeight: 800, fontSize: 14 }}>
-                      AI Search
-                    </Typography>
-                  </Stack>
-                  <Switch 
-                    checked={semanticMode} 
-                    onChange={(e) => {
-                      setSemanticMode(e.target.checked);
-                      setPage(1);
-                    }} 
-                    size="small"
-                    color="primary"
-                  />
-                </Stack>
-                <Typography variant="caption" sx={{ color: palette.muted, display: "block", mt: 0.5 }}>
-                  Find products naturally by description, skip exact keywords.
-                </Typography>
-              </Paper>
+              <Box sx={{ mb: 1.5 }} />
             )}
 
             <Paper sx={{ borderRadius: 1, p: 1.5 }}>

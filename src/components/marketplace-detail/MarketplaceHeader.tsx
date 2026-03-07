@@ -1,7 +1,8 @@
 import React from "react";
-import { AppBar, Avatar, Box, Button, CircularProgress, Container, MenuItem, Stack, TextField, Toolbar, Typography } from "@mui/material";
+import { AppBar, Avatar, Box, Button, CircularProgress, Container, IconButton, MenuItem, Stack, TextField, Toolbar, Typography } from "@mui/material";
 import LocationOnOutlinedIcon from "@mui/icons-material/LocationOnOutlined";
 import SearchIcon from "@mui/icons-material/Search";
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import GoogleIcon from "@mui/icons-material/Google";
 import { alpha, useTheme } from "@mui/material/styles";
 import { GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
@@ -21,6 +22,8 @@ type MarketplaceHeaderProps = {
   onSearchChange?: (value: string) => void;
   onSearchSubmit?: () => void;
   showSearchBar?: boolean;
+  semanticMode?: boolean;
+  onSemanticModeChange?: (value: boolean) => void;
 };
 
 export default function MarketplaceHeader(props: MarketplaceHeaderProps) {
@@ -176,17 +179,47 @@ export default function MarketplaceHeader(props: MarketplaceHeaderProps) {
                   </MenuItem>
                 ))}
               </TextField>
-              <Stack direction="row" sx={{ flex: 1 }}>
+              <Stack direction="row" sx={{ flex: 1, position: "relative" }}>
                 <TextField
                   fullWidth
-                  placeholder="Find products, SKU, shops and more..."
+                  placeholder={props.semanticMode ? "Ask AI to find products... (e.g. 'something to record video')" : "Find products, SKU, shops and more..."}
                   value={search}
                   onChange={(event) => onSearchChange?.(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      onSearchSubmit?.();
+                    }
+                  }}
                   sx={{
                     "& .MuiOutlinedInput-root": {
                       borderTopRightRadius: 0,
-                      borderBottomRightRadius: 0
+                      borderBottomRightRadius: 0,
+                      pl: props.onSemanticModeChange ? 1 : undefined,
+                      background: props.semanticMode ? alpha(theme.palette.primary.main, 0.03) : undefined
                     }
+                  }}
+                  InputProps={{
+                    startAdornment: props.onSemanticModeChange ? (
+                      <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mr: 1, borderRight: `1px solid ${alpha(theme.palette.divider, 0.5)}`, pr: 1 }}>
+                        <IconButton 
+                          size="small" 
+                          onClick={() => props.onSemanticModeChange?.(!props.semanticMode)}
+                          sx={{ 
+                            color: props.semanticMode ? theme.palette.primary.main : theme.palette.text.secondary,
+                            bgcolor: props.semanticMode ? alpha(theme.palette.primary.main, 0.1) : "transparent",
+                            transition: "all 0.2s ease",
+                            "&:hover": { bgcolor: props.semanticMode ? alpha(theme.palette.primary.main, 0.2) : alpha(theme.palette.divider, 0.1) }
+                          }}
+                        >
+                          <AutoAwesomeIcon sx={{ fontSize: 20 }} />
+                        </IconButton>
+                        <Box sx={{ display: { xs: "none", sm: "block" } }}>
+                          <Typography variant="caption" sx={{ fontWeight: 800, color: props.semanticMode ? theme.palette.primary.main : theme.palette.text.secondary, fontSize: 10 }}>
+                            {props.semanticMode ? "AI ON" : "AI OFF"}
+                          </Typography>
+                        </Box>
+                      </Stack>
+                    ) : undefined
                   }}
                 />
                 <Button
@@ -197,7 +230,8 @@ export default function MarketplaceHeader(props: MarketplaceHeaderProps) {
                     borderTopLeftRadius: 0,
                     borderBottomLeftRadius: 0,
                     px: 4,
-                    minWidth: 122
+                    minWidth: 122,
+                    background: props.semanticMode ? `linear-gradient(135deg, ${theme.palette.primary.main} 0%, #1a73e8 100%)` : undefined
                   }}
                 >
                   Search

@@ -198,7 +198,9 @@ export default function MarketplaceShopDetail() {
         onMarketChange={setMarketId}
         search={topSearch}
         onSearchChange={setTopSearch}
-        onSearchSubmit={() => navigate(`/marketplace?search=${encodeURIComponent(topSearch)}${marketId ? `&marketId=${marketId}` : ""}`)}
+        onSearchSubmit={() => navigate(`/marketplace?search=${encodeURIComponent(topSearch)}${marketId ? `&marketId=${marketId}` : ""}${semanticMode ? "&semantic=true" : ""}`)}
+        semanticMode={semanticMode}
+        onSemanticModeChange={setSemanticMode}
       />
 
       <Container maxWidth="xl" sx={{ py: 2.2 }}>
@@ -257,12 +259,36 @@ export default function MarketplaceShopDetail() {
                           <TextField
                             size="small"
                             fullWidth
-                            placeholder={`Search in ${shop.name || "shop"}...`}
+                            placeholder={semanticMode ? `Ask AI to find in ${shop.name || "shop"}...` : `Search in ${shop.name || "shop"}...`}
                             value={searchInput}
                             onChange={(event) => {
                               setSearchInput(event.target.value);
                             }}
-                            InputProps={{ startAdornment: <SearchIcon sx={{ color: palette.muted, mr: 1, fontSize: 18 }} /> }}
+                            InputProps={{ 
+                              startAdornment: (
+                                <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mr: 1, borderRight: `1px solid ${alpha(palette.line, 0.5)}`, pr: 1 }}>
+                                  <IconButton 
+                                    size="small" 
+                                    onClick={() => {
+                                      setSemanticMode(!semanticMode);
+                                      setPage(1);
+                                    }}
+                                    sx={{ 
+                                      color: semanticMode ? palette.accent : palette.muted,
+                                      bgcolor: semanticMode ? alpha(palette.accent, 0.1) : "transparent",
+                                      "&:hover": { bgcolor: semanticMode ? alpha(palette.accent, 0.2) : alpha(palette.ink, 0.05) }
+                                    }}
+                                  >
+                                    <AutoAwesomeIcon sx={{ fontSize: 18 }} />
+                                  </IconButton>
+                                  <Box sx={{ display: { xs: "none", sm: "block" } }}>
+                                    <Typography variant="caption" sx={{ fontWeight: 800, color: semanticMode ? palette.accent : palette.muted, fontSize: 10 }}>
+                                      {semanticMode ? "AI" : "OFF"}
+                                    </Typography>
+                                  </Box>
+                                </Stack>
+                              )
+                            }}
                           />
                         </Grid>
                         <Grid item xs={12} md={3.5}>
@@ -279,7 +305,7 @@ export default function MarketplaceShopDetail() {
                           >
                             <MenuItem value="">All categories</MenuItem>
                             {categories.map((item: string) => (
-                              <MenuItem key={item} value={item}>
+                              <MenuItem key={item} value={item} sx={{ fontSize: 13 }}>
                                 {item}
                               </MenuItem>
                             ))}
@@ -293,44 +319,15 @@ export default function MarketplaceShopDetail() {
                             label="Sort by"
                             value={sort}
                             onChange={(event) => {
-                              setSort(event.target.value as "newest" | "price_asc" | "price_desc" | "name_asc");
+                              setSort(event.target.value as any);
                               setPage(1);
                             }}
                           >
-                            <MenuItem value="newest">Most relevant</MenuItem>
-                            <MenuItem value="name_asc">Name A-Z</MenuItem>
-                            <MenuItem value="price_asc">Price low to high</MenuItem>
-                            <MenuItem value="price_desc">Price high to low</MenuItem>
+                            <MenuItem value="newest" sx={{ fontSize: 13 }}>Most relevant</MenuItem>
+                            <MenuItem value="name_asc" sx={{ fontSize: 13 }}>Name A-Z</MenuItem>
+                            <MenuItem value="price_asc" sx={{ fontSize: 13 }}>Price low to high</MenuItem>
+                            <MenuItem value="price_desc" sx={{ fontSize: 13 }}>Price high to low</MenuItem>
                           </TextField>
-                        </Grid>
-                        <Grid item xs={12}>
-                          <Stack direction="row" alignItems="center" spacing={2} sx={{ mt: 0.5, px: 0.5 }}>
-                            <FormControlLabel
-                              control={
-                                <Switch
-                                  size="small"
-                                  checked={semanticMode}
-                                  onChange={(e) => {
-                                    setSemanticMode(e.target.checked);
-                                    setPage(1);
-                                  }}
-                                />
-                              }
-                              label={
-                                <Stack direction="row" spacing={0.5} alignItems="center">
-                                  <AutoAwesomeIcon sx={{ color: semanticMode ? palette.accent : palette.muted, fontSize: 16 }} />
-                                  <Typography sx={{ color: palette.ink, fontWeight: 700, fontSize: 13 }}>
-                                    AI Search
-                                  </Typography>
-                                </Stack>
-                              }
-                            />
-                            {semanticMode && (
-                              <Typography variant="caption" sx={{ color: palette.muted }}>
-                                Find products by description naturally.
-                              </Typography>
-                            )}
-                          </Stack>
                         </Grid>
                       </Grid>
                     </Paper>
