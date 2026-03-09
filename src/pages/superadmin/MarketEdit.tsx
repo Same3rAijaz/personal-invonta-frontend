@@ -17,7 +17,7 @@ export default function MarketEdit() {
     queryKey: ["markets"],
     queryFn: async () => (await api.get("/superadmin/markets", { params: { page: 1, limit: 1000 } })).data.data
   });
-  const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm({ defaultValues: { isActive: true } });
+  const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<any>({ defaultValues: { isActive: true } });
   const country = watch("country");
   const state = watch("state");
   const city = watch("city");
@@ -83,7 +83,7 @@ export default function MarketEdit() {
             />
           </Grid>
           <Grid item xs={12} md={3}>
-            <TextField select fullWidth label="Country" {...register("country")}>
+            <TextField select fullWidth label="Country" {...register("country")} value={country || ""}>
               <MenuItem value="">Select Country</MenuItem>
               {countryOptions.map((item: string) => (
                 <MenuItem key={item} value={item}>{item}</MenuItem>
@@ -91,7 +91,7 @@ export default function MarketEdit() {
             </TextField>
           </Grid>
           <Grid item xs={12} md={3}>
-            <TextField select fullWidth label="State" {...register("state")} disabled={!country}>
+            <TextField select fullWidth label="State" {...register("state")} disabled={!country} value={state || ""}>
               <MenuItem value="">Select State</MenuItem>
               {stateOptions.map((item: string) => (
                 <MenuItem key={item} value={item}>{item}</MenuItem>
@@ -99,7 +99,7 @@ export default function MarketEdit() {
             </TextField>
           </Grid>
           <Grid item xs={12} md={3}>
-            <TextField select fullWidth label="City" {...register("city")} disabled={!country || !state}>
+            <TextField select fullWidth label="City" {...register("city")} disabled={!country || !state} value={city || ""}>
               <MenuItem value="">Select City</MenuItem>
               {cityOptions.map((item: string) => (
                 <MenuItem key={item} value={item}>{item}</MenuItem>

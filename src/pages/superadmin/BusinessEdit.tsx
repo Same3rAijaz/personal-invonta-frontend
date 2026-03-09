@@ -29,7 +29,7 @@ export default function BusinessEdit() {
     queryKey: ["superadmin-categories-for-business-edit"],
     queryFn: async () => (await api.get("/superadmin/categories", { params: { page: 1, limit: 1000 } })).data.data
   });
-  const { register, handleSubmit, reset, control, watch, setValue, formState: { errors } } = useForm({ defaultValues: { isActive: true, marketId: "" } });
+  const { register, handleSubmit, reset, control, watch, setValue, formState: { errors } } = useForm<any>({ defaultValues: { isActive: true, marketId: "" } });
   const country = watch("country");
   const state = watch("state");
   const city = watch("city");
@@ -188,7 +188,7 @@ export default function BusinessEdit() {
             />
           </Grid>
           <Grid item xs={12} md={4}>
-            <TextField select fullWidth label="Country" {...register("country")}>
+            <TextField select fullWidth label="Country" {...register("country")} value={country || ""}>
               <MenuItem value="">Select Country</MenuItem>
               {country && !hasCountryOption ? <MenuItem value={country}>{country}</MenuItem> : null}
               {countryOptions.map((item: string) => (
@@ -197,7 +197,7 @@ export default function BusinessEdit() {
             </TextField>
           </Grid>
           <Grid item xs={12} md={4}>
-            <TextField select fullWidth label="State" {...register("state")} disabled={!country}>
+            <TextField select fullWidth label="State" {...register("state")} disabled={!country} value={state || ""}>
               <MenuItem value="">Select State</MenuItem>
               {state && !hasStateOption ? <MenuItem value={state}>{state}</MenuItem> : null}
               {stateOptions.map((item: string) => (
@@ -206,7 +206,7 @@ export default function BusinessEdit() {
             </TextField>
           </Grid>
           <Grid item xs={12} md={4}>
-            <TextField select fullWidth label="City" {...register("city")} disabled={!country || !state}>
+            <TextField select fullWidth label="City" {...register("city")} disabled={!country || !state} value={city || ""}>
               <MenuItem value="">Select City</MenuItem>
               {city && !hasCityOption ? <MenuItem value={city}>{city}</MenuItem> : null}
               {cityOptions.map((item: string) => (

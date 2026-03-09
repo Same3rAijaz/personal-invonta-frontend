@@ -1,4 +1,4 @@
-import { Box, Button, CircularProgress, FormControl, MenuItem, Select, TextField } from "@mui/material";
+import { Box, Button, CircularProgress, TextField } from "@mui/material";
 import React from "react";
 import { api } from "../../api/client";
 import { useDeleteSalesOrder, useSalesOrders } from "../../hooks/useSales";
@@ -9,12 +9,12 @@ import { useCustomers } from "../../hooks/useCustomers";
 import { useToast } from "../../hooks/useToast";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import { useConfirmDialog } from "../../hooks/useConfirmDialog";
+import { useAuth } from "../../hooks/useAuth";
 
 export default function SalesOrders() {
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(20);
   const [search, setSearch] = React.useState("");
-  const [invoiceSize, setInvoiceSize] = React.useState<"A4" | "A5" | "80mm">("A4");
   const [loadingInvoiceId, setLoadingInvoiceId] = React.useState<string | null>(null);
   const debouncedSearch = useDebouncedValue(search.trim());
   const { data, isLoading } = useSalesOrders({ page: page + 1, limit: rowsPerPage, search: debouncedSearch || undefined });
@@ -25,6 +25,7 @@ export default function SalesOrders() {
   const baseUrl = api.defaults.baseURL || "/api";
   const { notify } = useToast();
   const { confirm, confirmDialog } = useConfirmDialog();
+  const { business } = useAuth();
 
   const openInvoice = async (id: string, download: boolean) => {
     const token = localStorage.getItem("accessToken");
@@ -35,8 +36,12 @@ export default function SalesOrders() {
     setLoadingInvoiceId(id + (download ? "-dl" : "-view"));
     try {
       const params = new URLSearchParams();
-      if (download) params.set("download", "1");
-      params.set("size", invoiceSize);
+      if (download) {
+        params.set("download", "1");
+        params.set("size", "A4"); // Always A4 for downloads
+      } else {
+        params.set("size", (business as any)?.printSize || "A4"); // Business pref for print/view
+      }
       const url = `${baseUrl}/sales/sos/${id}/invoice?${params.toString()}`;
       const response = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` }
@@ -109,18 +114,6 @@ export default function SalesOrders() {
                   <Button size="small" color="error" disabled={!canEdit} onClick={() => handleDelete(row._id)}>
                     Delete
                   </Button>
-                  <FormControl size="small" sx={{ minWidth: 160 }}>
-                    <Select
-                      value={invoiceSize}
-                      onChange={(e) => setInvoiceSize(e.target.value as any)}
-                      variant="outlined"
-                      sx={{ fontSize: 13 }}
-                    >
-                      <MenuItem value="A4">A4</MenuItem>
-                      <MenuItem value="A5">A5</MenuItem>
-                      <MenuItem value="80mm">Thermal Receipt (80mm)</MenuItem>
-                    </Select>
-                  </FormControl>
                   <Button
                     size="small"
                     disabled={!!loadingInvoiceId}

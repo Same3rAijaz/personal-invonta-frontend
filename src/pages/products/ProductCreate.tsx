@@ -11,7 +11,7 @@ export default function ProductCreate() {
   const createProduct = useCreateProduct();
   const { notify } = useToast();
   const navigate = useNavigate();
-  const { register, handleSubmit, setValue, formState: { errors } } = useForm<any>({ defaultValues: { isActive: true } });
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<any>({ defaultValues: { isActive: true, visibility: "PRIVATE" } });
   const { data: categories = [] } = useCategories({ activeOnly: true });
   const [selectedPathIds, setSelectedPathIds] = useState<string[]>([]);
   const [files, setFiles] = useState<File[]>([]);
@@ -173,7 +173,7 @@ export default function ProductCreate() {
             <TextField fullWidth label="Reorder Level" type="number" {...register("reorderLevel")} />
           </Grid>
           <Grid item xs={12} md={3}>
-            <TextField select fullWidth label="Visibility" {...register("visibility")}>
+            <TextField select fullWidth label="Visibility" {...register("visibility")} value={watch("visibility") || "PRIVATE"}>
               <MenuItem value="PRIVATE">Private</MenuItem>
               <MenuItem value="PUBLIC">Public</MenuItem>
             </TextField>

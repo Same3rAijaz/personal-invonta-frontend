@@ -1,13 +1,8 @@
-import { Box, Button, Paper, Typography, Grid, InputAdornment, MenuItem, Divider, TextField } from "@mui/material";
+import { Box, Button, Paper, Typography, Grid, MenuItem, Divider, TextField } from "@mui/material";
 import { useForm } from "react-hook-form";
 import { api } from "../../api/client";
 import { useToast } from "../../hooks/useToast";
 import { useNavigate } from "react-router-dom";
-import Inventory2Outlined from "@mui/icons-material/Inventory2Outlined";
-import WarehouseOutlined from "@mui/icons-material/WarehouseOutlined";
-import NumbersOutlined from "@mui/icons-material/NumbersOutlined";
-import PaidOutlined from "@mui/icons-material/PaidOutlined";
-import LocalOfferOutlined from "@mui/icons-material/LocalOfferOutlined";
 import { useProducts } from "../../hooks/useProducts";
 import { useWarehouses } from "../../hooks/useWarehouses";
 
@@ -73,6 +68,7 @@ export default function InventoryCreate() {
               fullWidth
               label="Action *"
               {...register("action", { required: "Action is required" })}
+              value={watch("action") || ""}
               error={!!errors.action}
               helperText={errors.action?.message as string}
             >
@@ -89,7 +85,7 @@ export default function InventoryCreate() {
               fullWidth
               label="Product *"
               {...register("productId", { required: "Product is required" })}
-              InputProps={{ startAdornment: (<InputAdornment position="start"><Inventory2Outlined /></InputAdornment>) }}
+              value={watch("productId") || ""}
               error={!!errors.productId}
               helperText={errors.productId?.message as string}
             >
@@ -106,7 +102,7 @@ export default function InventoryCreate() {
               fullWidth
               label="Warehouse *"
               {...register("warehouseId", { required: "Warehouse is required" })}
-              InputProps={{ startAdornment: (<InputAdornment position="start"><WarehouseOutlined /></InputAdornment>) }}
+              value={watch("warehouseId") || ""}
               error={!!errors.warehouseId}
               helperText={errors.warehouseId?.message as string}
             >
@@ -123,7 +119,6 @@ export default function InventoryCreate() {
               label="Qty *"
               type="number"
               {...register("qty", { required: "Quantity is required", min: { value: 1, message: "Qty must be > 0" } })}
-              InputProps={{ startAdornment: (<InputAdornment position="start"><NumbersOutlined /></InputAdornment>) }}
               error={!!errors.qty}
               helperText={errors.qty?.message as string}
             />
@@ -134,7 +129,6 @@ export default function InventoryCreate() {
               label="Unit Cost"
               type="number"
               {...register("unitCost")}
-              InputProps={{ startAdornment: (<InputAdornment position="start"><PaidOutlined /></InputAdornment>) }}
             />
           </Grid>
           <Grid item xs={12} md={3}>
@@ -145,7 +139,6 @@ export default function InventoryCreate() {
               fullWidth
               label="Ref ID"
               {...register("refId")}
-              InputProps={{ startAdornment: (<InputAdornment position="start"><LocalOfferOutlined /></InputAdornment>) }}
             />
           </Grid>
           {action === "transfer" ? (
@@ -156,6 +149,7 @@ export default function InventoryCreate() {
                   fullWidth 
                   label="To Warehouse *" 
                   {...register("toWarehouseId", { required: action === "transfer" ? "Destination warehouse is required" : false })} 
+                  value={watch("toWarehouseId") || ""}
                   error={action === "transfer" && !!errors.toWarehouseId}
                   helperText={action === "transfer" ? errors.toWarehouseId?.message as string : undefined}
                 >

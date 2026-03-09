@@ -278,7 +278,7 @@ export default function Signup() {
                   </Grid>
                 ))}
                 <Grid item xs={12} md={4}>
-                  <TextField select fullWidth label="Market" {...register("marketId")} sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1 } }}>
+                  <TextField select fullWidth label="Market" {...register("marketId")} value={marketId || ""} sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1 } }}>
                     <MenuItem value={REQUEST_MARKET_VALUE}>Not listed / Request market</MenuItem>
                     {(markets || []).map((m: any) => (
                       <MenuItem key={m._id} value={m._id}>{m.name}</MenuItem>
@@ -286,7 +286,7 @@ export default function Signup() {
                   </TextField>
                 </Grid>
                 <Grid item xs={12} md={4}>
-                  <TextField select fullWidth label="Country" defaultValue={DEFAULT_COUNTRY} {...register("country")} sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1 } }}>
+                  <TextField select fullWidth label="Country" {...register("country")} value={country || ""} sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1 } }}>
                     <MenuItem value="">Select Country</MenuItem>
                     {countryOptions.map((item: string) => (
                       <MenuItem key={item} value={item}>{item}</MenuItem>
@@ -294,7 +294,7 @@ export default function Signup() {
                   </TextField>
                 </Grid>
                 <Grid item xs={12} md={4}>
-                  <TextField select fullWidth label="State" defaultValue={DEFAULT_STATE} {...register("state")} disabled={!country} sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1 } }}>
+                  <TextField select fullWidth label="State" {...register("state")} disabled={!country} value={state || ""} sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1 } }}>
                     <MenuItem value="">Select State</MenuItem>
                     {stateOptions.map((item: string) => (
                       <MenuItem key={item} value={item}>{item}</MenuItem>
@@ -302,7 +302,7 @@ export default function Signup() {
                   </TextField>
                 </Grid>
                 <Grid item xs={12} md={4}>
-                  <TextField select fullWidth label="City" defaultValue={DEFAULT_CITY} {...register("city")} disabled={!country || !state} sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1 } }}>
+                  <TextField select fullWidth label="City" {...register("city")} disabled={!country || !state} value={city || ""} sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1 } }}>
                     <MenuItem value="">Select City</MenuItem>
                     {cityOptions.map((item: string) => (
                       <MenuItem key={item} value={item}>{item}</MenuItem>
