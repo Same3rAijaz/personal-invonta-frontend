@@ -1,4 +1,4 @@
-import { Box, Button, Paper, Typography, Grid, TextField, Divider, Avatar, Stack, FormControlLabel, Checkbox } from "@mui/material";
+import { Box, Button, Paper, Typography, Grid, TextField, Divider, Avatar, Stack, FormControlLabel, Checkbox, MenuItem } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -53,7 +53,8 @@ export default function BusinessProfile() {
         websiteUrl: businessData.websiteUrl || "",
         instagramUrl: businessData.instagramUrl || "",
         facebookUrl: businessData.facebookUrl || "",
-        marketplaceVisible: businessData.marketplaceVisible ?? true
+        marketplaceVisible: businessData.marketplaceVisible ?? true,
+        printSize: businessData.printSize || "A4"
       });
       setLogoPreview(withCacheBust(businessData.logoUrl, businessData.updatedAt || Date.now()));
       setBannerPreview(withCacheBust(businessData.bannerUrl, businessData.updatedAt || Date.now()));
@@ -287,6 +288,29 @@ export default function BusinessProfile() {
                           }}
                         />
                       </Button>
+                    </Stack>
+                  </Grid>
+                  <Grid item xs={12}>
+                    <Divider sx={{ my: 1 }} />
+                  </Grid>
+                  <Grid item xs={12} md={12}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>Print & Document Settings</Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                      Select the default paper size to format invoices globally for your business.
+                    </Typography>
+                    <Stack direction="row">
+                       <TextField
+                        select
+                        fullWidth
+                        label="Default Invoice Print Size"
+                        InputLabelProps={{ shrink: true }}
+                        value={watch("printSize") || "A4"}
+                        onChange={(e) => setValue("printSize", e.target.value, { shouldDirty: true })}
+                      >
+                         <MenuItem value="A4">A4</MenuItem>
+                         <MenuItem value="A5">A5</MenuItem>
+                         <MenuItem value="80mm">Thermal Receipt (80mm)</MenuItem>
+                      </TextField>
                     </Stack>
                   </Grid>
                   <Grid item xs={12}>

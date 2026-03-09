@@ -13,7 +13,7 @@ export default function MarketCreate() {
   const { notify } = useToast();
   const navigate = useNavigate();
   const client = useQueryClient();
-  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm({
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<any>({
     defaultValues: {
       isActive: true,
       country: DEFAULT_COUNTRY,
@@ -69,7 +69,7 @@ export default function MarketCreate() {
             />
           </Grid>
           <Grid item xs={12} md={3}>
-            <TextField select fullWidth label="Country" {...register("country")}>
+            <TextField select fullWidth label="Country" {...register("country")} value={country || ""}>
               <MenuItem value="">Select Country</MenuItem>
               {countryOptions.map((item: string) => (
                 <MenuItem key={item} value={item}>{item}</MenuItem>
@@ -77,7 +77,7 @@ export default function MarketCreate() {
             </TextField>
           </Grid>
           <Grid item xs={12} md={3}>
-            <TextField select fullWidth label="State" {...register("state")} disabled={!country}>
+            <TextField select fullWidth label="State" {...register("state")} disabled={!country} value={state || ""}>
               <MenuItem value="">Select State</MenuItem>
               {stateOptions.map((item: string) => (
                 <MenuItem key={item} value={item}>{item}</MenuItem>
@@ -85,7 +85,7 @@ export default function MarketCreate() {
             </TextField>
           </Grid>
           <Grid item xs={12} md={3}>
-            <TextField select fullWidth label="City" {...register("city")} disabled={!country || !state}>
+            <TextField select fullWidth label="City" {...register("city")} disabled={!country || !state} value={city || ""}>
               <MenuItem value="">Select City</MenuItem>
               {cityOptions.map((item: string) => (
                 <MenuItem key={item} value={item}>{item}</MenuItem>

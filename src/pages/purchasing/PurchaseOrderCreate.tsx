@@ -14,7 +14,7 @@ export default function PurchaseOrderCreate() {
   const navigate = useNavigate();
   const { data: vendors } = useVendors({ page: 1, limit: 1000 });
   const { data: products } = useProducts({ page: 1, limit: 1000 });
-  const { register, handleSubmit, control, formState: { errors } } = useForm<any>({
+  const { register, handleSubmit, watch, control, formState: { errors } } = useForm<any>({
     defaultValues: { status: "DRAFT", items: [{ productId: "", qty: 1, unitCost: 0 }] }
   });
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
@@ -45,6 +45,7 @@ export default function PurchaseOrderCreate() {
               fullWidth 
               label="Vendor *" 
               {...register("vendorId", { required: "Vendor is required" })}
+              value={watch("vendorId") || ""}
               error={!!errors.vendorId}
               helperText={errors.vendorId?.message as string}
             >
@@ -54,7 +55,7 @@ export default function PurchaseOrderCreate() {
             </TextField>
           </Grid>
           <Grid item xs={12} md={6}>
-            <TextField select fullWidth label="Status" {...register("status")}>
+            <TextField select fullWidth label="Status" {...register("status")} value={watch("status") || "DRAFT"}>
               <MenuItem value="DRAFT">DRAFT</MenuItem>
               <MenuItem value="APPROVED">APPROVED</MenuItem>
               <MenuItem value="RECEIVED">RECEIVED</MenuItem>
@@ -71,8 +72,9 @@ export default function PurchaseOrderCreate() {
                   fullWidth 
                   label="Product *" 
                   {...register(`items.${index}.productId` as const, { required: "Product is required" })}
-                  error={!!errors.items?.[index]?.productId}
-                  helperText={errors.items?.[index]?.productId?.message as string}
+                  value={watch(`items.${index}.productId`) || ""}
+                  error={!!(errors.items as any)?.[index]?.productId}
+                  helperText={(errors.items as any)?.[index]?.productId?.message as string}
                 >
                   {(products?.items || []).map((p: any) => (
                     <MenuItem key={p._id} value={p._id}>{p.name}</MenuItem>
@@ -85,8 +87,8 @@ export default function PurchaseOrderCreate() {
                   label="Qty *" 
                   type="number" 
                   {...register(`items.${index}.qty` as const, { required: "Required", min: { value: 1, message: "> 0" } })} 
-                  error={!!errors.items?.[index]?.qty}
-                  helperText={errors.items?.[index]?.qty?.message as string}
+                  error={!!(errors.items as any)?.[index]?.qty}
+                  helperText={(errors.items as any)?.[index]?.qty?.message as string}
                 />
               </Grid>
               <Grid item xs={6} md={3}>
@@ -95,8 +97,8 @@ export default function PurchaseOrderCreate() {
                   label="Unit Cost *" 
                   type="number" 
                   {...register(`items.${index}.unitCost` as const, { required: "Required", min: { value: 0, message: ">= 0" } })} 
-                  error={!!errors.items?.[index]?.unitCost}
-                  helperText={errors.items?.[index]?.unitCost?.message as string}
+                  error={!!(errors.items as any)?.[index]?.unitCost}
+                  helperText={(errors.items as any)?.[index]?.unitCost?.message as string}
                 />
               </Grid>
               <Grid item xs={12} md={1} sx={{ display: "flex", alignItems: "center" }}>

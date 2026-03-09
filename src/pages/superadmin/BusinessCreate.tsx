@@ -21,7 +21,7 @@ export default function BusinessCreate() {
     queryKey: ["superadmin-categories-for-business-create"],
     queryFn: async () => (await api.get("/superadmin/categories", { params: { page: 1, limit: 1000 } })).data.data
   });
-  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm({
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<any>({
     defaultValues: {
       isActive: true,
       country: DEFAULT_COUNTRY,
@@ -128,7 +128,7 @@ export default function BusinessCreate() {
             />
           </Grid>
           <Grid item xs={12} md={6}>
-            <TextField select fullWidth label="Market (optional)" {...register("marketId")}>
+            <TextField select fullWidth label="Market (optional)" {...register("marketId")} value={marketId || ""}>
               <MenuItem value="">None</MenuItem>
               {(markets?.items || []).map((m: any) => (
                 <MenuItem key={m._id} value={m._id}>{m.name}</MenuItem>
@@ -178,7 +178,7 @@ export default function BusinessCreate() {
             </Grid>
           ) : null}
           <Grid item xs={12} md={4}>
-            <TextField select fullWidth label="Country" {...register("country")}>
+            <TextField select fullWidth label="Country" {...register("country")} value={country || ""}>
               <MenuItem value="">Select Country</MenuItem>
               {countryOptions.map((item: string) => (
                 <MenuItem key={item} value={item}>{item}</MenuItem>
@@ -186,7 +186,7 @@ export default function BusinessCreate() {
             </TextField>
           </Grid>
           <Grid item xs={12} md={4}>
-            <TextField select fullWidth label="State" {...register("state")} disabled={!country}>
+            <TextField select fullWidth label="State" {...register("state")} disabled={!country} value={state || ""}>
               <MenuItem value="">Select State</MenuItem>
               {stateOptions.map((item: string) => (
                 <MenuItem key={item} value={item}>{item}</MenuItem>
@@ -194,7 +194,7 @@ export default function BusinessCreate() {
             </TextField>
           </Grid>
           <Grid item xs={12} md={4}>
-            <TextField select fullWidth label="City" {...register("city")} disabled={!country || !state}>
+            <TextField select fullWidth label="City" {...register("city")} disabled={!country || !state} value={city || ""}>
               <MenuItem value="">Select City</MenuItem>
               {cityOptions.map((item: string) => (
                 <MenuItem key={item} value={item}>{item}</MenuItem>

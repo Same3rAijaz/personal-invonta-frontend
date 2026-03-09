@@ -17,7 +17,7 @@ export default function SalesOrderEdit() {
   const updateSO = useUpdateSalesOrder();
   const { notify } = useToast();
   const navigate = useNavigate();
-  const { register, handleSubmit, control, reset, formState: { errors } } = useForm<any>({
+  const { register, handleSubmit, control, watch, reset, formState: { errors } } = useForm<any>({
     defaultValues: { customerId: "", items: [{ productId: "", qty: 1, unitPrice: 0 }] }
   });
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
@@ -76,6 +76,7 @@ export default function SalesOrderEdit() {
               fullWidth 
               label="Customer *" 
               {...register("customerId", { required: "Customer is required" })}
+              value={watch("customerId") || ""}
               error={!!errors.customerId}
               helperText={errors.customerId?.message as string}
             >
@@ -96,8 +97,9 @@ export default function SalesOrderEdit() {
                   fullWidth 
                   label="Product *" 
                   {...register(`items.${index}.productId` as const, { required: "Product is required" })}
-                  error={!!errors.items?.[index]?.productId}
-                  helperText={errors.items?.[index]?.productId?.message as string}
+                  value={watch(`items.${index}.productId`) || ""}
+                  error={!!(errors.items as any)?.[index]?.productId}
+                  helperText={(errors.items as any)?.[index]?.productId?.message as string}
                 >
                   {(products?.items || []).map((p: any) => (
                     <MenuItem key={p._id} value={p._id}>{p.name}</MenuItem>
@@ -110,8 +112,8 @@ export default function SalesOrderEdit() {
                   label="Qty *" 
                   type="number" 
                   {...register(`items.${index}.qty` as const, { required: "Required", min: { value: 1, message: "> 0" } })} 
-                  error={!!errors.items?.[index]?.qty}
-                  helperText={errors.items?.[index]?.qty?.message as string}
+                  error={!!(errors.items as any)?.[index]?.qty}
+                  helperText={(errors.items as any)?.[index]?.qty?.message as string}
                 />
               </Grid>
               <Grid item xs={6} md={3}>
@@ -120,8 +122,8 @@ export default function SalesOrderEdit() {
                   label="Unit Price *" 
                   type="number" 
                   {...register(`items.${index}.unitPrice` as const, { required: "Required", min: { value: 0, message: ">= 0" } })}
-                  error={!!errors.items?.[index]?.unitPrice}
-                  helperText={errors.items?.[index]?.unitPrice?.message as string}
+                  error={!!(errors.items as any)?.[index]?.unitPrice}
+                  helperText={(errors.items as any)?.[index]?.unitPrice?.message as string}
                 />
               </Grid>
               <Grid item xs={12} md={1} sx={{ display: "flex", alignItems: "center" }}>

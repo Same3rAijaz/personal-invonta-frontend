@@ -14,7 +14,7 @@ export default function SalesOrderCreate() {
   const navigate = useNavigate();
   const { data: customers } = useCustomers({ page: 1, limit: 1000 });
   const { data: products } = useProducts({ page: 1, limit: 1000 });
-  const { register, handleSubmit, control, formState: { errors } } = useForm<any>({
+  const { register, handleSubmit, watch, control, formState: { errors } } = useForm<any>({
     defaultValues: { status: "DRAFT", items: [{ productId: "", qty: 1, unitPrice: 0 }] }
   });
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
@@ -45,6 +45,7 @@ export default function SalesOrderCreate() {
               fullWidth 
               label="Customer *" 
               {...register("customerId", { required: "Customer is required" })}
+              value={watch("customerId") || ""}
               error={!!errors.customerId}
               helperText={errors.customerId?.message as string}
             >
@@ -54,7 +55,7 @@ export default function SalesOrderCreate() {
             </TextField>
           </Grid>
           <Grid item xs={12} md={6}>
-            <TextField select fullWidth label="Status" {...register("status")}>
+            <TextField select fullWidth label="Status" {...register("status")} value={watch("status") || "DRAFT"}>
               <MenuItem value="DRAFT">DRAFT</MenuItem>
               <MenuItem value="CONFIRMED">CONFIRMED</MenuItem>
               <MenuItem value="SHIPPED">SHIPPED</MenuItem>
@@ -71,8 +72,9 @@ export default function SalesOrderCreate() {
                   fullWidth 
                   label="Product *" 
                   {...register(`items.${index}.productId` as const, { required: "Product is required" })}
-                  error={!!errors.items?.[index]?.productId}
-                  helperText={errors.items?.[index]?.productId?.message as string}
+                  value={watch(`items.${index}.productId`) || ""}
+                  error={!!(errors.items as any)?.[index]?.productId}
+                  helperText={(errors.items as any)?.[index]?.productId?.message as string}
                 >
                   {(products?.items || []).map((p: any) => (
                     <MenuItem key={p._id} value={p._id}>{p.name}</MenuItem>
@@ -85,8 +87,8 @@ export default function SalesOrderCreate() {
                   label="Qty *" 
                   type="number" 
                   {...register(`items.${index}.qty` as const, { required: "Required", min: { value: 1, message: "> 0" } })} 
-                  error={!!errors.items?.[index]?.qty}
-                  helperText={errors.items?.[index]?.qty?.message as string}
+                  error={!!(errors.items as any)?.[index]?.qty}
+                  helperText={(errors.items as any)?.[index]?.qty?.message as string}
                 />
               </Grid>
               <Grid item xs={6} md={3}>
@@ -95,8 +97,8 @@ export default function SalesOrderCreate() {
                   label="Unit Price *" 
                   type="number" 
                   {...register(`items.${index}.unitPrice` as const, { required: "Required", min: { value: 0, message: ">= 0" } })}
-                  error={!!errors.items?.[index]?.unitPrice}
-                  helperText={errors.items?.[index]?.unitPrice?.message as string}
+                  error={!!(errors.items as any)?.[index]?.unitPrice}
+                  helperText={(errors.items as any)?.[index]?.unitPrice?.message as string}
                 />
               </Grid>
               <Grid item xs={12} md={1} sx={{ display: "flex", alignItems: "center" }}>
