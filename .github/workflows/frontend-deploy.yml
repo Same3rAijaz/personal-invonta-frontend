@@ -15,12 +15,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'yarn'
+          cache: 'npm'
 
       - name: Install Dependencies
         run: |
           cd invonta-frontend
-          yarn install
+          npm ci
 
       - name: Inject Environment Variables
         run: |
@@ -36,7 +36,7 @@ jobs:
       - name: Build Project
         run: |
           cd invonta-frontend
-          yarn build
+          npm run build
 
       - name: Upload Files to EC2
         uses: appleboy/scp-action@master
