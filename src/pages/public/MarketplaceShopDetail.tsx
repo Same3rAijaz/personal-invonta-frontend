@@ -18,6 +18,23 @@ import {
   Typography
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
+import { keyframes } from "@mui/system";
+import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
+
+const aiGlow = keyframes`
+  0% {
+    filter: drop-shadow(0 0 2px rgba(33, 166, 223, 0.4));
+    transform: scale(1);
+  }
+  50% {
+    filter: drop-shadow(0 0 8px rgba(33, 166, 223, 0.8));
+    transform: scale(1.1);
+  }
+  100% {
+    filter: drop-shadow(0 0 2px rgba(33, 166, 223, 0.4));
+    transform: scale(1);
+  }
+`;
 import StorefrontIcon from "@mui/icons-material/Storefront";
 import PlaceIcon from "@mui/icons-material/Place";
 import PhoneIcon from "@mui/icons-material/Phone";
@@ -27,16 +44,27 @@ import LanguageIcon from "@mui/icons-material/Language";
 import InstagramIcon from "@mui/icons-material/Instagram";
 import FacebookIcon from "@mui/icons-material/Facebook";
 import { useNavigate, useParams } from "react-router-dom";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getPublicProductDetail, getPublicShopDetail, getPublicShopDetailBySlug, listPublicMarkets, listPublicShopReviews, listPublicShopReviewsBySlug, upsertPublicShopReview, upsertPublicShopReviewBySlug, semanticSearchPublicProducts } from "../../api/public";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { 
+  getPublicProductDetail, 
+  getPublicShopDetail, 
+  getPublicShopDetailBySlug, 
+  listPublicMarkets, 
+  listPublicShopReviews, 
+  listPublicShopReviewsBySlug, 
+  upsertPublicShopReview, 
+  upsertPublicShopReviewBySlug, 
+  semanticSearchPublicProducts
+} from "../../api/public";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import { Switch, FormControlLabel } from "@mui/material";
+import { useToast } from "../../hooks/useToast";
+import { useFavorites } from "../../hooks/useFavorites";
+import { useMarketplaceAuth } from "../../hooks/useMarketplaceAuth";
+import FavoriteIcon from "@mui/icons-material/Favorite";
+import { extractEntityId, toProductUrl } from "../../utils/seo";
 import MarketplaceHeader from "../../components/marketplace-detail/MarketplaceHeader";
 import PublicFooter from "../../components/marketplace-detail/PublicFooter";
-import { extractEntityId, toProductUrl } from "../../utils/seo";
-
-import { useMarketplaceAuth } from "../../hooks/useMarketplaceAuth";
-import { useToast } from "../../hooks/useToast";
 
 const LIMIT = 12;
 
@@ -51,6 +79,7 @@ export default function MarketplaceShopDetail() {
   const queryClient = useQueryClient();
   const { notify } = useToast();
   const marketplaceAuth = useMarketplaceAuth();
+  const { isFavorited, toggle } = useFavorites();
   const palette = {
     canvas: "#d7dce4",
     ink: "#0b1220",
@@ -69,7 +98,7 @@ export default function MarketplaceShopDetail() {
   const [activeTab, setActiveTab] = React.useState<ShopTab>("products");
   const [reviewRating, setReviewRating] = React.useState<number | null>(0);
   const [reviewComment, setReviewComment] = React.useState("");
-  const [semanticMode, setSemanticMode] = React.useState(false);
+  const [semanticMode, setSemanticMode] = React.useState(true);
 
   React.useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -117,13 +146,15 @@ export default function MarketplaceShopDetail() {
           });
     },
     enabled: Boolean(shopSlug || legacyId),
+    staleTime: 5 * 60 * 1000, // 5 minutes
     placeholderData: (previousData) => previousData
   });
 
   const { data: reviewData, isFetching: isReviewFetching } = useQuery({
     queryKey: ["public-shop-reviews", shopSlug, legacyId],
     queryFn: () => (isLegacyIdRoute ? listPublicShopReviews(legacyId, { page: 1, limit: 20 }) : listPublicShopReviewsBySlug(shopSlug, { page: 1, limit: 20 })),
-    enabled: Boolean((shopSlug || legacyId) && activeTab === "reviews")
+    enabled: Boolean((shopSlug || legacyId) && activeTab === "reviews"),
+    staleTime: 2 * 60 * 1000 // 2 minutes
   });
 
   const reviewMutation = useMutation({
@@ -140,7 +171,8 @@ export default function MarketplaceShopDetail() {
 
   const { data: marketData = [] } = useQuery({
     queryKey: ["public-markets-shop-detail"],
-    queryFn: () => listPublicMarkets()
+    queryFn: () => listPublicMarkets(),
+    staleTime: 30 * 60 * 1000 // 30 mins
   });
 
   const shop = data?.shop;
@@ -183,6 +215,7 @@ export default function MarketplaceShopDetail() {
     }
     reviewMutation.mutate({ rating: reviewRating, comment: reviewComment.trim() || undefined });
   };
+
   const toHref = (value?: string) => {
     const raw = String(value || "").trim();
     if (!raw) return "";
@@ -267,24 +300,15 @@ export default function MarketplaceShopDetail() {
                             InputProps={{ 
                               startAdornment: (
                                 <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mr: 1, borderRight: `1px solid ${alpha(palette.line, 0.5)}`, pr: 1 }}>
-                                  <IconButton 
-                                    size="small" 
-                                    onClick={() => {
-                                      setSemanticMode(!semanticMode);
-                                      setPage(1);
-                                    }}
+                                  <AutoAwesomeIcon 
                                     sx={{ 
-                                      color: semanticMode ? palette.accent : palette.muted,
-                                      bgcolor: semanticMode ? alpha(palette.accent, 0.1) : "transparent",
-                                      "&:hover": { bgcolor: semanticMode ? alpha(palette.accent, 0.2) : alpha(palette.ink, 0.05) }
-                                    }}
-                                  >
-                                    <AutoAwesomeIcon sx={{ fontSize: 18 }} />
-                                  </IconButton>
+                                      fontSize: 18, 
+                                      color: palette.accent, 
+                                      ml: 1,
+                                      animation: searchInput.trim().length > 0 ? `${aiGlow} 2s infinite ease-in-out` : 'none'
+                                    }} 
+                                  />
                                   <Box sx={{ display: { xs: "none", sm: "block" } }}>
-                                    <Typography variant="caption" sx={{ fontWeight: 800, color: semanticMode ? palette.accent : palette.muted, fontSize: 10 }}>
-                                      {semanticMode ? "AI" : "OFF"}
-                                    </Typography>
                                   </Box>
                                 </Stack>
                               )
@@ -406,7 +430,21 @@ export default function MarketplaceShopDetail() {
                                   sx={{ borderRadius: 1.2, border: `1px solid ${palette.line}`, cursor: "pointer" }}
                                 >
                                   <Box component="img" src={item.thumbnailUrl || "/Invonta.png"} alt={item.name} sx={{ width: "100%", height: 150, objectFit: "cover", display: "block" }} />
-                                  <Box sx={{ p: 1.1 }}>
+                                  <Box sx={{ p: 1.1, position: "relative" }}>
+                                     <IconButton
+                                       size="small"
+                                       onClick={(e) => {
+                                         e.stopPropagation();
+                                         toggle(item._id);
+                                       }}
+                                       sx={{ position: "absolute", top: -35, right: 5, bgcolor: "rgba(255,255,255,0.8)", "&:hover": { bgcolor: "#fff" } }}
+                                     >
+                                       {isFavorited(item._id) ? (
+                                         <FavoriteIcon fontSize="small" sx={{ color: "#ef4444" }} />
+                                       ) : (
+                                         <FavoriteBorderIcon fontSize="small" sx={{ color: "#ef4444" }} />
+                                       )}
+                                     </IconButton>
                                     <Typography sx={{ color: palette.ink, fontWeight: 700, fontSize: 14 }} noWrap>
                                       {item.name}
                                     </Typography>

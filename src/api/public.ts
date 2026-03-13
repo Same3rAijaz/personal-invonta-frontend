@@ -162,6 +162,33 @@ export async function upsertPublicShopReviewBySlug(slug: string, payload: { rati
   }
 }
 
+export async function listPublicFavorites() {
+  const token = await ensureMarketplaceAccessToken();
+  const { data } = await api.get("/public/favorites", {
+    skipAuth: true,
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined
+  } as any);
+  return data.data;
+}
+
+export async function togglePublicFavorite(productId: string) {
+  const token = await ensureMarketplaceAccessToken();
+  const { data } = await api.post(`/public/favorites/${productId}/toggle`, {}, {
+    skipAuth: true,
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined
+  } as any);
+  return data.data;
+}
+
+export async function checkPublicFavorite(productId: string) {
+  const token = await ensureMarketplaceAccessToken();
+  const { data } = await api.get(`/public/favorites/${productId}/check`, {
+    skipAuth: true,
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined
+  } as any);
+  return data.data;
+}
+
 async function ensureMarketplaceAccessToken(forceRefresh = false): Promise<string | null> {
   if (!forceRefresh) {
     const existing = localStorage.getItem("marketplaceAccessToken");

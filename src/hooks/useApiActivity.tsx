@@ -1,6 +1,8 @@
 import React from "react";
 import { Backdrop, CircularProgress } from "@mui/material";
 
+import CustomLoader from "../components/CustomLoader";
+
 const ApiActivityContext = React.createContext<{ pending: number }>({ pending: 0 });
 
 export function ApiActivityProvider({ children }: { children: React.ReactNode }) {
@@ -19,8 +21,8 @@ export function ApiActivityProvider({ children }: { children: React.ReactNode })
   return (
     <ApiActivityContext.Provider value={{ pending }}>
       {children}
-      <Backdrop open={pending > 0} sx={{ color: "#fff", zIndex: (theme) => theme.zIndex.drawer + 10 }}>
-        <CircularProgress color="inherit" size={30} />
+      <Backdrop open={pending > 0} sx={{ color: "#fff", zIndex: (theme) => theme.zIndex.drawer + 9999, backgroundColor: "rgba(255, 255, 255, 0.8)", backdropFilter: "blur(4px)" }}>
+        <CustomLoader />
       </Backdrop>
     </ApiActivityContext.Provider>
   );

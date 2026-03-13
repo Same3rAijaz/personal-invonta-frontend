@@ -160,29 +160,29 @@ export default function ProductDetailPage(props: ProductDetailPageProps) {
                   </Grid>
                   <Grid item xs={12} md={7.6}>
                     <Box sx={{ p: 1.6 }}>
-                      <Typography sx={{ fontSize: { xs: 28, md: 42 }, lineHeight: 1.1, fontWeight: 800, color: theme.palette.text.primary }}>
+                      <Typography sx={{ fontSize: { xs: 24, md: 32 }, lineHeight: 1.2, fontWeight: 800, color: theme.palette.text.primary }}>
                         {model.title}
                       </Typography>
-                      <Divider sx={{ my: 1.2 }} />
+                      <Divider sx={{ my: 1.5 }} />
 
-                      <Stack spacing={0.5}>
+                      <Stack spacing={0.8}>
                         {model.details.slice(0, 3).map((item) => (
-                          <Typography key={item.label} sx={{ color: theme.palette.text.secondary, fontSize: 14 }}>
-                            • {item.label}: {item.value}
+                          <Typography key={item.label} sx={{ color: theme.palette.text.secondary, fontSize: 13, fontWeight: 500 }}>
+                            <Box component="span" sx={{ color: theme.palette.text.primary, fontWeight: 600 }}>{item.label}:</Box> {item.value}
                           </Typography>
                         ))}
                       </Stack>
 
-                      <Divider sx={{ my: 1.2 }} />
+                      <Divider sx={{ my: 1.5 }} />
 
-                      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.9 }}>
-                        <Chip label="SALE" size="small" sx={{ bgcolor: alpha(theme.palette.error.main, 0.15), color: theme.palette.error.main, fontWeight: 700 }} />
-                        <Typography sx={{ color: theme.palette.text.secondary, textDecoration: "line-through", fontSize: 20 }}>
-                          Rs {originalPrice.toLocaleString()}
-                        </Typography>
-                        <Typography sx={{ color: theme.palette.text.primary, fontWeight: 800, fontSize: 40 }}>
+                      <Stack direction="row" spacing={1.5} alignItems="baseline" sx={{ mb: 1 }}>
+                        <Typography sx={{ color: theme.palette.text.primary, fontWeight: 900, fontSize: { xs: 32, md: 36 } }}>
                           Rs {Number(model.price || 0).toLocaleString()}
                         </Typography>
+                        <Typography sx={{ color: theme.palette.text.secondary, textDecoration: "line-through", fontSize: 16, fontWeight: 500 }}>
+                          Rs {originalPrice.toLocaleString()}
+                        </Typography>
+                        <Chip label="SALE" size="small" sx={{ bgcolor: alpha(theme.palette.error.main, 0.1), color: theme.palette.error.main, fontWeight: 800, fontSize: 11, height: 20 }} />
                       </Stack>
 
                       <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1.1 }}>
@@ -211,12 +211,12 @@ export default function ProductDetailPage(props: ProductDetailPageProps) {
 
               <Paper sx={{ mt: 1.8, p: 1.6, borderRadius: 1.4, border: `1px solid ${alpha(theme.palette.text.primary, 0.12)}` }}>
                 {activeTab === "description" ? (
-                  <Stack spacing={0.7}>
-                    <Typography sx={{ color: theme.palette.text.primary, fontSize: 30, fontWeight: 800 }}>
+                  <Stack spacing={1.2}>
+                    <Typography sx={{ color: theme.palette.text.primary, fontSize: { xs: 20, md: 24 }, fontWeight: 800 }}>
                       Description
                     </Typography>
                     {(descriptionLines.length ? descriptionLines : ["No description provided"]).map((line) => (
-                      <Typography key={line} sx={{ color: theme.palette.text.secondary, fontSize: 15 }}>
+                      <Typography key={line} sx={{ color: theme.palette.text.secondary, fontSize: 15, lineHeight: 1.6 }}>
                         {line}
                       </Typography>
                     ))}
@@ -247,8 +247,8 @@ export default function ProductDetailPage(props: ProductDetailPageProps) {
                 ) : null}
               </Paper>
 
-              <Paper sx={{ mt: 1.8, p: 1.6, borderRadius: 1.4, border: `1px solid ${alpha(theme.palette.text.primary, 0.12)}` }}>
-                <Typography sx={{ fontSize: 32, fontWeight: 800, mb: 1.2, color: theme.palette.text.primary }}>
+              <Paper sx={{ mt: 1.8, p: 2, borderRadius: 1.4, border: `1px solid ${alpha(theme.palette.text.primary, 0.12)}` }}>
+                <Typography sx={{ fontSize: { xs: 20, md: 24 }, fontWeight: 800, mb: 1.5, color: theme.palette.text.primary }}>
                   Related Products You May Like
                 </Typography>
                 {model.relatedProducts.length === 0 ? (
