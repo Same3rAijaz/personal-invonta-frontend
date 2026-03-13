@@ -1,6 +1,7 @@
 import React from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { getFirebaseAuth } from "../lib/firebase";
+import { useQueryClient } from "@tanstack/react-query";
 
 type MarketplaceSession = {
   accessToken: string;
@@ -31,6 +32,7 @@ const MARKETPLACE_PROFILE_KEY = "marketplaceProfile";
 const MarketplaceAuthContext = React.createContext<MarketplaceAuthState | undefined>(undefined);
 
 export function MarketplaceAuthProvider({ children }: { children: React.ReactNode }) {
+  const queryClient = useQueryClient();
   const [accessToken, setAccessToken] = React.useState<string | null>(localStorage.getItem(MARKETPLACE_ACCESS_TOKEN_KEY));
   const [user, setUser] = React.useState<any | null>(() => {
     const saved = localStorage.getItem(MARKETPLACE_USER_KEY);
@@ -45,8 +47,13 @@ export function MarketplaceAuthProvider({ children }: { children: React.ReactNod
     const auth = getFirebaseAuth();
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (!firebaseUser) {
+        localStorage.removeItem(MARKETPLACE_ACCESS_TOKEN_KEY);
+        localStorage.removeItem(MARKETPLACE_USER_KEY);
         localStorage.removeItem(MARKETPLACE_PROFILE_KEY);
+        setAccessToken(null);
+        setUser(null);
         setProfile(null);
+        queryClient.removeQueries({ queryKey: ["public-favorites"] });
         return;
       }
       const nextProfile: MarketplaceProfile = {
@@ -83,6 +90,7 @@ export function MarketplaceAuthProvider({ children }: { children: React.ReactNod
     setAccessToken(null);
     setUser(null);
     setProfile(null);
+    queryClient.removeQueries({ queryKey: ["public-favorites"] });
   };
 
   const isAuthenticated = Boolean(profile?.email || user?.email || accessToken);

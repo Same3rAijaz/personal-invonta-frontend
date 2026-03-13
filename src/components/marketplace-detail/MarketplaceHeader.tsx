@@ -1,6 +1,7 @@
 import React from "react";
 import { AppBar, Avatar, Box, Button, CircularProgress, Container, IconButton, MenuItem, Stack, TextField, Toolbar, Typography, alpha, useTheme } from "@mui/material";
 import LocationOnOutlinedIcon from "@mui/icons-material/LocationOnOutlined";
+import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import SearchIcon from "@mui/icons-material/Search";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import GoogleIcon from "@mui/icons-material/Google";
@@ -10,6 +11,22 @@ import { firebaseGoogleLogin } from "../../api/auth";
 import { useMarketplaceAuth } from "../../hooks/useMarketplaceAuth";
 import { useToast } from "../../hooks/useToast";
 import { getFirebaseAuth } from "../../lib/firebase";
+import { keyframes } from "@mui/system";
+
+const aiGlow = keyframes`
+  0% {
+    filter: drop-shadow(0 0 2px rgba(33, 166, 223, 0.4));
+    transform: scale(1);
+  }
+  50% {
+    filter: drop-shadow(0 0 8px rgba(33, 166, 223, 0.8));
+    transform: scale(1.1);
+  }
+  100% {
+    filter: drop-shadow(0 0 2px rgba(33, 166, 223, 0.4));
+    transform: scale(1);
+  }
+`;
 
 type MarketOption = { _id: string; name: string };
 
@@ -21,6 +38,8 @@ type MarketplaceHeaderProps = {
   onSearchChange?: (value: string) => void;
   onSearchSubmit?: () => void;
   showSearchBar?: boolean;
+  semanticMode?: boolean;
+  onSemanticModeChange?: (value: boolean) => void;
 };
 
 export default function MarketplaceHeader(props: MarketplaceHeaderProps) {
@@ -76,9 +95,9 @@ export default function MarketplaceHeader(props: MarketplaceHeaderProps) {
       marketplaceAuth.logout();
       const firebaseAuth = getFirebaseAuth();
       await signOut(firebaseAuth);
-      notify("Signed out", "success");
+      window.location.reload();
     } catch {
-      notify("Signed out", "success");
+      window.location.reload();
     }
   };
 
@@ -100,6 +119,9 @@ export default function MarketplaceHeader(props: MarketplaceHeaderProps) {
             <Stack direction="row" spacing={1.2} alignItems="center">
               {marketplaceAuth.isAuthenticated ? (
                 <>
+                  <IconButton component={Link} to="/marketplace/favorites" sx={{ color: "#ffffff", mr: 1 }}>
+                    <FavoriteBorderIcon />
+                  </IconButton>
                   <Stack direction="row" spacing={1} alignItems="center">
                     {marketplaceAuth.profile?.avatarUrl ? (
                       <Avatar src={marketplaceAuth.profile.avatarUrl} sx={{ width: 32, height: 32, fontSize: 12 }} />
@@ -123,6 +145,9 @@ export default function MarketplaceHeader(props: MarketplaceHeaderProps) {
                 </>
               ) : (
                 <>
+                  <IconButton component={Link} to="/marketplace/favorites" sx={{ color: "#ffffff", mr: 1 }}>
+                    <FavoriteBorderIcon />
+                  </IconButton>
                   <Button
                     size="small"
                     variant="contained"
@@ -145,9 +170,26 @@ export default function MarketplaceHeader(props: MarketplaceHeaderProps) {
                       Continue with Google
                     </Box>
                   </Button>
-                  <Typography component={Link} to="/login" sx={{ color: "#ffffff", fontWeight: 700, textDecoration: "underline", fontSize: { xs: "0.8rem", sm: "1rem" } }}>
+                  <Button
+                    component={Link}
+                    to="/login"
+                    size="small"
+                    variant="outlined"
+                    sx={{
+                      color: "#ffffff",
+                      borderColor: alpha("#ffffff", 0.35),
+                      fontWeight: 700,
+                      px: 2,
+                      fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                      textTransform: "none",
+                      "&:hover": {
+                        borderColor: "#ffffff",
+                        bgcolor: alpha("#ffffff", 0.08)
+                      }
+                    }}
+                  >
                     Business Login
-                  </Typography>
+                  </Button>
                 </>
               )}
             </Stack>
@@ -198,7 +240,13 @@ export default function MarketplaceHeader(props: MarketplaceHeaderProps) {
                   InputProps={{
                     startAdornment: (
                       <Box sx={{ mr: 1, borderRight: `1px solid ${alpha(theme.palette.divider, 0.5)}`, pr: 1, display: 'flex', alignItems: 'center' }}>
-                        <AutoAwesomeIcon sx={{ fontSize: 20, color: theme.palette.primary.main }} />
+                        <AutoAwesomeIcon 
+                          sx={{ 
+                            fontSize: 20, 
+                            color: theme.palette.primary.main,
+                            animation: search.trim().length > 0 ? `${aiGlow} 2s infinite ease-in-out` : 'none'
+                          }} 
+                        />
                       </Box>
                     )
                   }}

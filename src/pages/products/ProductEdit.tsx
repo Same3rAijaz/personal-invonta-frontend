@@ -1,4 +1,4 @@
-import { Box, Button, Paper, Typography, Grid, TextField, Divider, FormControlLabel, Checkbox, MenuItem, Stack, Avatar } from "@mui/material";
+import { Box, Button, Paper, Typography, Grid, TextField, Divider, FormControlLabel, Checkbox, MenuItem, Stack, Avatar, IconButton } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useUpdateProduct, useProducts } from "../../hooks/useProducts";
@@ -152,12 +152,18 @@ export default function ProductEdit() {
               fullWidth 
               label="SKU *" 
               {...register("sku", { required: "SKU is required" })}
+              InputProps={{ readOnly: true }}
               error={!!errors.sku}
               helperText={errors.sku?.message as string} 
             />
           </Grid>
           <Grid item xs={12} md={3}>
-            <TextField fullWidth label="Barcode" {...register("barcode")} />
+            <TextField 
+              fullWidth 
+              label="Barcode" 
+              {...register("barcode")} 
+              InputProps={{ readOnly: true }}
+            />
           </Grid>
           <Grid item xs={12} md={6}>
             <TextField 
@@ -171,18 +177,29 @@ export default function ProductEdit() {
           <Grid item xs={12} md={6}>
             <TextField fullWidth multiline rows={3} label="Description" {...register("description")} />
           </Grid>
-          <Grid item xs={12} md={3}>
-            <TextField
-              fullWidth
-              label="Selected Category"
-              value={
-                selectedPathIds.length > 0
-                  ? ((categoriesById.get(selectedPathIds[selectedPathIds.length - 1])?.pathNames || []).join(" > ") || "")
-                  : ""
-              }
-              InputProps={{ readOnly: true }}
-              placeholder="Choose category and sub category"
-            />
+          <Grid item xs={12} md={12}>
+            <Box
+              sx={{
+                minHeight: 56,
+                px: 2,
+                py: 1,
+                borderRadius: 1,
+                border: "1px solid rgba(148,163,184,0.35)",
+                backgroundColor: "rgba(248,250,252,0.9)",
+                display: "flex",
+                alignItems: "center",
+                gap: 1
+              }}
+            >
+              <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 600, mr: 0.5, fontSize: "0.85rem" }}>
+                Selected Category:
+              </Typography>
+              <Typography variant="body2" sx={{ color: "#0f172a", fontWeight: 600, fontSize: "0.95rem" }}>
+                {selectedPathIds.length > 0
+                  ? ((categoriesById.get(selectedPathIds[selectedPathIds.length - 1])?.pathNames || []).join(" > ") || "None selected")
+                  : "None selected"}
+              </Typography>
+            </Box>
           </Grid>
 
           {levelOptions.map((options, level) => (
@@ -270,14 +287,44 @@ export default function ProductEdit() {
           {previewItems.length > 0 ? (
             <Grid item xs={12}>
               <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap>
-                {previewItems.map((item) => (
-                  <Button key={item.key} onClick={() => setSelectedKey(item.key)} variant={selectedKey === item.key ? "contained" : "outlined"}>
-                    <Avatar src={item.url} variant="rounded" sx={{ width: 64, height: 64 }} />
-                  </Button>
-                ))}
+                {previewItems.map((item) => {
+                  const isExisting = item.key.startsWith("existing:");
+                  return (
+                    <Box key={item.key} sx={{ position: "relative" }}>
+                      <Button onClick={() => setSelectedKey(item.key)} variant={selectedKey === item.key ? "contained" : "outlined"} sx={{ p: 0.5, minWidth: "auto" }}>
+                        <Avatar src={item.url} variant="rounded" sx={{ width: 64, height: 64 }} />
+                      </Button>
+                      <IconButton
+                        size="small"
+                        onClick={(e: React.MouseEvent) => {
+                          e.stopPropagation();
+                          if (isExisting) {
+                            setExistingImages((prev) => prev.filter((img) => `existing:${img}` !== item.key));
+                          } else {
+                            const idx = Number(item.key.replace("new:", ""));
+                            setNewFiles((prev) => prev.filter((_, i) => i !== idx));
+                          }
+                          if (selectedKey === item.key) setSelectedKey(null);
+                        }}
+                        sx={{
+                          position: "absolute",
+                          top: -8,
+                          right: -8,
+                          width: 20,
+                          height: 20,
+                          bgcolor: "error.main",
+                          color: "#fff",
+                          "&:hover": { bgcolor: "error.dark" }
+                        }}
+                      >
+                        <Box component="span" sx={{ fontSize: 14, lineHeight: 1 }}>&times;</Box>
+                      </IconButton>
+                    </Box>
+                  );
+                })}
               </Stack>
               <Typography variant="caption" color="text.secondary">
-                Click an image to set the thumbnail.
+                Click an image to set the thumbnail. Click the top-right X to remove it.
               </Typography>
             </Grid>
           ) : null}

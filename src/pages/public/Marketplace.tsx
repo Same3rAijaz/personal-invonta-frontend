@@ -19,7 +19,7 @@ import {
   TextField,
   Typography
 } from "@mui/material";
-import { alpha } from "@mui/material/styles";
+import { alpha, keyframes } from "@mui/material/styles";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import ViewListIcon from "@mui/icons-material/ViewList";
 import GridViewIcon from "@mui/icons-material/GridView";
@@ -33,13 +33,26 @@ import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
 import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { PublicCategoryNode, getPublicProductDetail, getPublicShopDetail, listPublicCategories, listPublicMarkets, listPublicProducts, listPublicShops, semanticSearchPublicProducts, semanticSearchPublicShops } from "../../api/public";
+import { 
+  PublicCategoryNode, 
+  getPublicProductDetail, 
+  getPublicShopDetail, 
+  listPublicCategories, 
+  listPublicMarkets, 
+  listPublicProducts, 
+  listPublicShops, 
+  semanticSearchPublicProducts, 
+  semanticSearchPublicShops
+} from "../../api/public";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import { Switch, FormControlLabel } from "@mui/material";
 import { useCities, useCountries, useStates } from "../../hooks/useGeo";
 import MarketplaceHeader from "../../components/marketplace-detail/MarketplaceHeader";
 import PublicFooter from "../../components/marketplace-detail/PublicFooter";
 import { toMarketUrl, toProductUrl, toShopUrl } from "../../utils/seo";
+import { useMarketplaceAuth } from "../../hooks/useMarketplaceAuth";
+import { useFavorites } from "../../hooks/useFavorites";
+import FavoriteIcon from "@mui/icons-material/Favorite";
 
 
 const LIMIT = 12;
@@ -104,13 +117,16 @@ export default function Marketplace() {
 
   const { data: markets = [] } = useQuery({
     queryKey: ["public-markets"],
-    queryFn: () => listPublicMarkets()
+    queryFn: () => listPublicMarkets(),
+    staleTime: 30 * 60 * 1000,
+    gcTime: 2 * 60 * 60 * 1000
   });
 
   const { data: categories = [] } = useQuery<PublicCategoryNode[]>({
     queryKey: ["public-categories", marketId],
     queryFn: () => listPublicCategories(marketId || undefined),
-    enabled: resultType !== "markets"
+    enabled: resultType !== "markets",
+    staleTime: 60 * 60 * 1000,
   });
 
   const { data: productData, isLoading: isProductsLoading } = useQuery({
@@ -143,7 +159,9 @@ export default function Marketplace() {
         sort
       });
     },
-    enabled: resultType === "products"
+    enabled: resultType === "products",
+    staleTime: 60 * 1000, // 1 minute cache
+    gcTime: 5 * 60 * 1000,
   });
 
   const { data: shopData, isLoading: isShopsLoading } = useQuery({
@@ -172,7 +190,9 @@ export default function Marketplace() {
         sort: shopSort
       });
     },
-    enabled: resultType === "shops"
+    enabled: resultType === "shops",
+    staleTime: 60 * 1000, // 1 minute cache
+    gcTime: 5 * 60 * 1000,
   });
 
   const marketResults = React.useMemo(() => {
@@ -286,6 +306,8 @@ export default function Marketplace() {
     return `https://${raw}`;
   };
 
+  const { isFavorited, toggle } = useFavorites();
+
   return (
     <Box sx={{ minHeight: "100vh", backgroundColor: palette.canvas }}>
       <MarketplaceHeader
@@ -307,6 +329,8 @@ export default function Marketplace() {
           setPage(1);
         }}
       />
+
+      <ParallaxHero palette={palette} />
 
       <Container maxWidth="xl" sx={{ py: 4 }}>
         <Typography variant="body2" sx={{ color: palette.muted, mb: 1 }}>
@@ -480,8 +504,14 @@ export default function Marketplace() {
           </Grid>
 
           <Grid item xs={12} md={9.2}>
-            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5, px: 0.5 }}>
-              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+            <Stack 
+              direction={{ xs: "column", sm: "row" }} 
+              justifyContent="space-between" 
+              alignItems={{ xs: "flex-start", sm: "center" }} 
+              spacing={{ xs: 1.5, sm: 0 }} 
+              sx={{ mb: 1.8, px: 0.5 }}
+            >
+              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" sx={{ width: { xs: "100%", sm: "auto" } }}>
                 <Button
                   variant={resultType === "products" ? "contained" : "outlined"}
                   onClick={() => {
@@ -489,7 +519,7 @@ export default function Marketplace() {
                     setPage(1);
                   }}
                   size="small"
-                  sx={{ minWidth: 90, fontSize: 13 }}
+                  sx={{ minWidth: { xs: "auto", sm: 90 }, flex: { xs: 1, sm: "none" }, fontSize: 13 }}
                 >
                   Products
                 </Button>
@@ -500,7 +530,7 @@ export default function Marketplace() {
                     setPage(1);
                   }}
                   size="small"
-                  sx={{ minWidth: 90, fontSize: 13 }}
+                  sx={{ minWidth: { xs: "auto", sm: 90 }, flex: { xs: 1, sm: "none" }, fontSize: 13 }}
                 >
                   Shops
                 </Button>
@@ -511,31 +541,33 @@ export default function Marketplace() {
                     setPage(1);
                   }}
                   size="small"
-                  sx={{ minWidth: 90, fontSize: 13 }}
+                  sx={{ minWidth: { xs: "auto", sm: 90 }, flex: { xs: 1, sm: "none" }, fontSize: 13 }}
                 >
                   Markets
                 </Button>
                 {resultType === "products" ? (
-                  <>
-                    <Typography sx={{ color: palette.ink, fontWeight: 700, ml: 1, fontSize: 13 }}>View</Typography>
+                  <Stack direction="row" spacing={0.5} alignItems="center" sx={{ ml: { xs: 0, sm: 1 }, mt: { xs: 0.5, sm: 0 } }}>
+                    <Typography sx={{ color: palette.ink, fontWeight: 700, fontSize: 13 }}>View</Typography>
                     <IconButton
+                      size="small"
                       onClick={() => setViewMode("list")}
                       sx={{ bgcolor: viewMode === "list" ? alpha(palette.accent, 0.18) : "transparent" }}
                     >
-                      <ViewListIcon />
+                      <ViewListIcon fontSize="small" />
                     </IconButton>
                     <IconButton
+                      size="small"
                       onClick={() => setViewMode("grid")}
                       sx={{ bgcolor: viewMode === "grid" ? alpha(palette.accent, 0.18) : "transparent" }}
                     >
-                      <GridViewIcon />
+                      <GridViewIcon fontSize="small" />
                     </IconButton>
-                  </>
+                  </Stack>
                 ) : null}
               </Stack>
-              <Stack direction="row" spacing={1} alignItems="center">
+              <Stack direction="row" spacing={1} alignItems="center" sx={{ width: { xs: "100%", sm: "auto" }, justifyContent: { xs: "space-between", sm: "flex-end" } }}>
                 <Typography sx={{ color: palette.ink, fontWeight: 700, fontSize: 13 }}>Sort by:</Typography>
-                <FormControl size="small" sx={{ minWidth: 180 }}>
+                <FormControl size="small" sx={{ minWidth: 150 }}>
                   <Select
                     value={currentSortValue}
                     onChange={(event) => handleSortChange(event.target.value)}
@@ -544,6 +576,7 @@ export default function Marketplace() {
                     renderValue={(value) => getSortLabel(String(value))}
                     sx={{
                       color: palette.muted,
+                      fontSize: 13,
                       "& .MuiSelect-select": { py: 0.25, pr: 3.5 },
                       "& .MuiSelect-icon": { color: palette.ink }
                     }}
@@ -788,7 +821,18 @@ export default function Marketplace() {
                   return (
                     <Card
                       key={product._id}
-                      sx={{ borderRadius: 1, border: `1px solid ${palette.line}`, cursor: "pointer", transition: "box-shadow 0.2s ease, transform 0.2s ease", "&:hover": { boxShadow: "0 8px 24px rgba(15,23,42,0.12)", transform: "translateY(-2px)" } }}
+                      sx={{ 
+                        borderRadius: 1.5, 
+                        border: `1px solid ${palette.line}`, 
+                        cursor: "pointer", 
+                        transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)", 
+                        boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
+                        "&:hover": { 
+                          boxShadow: "0 20px 40px rgba(15,23,42,0.12)", 
+                          transform: "translateY(-4px)",
+                          borderColor: palette.accent
+                        } 
+                      }}
                       onClick={() => navigate(toProductUrl(product))}
                       onMouseEnter={() => prefetchProductDetail(product._id)}
                       onFocus={() => prefetchProductDetail(product._id)}
@@ -814,8 +858,15 @@ export default function Marketplace() {
                                   {product.name}
                                 </Typography>
                               </Box>
-                              <IconButton onClick={(event) => event.stopPropagation()}>
-                                <FavoriteBorderIcon />
+                               <IconButton onClick={(event) => {
+                                event.stopPropagation();
+                                toggle(product._id);
+                              }}>
+                                {isFavorited(product._id) ? (
+                                  <FavoriteIcon sx={{ color: "#ef4444" }} />
+                                ) : (
+                                  <FavoriteBorderIcon sx={{ color: "#ef4444" }} />
+                                )}
                               </IconButton>
                             </Stack>
                             {product.semanticScore && (
@@ -850,7 +901,19 @@ export default function Marketplace() {
                   return (
                     <Grid key={product._id} item xs={12} sm={6} md={4}>
                       <Card
-                        sx={{ borderRadius: 1, border: `1px solid ${palette.line}`, height: "100%", cursor: "pointer", transition: "box-shadow 0.2s ease, transform 0.2s ease", "&:hover": { boxShadow: "0 8px 24px rgba(15,23,42,0.12)", transform: "translateY(-2px)" } }}
+                        sx={{ 
+                          borderRadius: 1.5, 
+                          border: `1px solid ${palette.line}`, 
+                          height: "100%", 
+                          cursor: "pointer", 
+                          transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)", 
+                          boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
+                          "&:hover": { 
+                            boxShadow: "0 20px 40px rgba(15,23,42,0.12)", 
+                            transform: "translateY(-4px)",
+                            borderColor: palette.accent
+                          } 
+                        }}
                         onClick={() => navigate(toProductUrl(product))}
                         onMouseEnter={() => prefetchProductDetail(product._id)}
                         onFocus={() => prefetchProductDetail(product._id)}
@@ -867,8 +930,15 @@ export default function Marketplace() {
                             <Typography sx={{ fontSize: 16, lineHeight: 1, fontWeight: 800, color: palette.ink }}>
                               Rs {Number(product.salePrice || 0).toLocaleString()}
                             </Typography>
-                            <IconButton size="small" onClick={(event) => event.stopPropagation()}>
-                              <FavoriteBorderIcon fontSize="small" />
+                             <IconButton size="small" onClick={(event) => {
+                              event.stopPropagation();
+                              toggle(product._id);
+                            }}>
+                              {isFavorited(product._id) ? (
+                                <FavoriteIcon fontSize="small" sx={{ color: "#ef4444" }} />
+                              ) : (
+                                <FavoriteBorderIcon fontSize="small" sx={{ color: "#ef4444" }} />
+                              )}
                             </IconButton>
                           </Stack>
                           {product.semanticScore && (
@@ -911,3 +981,236 @@ export default function Marketplace() {
     </Box>
   );
 }
+
+const morph = keyframes`
+  0%, 100% { border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%; }
+  50% { border-radius: 60% 40% 30% 70% / 50% 60% 40% 60%; }
+`;
+
+const dataPulse = keyframes`
+  0% { left: -100%; }
+  100% { left: 130%; }
+`;
+
+/**
+ * Isolated ParallaxHero component to prevent Marketplace page re-renders on scroll.
+ */
+const ParallaxHero = React.memo(({ palette }: { palette: any }) => {
+  const [scrollY, setScrollY] = React.useState(0);
+
+  React.useEffect(() => {
+    let ticking = false;
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          setScrollY(window.scrollY);
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  return (
+    <Box
+      sx={{
+        height: { xs: 300, md: 450 },
+        position: "relative",
+        overflow: "hidden",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "linear-gradient(135deg, #0b1220 0%, #1c2a42 100%)",
+      }}
+    >
+      {/* Layer 1: Global Connectivity Ambient Glow */}
+      <Box
+        sx={{
+          position: "absolute",
+          width: "140%",
+          height: "140%",
+          background: `radial-gradient(circle at 50% 50%, ${alpha(palette.accent, 0.12)} 0%, transparent 70%)`,
+          transform: `translate3d(0, ${scrollY * 0.04}px, 0)`,
+          willChange: "transform",
+          zIndex: 0,
+        }}
+      />
+
+      {/* Layer 2: The Commerce Grid (Professional & Structured) */}
+      <Box
+        sx={{
+          position: "absolute",
+          inset: -100,
+          backgroundImage: `
+            linear-gradient(${alpha(palette.accent, 0.08)} 1px, transparent 1px),
+            linear-gradient(90deg, ${alpha(palette.accent, 0.08)} 1px, transparent 1px)
+          `,
+          backgroundSize: "80px 80px",
+          transform: `translate3d(0, ${scrollY * 0.1}px, 0)`,
+          willChange: "transform",
+          opacity: 0.8,
+          zIndex: 1,
+          "&::after": {
+            content: '""',
+            position: "absolute",
+            inset: 0,
+            background: "radial-gradient(circle at 50% 50%, transparent 0%, #0b1220 90%)",
+          }
+        }}
+      />
+
+      {/* Layer 3: Floating Data Bricks (Network Elements) */}
+      {/* Commerce Node 1 */}
+      <Box
+        sx={{
+          position: "absolute",
+          width: 140,
+          height: 60,
+          bgcolor: alpha("#fff", 0.03),
+          backdropFilter: "blur(8px)",
+          border: `1px solid ${alpha("#fff", 0.1)}`,
+          borderRadius: 1,
+          top: "15%",
+          left: "8%",
+          transform: `translate3d(0, ${scrollY * -0.3}px, 0) rotate(-4deg)`,
+          willChange: "transform",
+          zIndex: 2,
+          display: "flex",
+          alignItems: "center",
+          px: 2,
+          boxShadow: "0 20px 50px rgba(0,0,0,0.3)",
+        }}
+      >
+        <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: palette.accent, mr: 1.5 }} />
+        <Box sx={{ height: 4, width: "60%", bgcolor: alpha("#fff", 0.15), borderRadius: 1 }} />
+      </Box>
+
+      {/* Connectivity Line 1 */}
+      <Box
+        sx={{
+          position: "absolute",
+          width: 200,
+          height: 1,
+          background: `linear-gradient(90deg, ${alpha(palette.accent, 0.3)}, transparent)`,
+          top: "20%",
+          left: "18%",
+          transform: `translate3d(0, ${scrollY * -0.2}px, 0) rotate(15deg)`,
+          willChange: "transform",
+          zIndex: 1,
+        }}
+      />
+      
+      {/* Commerce Node 2 */}
+      <Box
+        sx={{
+          position: "absolute",
+          width: 100,
+          height: 100,
+          bgcolor: alpha("#fff", 0.02),
+          backdropFilter: "blur(4px)",
+          border: `1px solid ${alpha(palette.accent, 0.2)}`,
+          borderRadius: "50%",
+          top: "25%",
+          right: "12%",
+          transform: `translate3d(0, ${scrollY * -0.5}px, 0)`,
+          willChange: "transform",
+          zIndex: 2,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 1
+        }}
+      >
+        <Box sx={{ width: 30, height: 2, bgcolor: alpha(palette.accent, 0.4) }} />
+        <Box sx={{ width: 20, height: 2, bgcolor: alpha(palette.accent, 0.2) }} />
+      </Box>
+
+      {/* Commerce Node 3 (Dynamic Data Pulse) */}
+      <Box
+        sx={{
+          position: "absolute",
+          width: 180,
+          height: 40,
+          bgcolor: alpha(palette.accent, 0.05),
+          border: `1px solid ${alpha(palette.accent, 0.1)}`,
+          borderRadius: 0.5,
+          bottom: "20%",
+          right: "15%",
+          transform: `translate3d(0, ${scrollY * 0.25}px, 0) rotate(2deg)`,
+          willChange: "transform",
+          zIndex: 2,
+          display: "flex",
+          alignItems: "center",
+          px: 1.5,
+          overflow: "hidden"
+        }}
+      >
+        <Box 
+          sx={{ 
+            width: "100%", 
+            height: 2, 
+            bgcolor: alpha(palette.accent, 0.1),
+            position: "relative",
+            "&::after": {
+              content: '""',
+              position: "absolute",
+              width: "30%",
+              height: "100%",
+              bgcolor: palette.accent,
+              left: "-100%",
+              animation: `${dataPulse} 3s infinite linear`
+            }
+          }} 
+        />
+      </Box>
+
+      {/* Layer 4: Content Overlay */}
+      <Container 
+        maxWidth="xl" 
+        sx={{ 
+          position: "relative", 
+          zIndex: 3, 
+          textAlign: "center",
+          transform: `translate3d(0, ${scrollY * 0.08}px, 0)`,
+          willChange: "transform"
+        }}
+      >
+        <Stack spacing={2} alignItems="center">
+          <Typography
+            variant="h1"
+            sx={{
+              color: "#fff",
+              fontWeight: 900,
+              fontSize: { xs: 32, md: 64 },
+              textShadow: "0 10px 40px rgba(0,0,0,0.6)",
+              letterSpacing: -1.5,
+              lineHeight: 1.1,
+              maxWidth: 900,
+              background: `linear-gradient(to bottom, #ffffff 40%, ${alpha("#ffffff", 0.7)} 100%)`,
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+            }}
+          >
+            Seamless Commerce.<br/>Scaling Businesses.
+          </Typography>
+          <Typography
+            sx={{
+              color: alpha("#fff", 0.8),
+              fontSize: { xs: 15, md: 20 },
+              fontWeight: 500,
+              maxWidth: 650,
+              textShadow: "0 2px 10px rgba(0,0,0,0.4)",
+              lineHeight: 1.4,
+              mt: 1
+            }}
+          >
+            Connect with verified markets and independent shops through Invonta's global business ecosystem.
+          </Typography>
+        </Stack>
+      </Container>
+    </Box>
+  );
+});

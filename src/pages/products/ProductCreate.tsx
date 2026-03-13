@@ -52,6 +52,12 @@ export default function ProductCreate() {
     setValue("categoryId", categoryId);
   }, [selectedPathIds, setValue]);
 
+  useEffect(() => {
+    const now = Date.now().toString();
+    setValue("sku", `SKU-${now.slice(-6)}`, { shouldDirty: true });
+    setValue("barcode", now, { shouldDirty: true });
+  }, [setValue]);
+
   const onSubmit = async (values: any) => {
     try {
       const uploadBase = values.sku ? `products/${values.sku}` : `products/${Date.now()}`;
@@ -87,12 +93,18 @@ export default function ProductCreate() {
               fullWidth 
               label="SKU *" 
               {...register("sku", { required: "SKU is required" })}
+              InputProps={{ readOnly: true }}
               error={!!errors.sku}
               helperText={errors.sku?.message as string}
             />
           </Grid>
           <Grid item xs={12} md={3}>
-            <TextField fullWidth label="Barcode" {...register("barcode")} />
+            <TextField 
+              fullWidth 
+              label="Barcode" 
+              {...register("barcode")} 
+              InputProps={{ readOnly: true }}
+            />
           </Grid>
           <Grid item xs={12} md={6}>
             <TextField 
@@ -106,18 +118,29 @@ export default function ProductCreate() {
           <Grid item xs={12} md={6}>
             <TextField fullWidth multiline rows={3} label="Description" {...register("description")} />
           </Grid>
-          <Grid item xs={12} md={3}>
-            <TextField
-              fullWidth
-              label="Selected Category"
-              value={
-                selectedPathIds.length > 0
-                  ? ((categoriesById.get(selectedPathIds[selectedPathIds.length - 1])?.pathNames || []).join(" > ") || "")
-                  : ""
-              }
-              InputProps={{ readOnly: true }}
-              placeholder="Choose category and sub category"
-            />
+          <Grid item xs={12} md={12}>
+            <Box
+              sx={{
+                minHeight: 56,
+                px: 2,
+                py: 1,
+                borderRadius: 1,
+                border: "1px solid rgba(148,163,184,0.35)",
+                backgroundColor: "rgba(248,250,252,0.9)",
+                display: "flex",
+                alignItems: "center",
+                gap: 1
+              }}
+            >
+              <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 600, mr: 0.5, fontSize: "0.85rem" }}>
+                Selected Category:
+              </Typography>
+              <Typography variant="body2" sx={{ color: "#0f172a", fontWeight: 600, fontSize: "0.95rem" }}>
+                {selectedPathIds.length > 0
+                  ? ((categoriesById.get(selectedPathIds[selectedPathIds.length - 1])?.pathNames || []).join(" > ") || "None selected")
+                  : "None selected"}
+              </Typography>
+            </Box>
           </Grid>
 
           {levelOptions.map((options, level) => (
