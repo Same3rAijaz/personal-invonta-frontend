@@ -173,7 +173,7 @@ export default function MarketplaceProductDetail() {
       searchValue={search}
       onMarketChange={setMarketId}
       onSearchChange={setSearch}
-      onSearchSubmit={() => navigate(`/marketplace?search=${encodeURIComponent(search)}${marketId ? `&marketId=${marketId}` : ""}`)}
+      onSearchSubmit={() => navigate(`/marketplace?search=${encodeURIComponent(search)}${marketId ? `&marketId=${marketId}` : ""}&semantic=true`)}
       onBack={() => navigate("/marketplace")}
       onOpenSellerProfile={() => model.seller.id ? navigate(toShopUrl({ _id: model.seller.id, name: model.seller.name, shopSlug: model.seller.shopSlug })) : undefined}
       onOpenRelatedProduct={(productId) => navigate(toProductUrl({ _id: productId, name: "product" }))}

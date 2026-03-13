@@ -221,7 +221,7 @@ export default function MarketplaceHeader(props: MarketplaceHeaderProps) {
               <Stack direction="row" sx={{ flex: 1, position: "relative" }}>
                 <TextField
                   fullWidth
-                  placeholder="Ask AI to find products... (e.g. 'something to record video')"
+                  placeholder="Search anything with AI... (e.g. 'something to record video')"
                   value={search}
                   onChange={(event) => onSearchChange?.(event.target.value)}
                   onKeyDown={(event) => {

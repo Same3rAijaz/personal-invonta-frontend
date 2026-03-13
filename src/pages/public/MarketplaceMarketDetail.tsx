@@ -63,7 +63,7 @@ export default function MarketplaceMarketDetail() {
         onMarketChange={(value) => setTopMarketId(value)}
         search={search}
         onSearchChange={setSearch}
-        onSearchSubmit={() => navigate(`/marketplace?search=${encodeURIComponent(search)}${topMarketId ? `&marketId=${topMarketId}` : ""}`)}
+        onSearchSubmit={() => navigate(`/marketplace?search=${encodeURIComponent(search)}${topMarketId ? `&marketId=${topMarketId}` : ""}&semantic=true`)}
       />
 
       <Container maxWidth="xl" sx={{ py: 3.5 }}>
