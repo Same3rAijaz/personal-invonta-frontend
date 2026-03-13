@@ -84,14 +84,15 @@ export default function Marketplace() {
   const [marketSort, setMarketSort] = React.useState<"name_asc" | "name_desc" | "newest">("name_asc");
   const [viewMode, setViewMode] = React.useState<"list" | "grid">("list");
   const [page, setPage] = React.useState(1);
-  const [semanticMode, setSemanticMode] = React.useState(false);
+  const [semanticMode, setSemanticMode] = React.useState(true);
   const { search: urlSearch } = useLocation();
 
   React.useEffect(() => {
     const params = new URLSearchParams(urlSearch);
     if (params.get("search")) setSearch(params.get("search") || "");
     if (params.get("marketId")) setMarketId(params.get("marketId") || "");
-    if (params.get("semantic") === "true") setSemanticMode(true);
+    if (params.get("semantic") === "false") setSemanticMode(false);
+    else setSemanticMode(true);
     if (params.get("category")) setCategory(params.get("category") || "");
     if (params.get("resultType") === "shops") setResultType("shops");
     if (params.get("resultType") === "markets") setResultType("markets");
@@ -322,7 +323,16 @@ export default function Marketplace() {
           setSearch(value);
           setPage(1);
         }}
-        onSearchSubmit={() => setPage(1)}
+        onSearchSubmit={() => {
+          setPage(1);
+          const params = new URLSearchParams();
+          if (search) params.set("search", search);
+          if (marketId) params.set("marketId", marketId);
+          if (category) params.set("category", category);
+          if (resultType !== "products") params.set("resultType", resultType);
+          params.set("semantic", "true");
+          navigate(`/marketplace?${params.toString()}`);
+        }}
         semanticMode={semanticMode}
         onSemanticModeChange={(value) => {
           setSemanticMode(value);

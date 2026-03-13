@@ -231,7 +231,7 @@ export default function MarketplaceShopDetail() {
         onMarketChange={setMarketId}
         search={topSearch}
         onSearchChange={setTopSearch}
-        onSearchSubmit={() => navigate(`/marketplace?search=${encodeURIComponent(topSearch)}${marketId ? `&marketId=${marketId}` : ""}${semanticMode ? "&semantic=true" : ""}`)}
+        onSearchSubmit={() => navigate(`/marketplace?search=${encodeURIComponent(topSearch)}${marketId ? `&marketId=${marketId}` : ""}&semantic=true`)}
         semanticMode={semanticMode}
         onSemanticModeChange={setSemanticMode}
       />
