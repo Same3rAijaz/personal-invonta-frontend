@@ -1,21 +1,27 @@
-import { Box, Button, Paper, Typography, Grid, TextField, Divider, FormControlLabel, Checkbox, MenuItem, Stack, Avatar } from "@mui/material";
-import { useEffect, useMemo, useState } from "react";
+import { Box, Button, Paper, Typography, Grid, TextField, Divider, FormControlLabel, Checkbox, MenuItem, Stack, Avatar, IconButton } from "@mui/material";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useCreateProduct } from "../../hooks/useProducts";
 import { useToast } from "../../hooks/useToast";
 import { useNavigate } from "react-router-dom";
 import { uploadImage } from "../../utils/upload";
 import { useCategories } from "../../hooks/useCategories";
+import { useWarehouses } from "../../hooks/useWarehouses";
+import { STANDARD_UNITS } from "../../constants/units";
 
 export default function ProductCreate() {
   const createProduct = useCreateProduct();
   const { notify } = useToast();
   const navigate = useNavigate();
-  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<any>({ defaultValues: { isActive: true, visibility: "PRIVATE" } });
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<any>({
+    defaultValues: { isActive: true, visibility: "PRIVATE", unit: "pcs", quantity: 0, warehouseId: "" }
+  });
   const { data: categories = [] } = useCategories({ activeOnly: true });
+  const { data: warehouses } = useWarehouses({ page: 1, limit: 1000 });
   const [selectedPathIds, setSelectedPathIds] = useState<string[]>([]);
-  const [files, setFiles] = useState<File[]>([]);
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const [files, setFiles] = useState<Array<{ id: string; file: File; preview: string }>>([]);
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const filesRef = useRef<Array<{ id: string; file: File; preview: string }>>([]);
 
   const categoriesById = useMemo(() => {
     const map = new Map<string, any>();
@@ -58,18 +64,41 @@ export default function ProductCreate() {
     setValue("barcode", now, { shouldDirty: true });
   }, [setValue]);
 
+  useEffect(() => {
+    if (files.length === 0) {
+      if (selectedKey !== null) setSelectedKey(null);
+      return;
+    }
+    if (!selectedKey || !files.some((item) => item.id === selectedKey)) {
+      setSelectedKey(files[0].id);
+    }
+  }, [files, selectedKey]);
+
+  useEffect(() => {
+    filesRef.current = files;
+  }, [files]);
+
+  useEffect(() => {
+    return () => {
+      filesRef.current.forEach((item) => URL.revokeObjectURL(item.preview));
+    };
+  }, []);
+
   const onSubmit = async (values: any) => {
     try {
       const uploadBase = values.sku ? `products/${values.sku}` : `products/${Date.now()}`;
       const uploadedUrls = files.length
-        ? await Promise.all(files.map((file) => uploadImage(file, uploadBase)))
+        ? await Promise.all(files.map((item) => uploadImage(item.file, uploadBase)))
         : [];
-      const thumbnailUrl = selectedIndex !== null && uploadedUrls[selectedIndex] ? uploadedUrls[selectedIndex] : uploadedUrls[0];
+      const selectedIndex = selectedKey ? files.findIndex((item) => item.id === selectedKey) : -1;
+      const thumbnailUrl = selectedIndex >= 0 && uploadedUrls[selectedIndex] ? uploadedUrls[selectedIndex] : uploadedUrls[0];
       await createProduct.mutateAsync({
         ...values,
         categoryId: values.categoryId || undefined,
         subcategory: undefined,
         description: values.description || undefined,
+        warehouseId: values.warehouseId,
+        quantity: Number(values.quantity || 0),
         costPrice: Number(values.costPrice),
         salePrice: Number(values.salePrice),
         reorderLevel: Number(values.reorderLevel || 0),
@@ -170,7 +199,21 @@ export default function ProductCreate() {
           ))}
 
           <Grid item xs={12} md={3}>
-            <TextField fullWidth label="Unit" {...register("unit")} />
+            <TextField
+              select
+              fullWidth
+              label="Unit *"
+              {...register("unit", { required: "Unit is required" })}
+              value={watch("unit") || "pcs"}
+              error={!!errors.unit}
+              helperText={(errors.unit?.message as string) || "Use a standard unit to keep stock records consistent."}
+            >
+              {STANDARD_UNITS.map((item) => (
+                <MenuItem key={item.value} value={item.value}>
+                  {item.label}
+                </MenuItem>
+              ))}
+            </TextField>
           </Grid>
           <Grid item xs={12} md={3}>
             <TextField 
@@ -196,6 +239,37 @@ export default function ProductCreate() {
             <TextField fullWidth label="Reorder Level" type="number" {...register("reorderLevel")} />
           </Grid>
           <Grid item xs={12} md={3}>
+            <TextField
+              select
+              fullWidth
+              label="Warehouse *"
+              {...register("warehouseId", { required: "Warehouse is required" })}
+              value={watch("warehouseId") || ""}
+              error={!!errors.warehouseId}
+              helperText={(errors.warehouseId?.message as string) || ((warehouses?.items || []).length === 0 ? "Create a warehouse first." : undefined)}
+            >
+              <MenuItem value="">Select Warehouse</MenuItem>
+              {(warehouses?.items || []).map((item: any) => (
+                <MenuItem key={item._id} value={item._id}>
+                  {item.name}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Grid>
+          <Grid item xs={12} md={3}>
+            <TextField
+              fullWidth
+              label="Initial Quantity *"
+              type="number"
+              {...register("quantity", {
+                required: "Initial quantity is required",
+                min: { value: 0, message: "Quantity must be zero or greater" }
+              })}
+              error={!!errors.quantity}
+              helperText={errors.quantity?.message as string}
+            />
+          </Grid>
+          <Grid item xs={12} md={3}>
             <TextField select fullWidth label="Visibility" {...register("visibility")} value={watch("visibility") || "PRIVATE"}>
               <MenuItem value="PRIVATE">Private</MenuItem>
               <MenuItem value="PUBLIC">Public</MenuItem>
@@ -211,8 +285,15 @@ export default function ProductCreate() {
                 accept="image/*"
                 onChange={(e) => {
                   const newFiles = Array.from(e.target.files || []);
-                  setFiles(newFiles);
-                  setSelectedIndex(newFiles.length ? 0 : null);
+                  if (newFiles.length === 0) return;
+                  const next = newFiles.map((file, index) => ({
+                    id: `${Date.now()}-${index}-${file.name}`,
+                    file,
+                    preview: URL.createObjectURL(file)
+                  }));
+                  setFiles((prev) => [...prev, ...next]);
+                  setSelectedKey((current) => current || next[0]?.id || null);
+                  e.currentTarget.value = "";
                 }}
               />
             </Button>
@@ -220,14 +301,42 @@ export default function ProductCreate() {
           {files.length > 0 ? (
             <Grid item xs={12}>
               <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap>
-                {files.map((file, idx) => (
-                  <Button key={file.name + idx} onClick={() => setSelectedIndex(idx)} variant={selectedIndex === idx ? "contained" : "outlined"}>
-                    <Avatar src={URL.createObjectURL(file)} variant="rounded" sx={{ width: 64, height: 64 }} />
-                  </Button>
+                {files.map((item) => (
+                  <Box key={item.id} sx={{ position: "relative" }}>
+                    <Button onClick={() => setSelectedKey(item.id)} variant={selectedKey === item.id ? "contained" : "outlined"} sx={{ p: 0.5, minWidth: "auto" }}>
+                      <Avatar src={item.preview} variant="rounded" sx={{ width: 64, height: 64 }} />
+                    </Button>
+                    <IconButton
+                      size="small"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setFiles((prev) => {
+                          const target = prev.find((entry) => entry.id === item.id);
+                          if (target) {
+                            URL.revokeObjectURL(target.preview);
+                          }
+                          return prev.filter((entry) => entry.id !== item.id);
+                        });
+                        if (selectedKey === item.id) setSelectedKey(null);
+                      }}
+                      sx={{
+                        position: "absolute",
+                        top: -8,
+                        right: -8,
+                        width: 20,
+                        height: 20,
+                        bgcolor: "error.main",
+                        color: "#fff",
+                        "&:hover": { bgcolor: "error.dark" }
+                      }}
+                    >
+                      <Box component="span" sx={{ fontSize: 14, lineHeight: 1 }}>&times;</Box>
+                    </IconButton>
+                  </Box>
                 ))}
               </Stack>
               <Typography variant="caption" color="text.secondary">
-                Click an image to set the thumbnail.
+                Click an image to set the thumbnail. Click the top-right X to remove it.
               </Typography>
             </Grid>
           ) : null}

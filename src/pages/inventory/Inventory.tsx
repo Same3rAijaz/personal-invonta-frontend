@@ -7,6 +7,7 @@ import { useInventoryBalances } from "../../hooks/useInventory";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import { useProducts } from "../../hooks/useProducts";
 import { useWarehouses } from "../../hooks/useWarehouses";
+import RowActionMenu from "../../components/RowActionMenu";
 
 export default function Inventory() {
   const [page, setPage] = React.useState(0);
@@ -27,15 +28,31 @@ export default function Inventory() {
       <PageHeader title="Inventory" actionLabel="Create Inventory" onAction={() => navigate("/inventory/new")} />
       <DataTable
         columns={[
-          { key: "productId", label: "Product" },
-          { key: "warehouseId", label: "Warehouse" },
+          { key: "productName", label: "Product" },
+          { key: "warehouseName", label: "Warehouse" },
           { key: "qty", label: "Qty" },
-          { key: "avgCost", label: "Avg Cost" }
+          { key: "avgCost", label: "Avg Cost" },
+          {
+            key: "actions",
+            label: "Actions",
+            render: (row: any) => (
+              <RowActionMenu
+                actions={[
+                  { label: "View Product", onClick: () => navigate(`/products/${row.productId}`) },
+                  { label: "Receive", onClick: () => navigate(`/inventory/new?action=receive&productId=${row.productId}&warehouseId=${row.warehouseId}`) },
+                  { label: "Issue", onClick: () => navigate(`/inventory/new?action=issue&productId=${row.productId}&warehouseId=${row.warehouseId}`) },
+                  { label: "Transfer", onClick: () => navigate(`/inventory/new?action=transfer&productId=${row.productId}&warehouseId=${row.warehouseId}`) },
+                  { label: "Adjust", onClick: () => navigate(`/inventory/new?action=adjust&productId=${row.productId}&warehouseId=${row.warehouseId}`) },
+                  { label: "Stock Take", onClick: () => navigate(`/inventory/new?action=stocktake&productId=${row.productId}&warehouseId=${row.warehouseId}`) }
+                ]}
+              />
+            )
+          }
         ]}
         rows={(data?.items || []).map((row: any) => ({
           ...row,
-          productId: products?.items?.find((p: any) => p._id === row.productId)?.name || row.productId,
-          warehouseId: warehouses?.items?.find((w: any) => w._id === row.warehouseId)?.name || row.warehouseId,
+          productName: products?.items?.find((p: any) => p._id === row.productId)?.name || row.productId,
+          warehouseName: warehouses?.items?.find((w: any) => w._id === row.warehouseId)?.name || row.warehouseId
         }))}
         loading={isLoading}
         actions={

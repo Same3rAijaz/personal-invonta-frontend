@@ -6,6 +6,7 @@ import { useToast } from "../../hooks/useToast";
 import { useNavigate, useParams } from "react-router-dom";
 import { uploadImage } from "../../utils/upload";
 import { useCategories } from "../../hooks/useCategories";
+import { STANDARD_UNITS } from "../../constants/units";
 
 export default function ProductEdit() {
   const { id } = useParams();
@@ -229,7 +230,21 @@ export default function ProductEdit() {
           ))}
 
           <Grid item xs={12} md={3}>
-            <TextField fullWidth label="Unit" {...register("unit")} />
+            <TextField
+              select
+              fullWidth
+              label="Unit *"
+              {...register("unit", { required: "Unit is required" })}
+              value={watch("unit") || "pcs"}
+              error={!!errors.unit}
+              helperText={(errors.unit?.message as string) || "Use a standard unit to keep stock records consistent."}
+            >
+              {STANDARD_UNITS.map((item) => (
+                <MenuItem key={item.value} value={item.value}>
+                  {item.label}
+                </MenuItem>
+              ))}
+            </TextField>
           </Grid>
           <Grid item xs={12} md={3}>
             <TextField 
@@ -276,10 +291,12 @@ export default function ProductEdit() {
                 accept="image/*"
                 onChange={(e) => {
                   const files = Array.from(e.target.files || []);
-                  setNewFiles(files);
+                  if (files.length === 0) return;
+                  setNewFiles((prev) => [...prev, ...files]);
                   if (files.length && selectedKey === null) {
                     setSelectedKey("new:0");
                   }
+                  e.currentTarget.value = "";
                 }}
               />
             </Button>

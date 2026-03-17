@@ -1,4 +1,5 @@
 import { Box, Button, Paper, Typography, Grid, TextField, MenuItem, Divider, IconButton } from "@mui/material";
+import React from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { useCreatePurchaseOrder } from "../../hooks/usePurchasing";
 import { useToast } from "../../hooks/useToast";
@@ -14,10 +15,14 @@ export default function PurchaseOrderCreate() {
   const navigate = useNavigate();
   const { data: vendors } = useVendors({ page: 1, limit: 1000 });
   const { data: products } = useProducts({ page: 1, limit: 1000 });
-  const { register, handleSubmit, watch, control, formState: { errors } } = useForm<any>({
+  const { register, handleSubmit, watch, control, setValue, formState: { errors } } = useForm<any>({
     defaultValues: { status: "DRAFT", items: [{ productId: "", qty: 1, unitCost: 0 }] }
   });
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
+  const productMap = React.useMemo(
+    () => new Map((products?.items || []).map((item: any) => [String(item._id), item])),
+    [products?.items]
+  );
 
   const onSubmit = async (values: any) => {
     try {
@@ -58,9 +63,6 @@ export default function PurchaseOrderCreate() {
             <TextField select fullWidth label="Status" {...register("status")} value={watch("status") || "DRAFT"}>
               <MenuItem value="DRAFT">DRAFT</MenuItem>
               <MenuItem value="APPROVED">APPROVED</MenuItem>
-              <MenuItem value="RECEIVED">RECEIVED</MenuItem>
-              <MenuItem value="CLOSED">CLOSED</MenuItem>
-              <MenuItem value="CANCELLED">CANCELLED</MenuItem>
             </TextField>
           </Grid>
 
@@ -71,7 +73,15 @@ export default function PurchaseOrderCreate() {
                   select 
                   fullWidth 
                   label="Product *" 
-                  {...register(`items.${index}.productId` as const, { required: "Product is required" })}
+                  {...register(`items.${index}.productId` as const, {
+                    required: "Product is required",
+                    onChange: (event) => {
+                      const selectedProduct = productMap.get(String(event.target.value || ""));
+                      if (selectedProduct) {
+                        setValue(`items.${index}.unitCost`, Number(selectedProduct.costPrice || 0), { shouldDirty: true });
+                      }
+                    }
+                  })}
                   value={watch(`items.${index}.productId`) || ""}
                   error={!!(errors.items as any)?.[index]?.productId}
                   helperText={(errors.items as any)?.[index]?.productId?.message as string}

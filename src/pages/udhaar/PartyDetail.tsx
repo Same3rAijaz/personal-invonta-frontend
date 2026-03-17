@@ -4,6 +4,7 @@ import { useParams } from "react-router-dom";
 import DataTable from "../../components/DataTable";
 import PageHeader from "../../components/PageHeader";
 import { useCreateEntry, useEntries, useParty, useStatement, useUpdateParty, useVoidEntry } from "../../hooks/useUdhaar";
+import RowActionMenu from "../../components/RowActionMenu";
 
 const entryTypes = ["CREDIT", "DEBIT", "ADJUSTMENT", "REFUND"];
 const paymentMethods = ["CASH", "BANK", "CARD", "UPI", "OTHER"];
@@ -45,9 +46,22 @@ export default function PartyDetail() {
     { key: "entryType", label: "Type" },
     { key: "amount", label: "Amount" },
     { key: "status", label: "Status" },
-    { key: "actions", label: "Actions", render: (row: any) => (
-      <Button size="small" onClick={() => voidEntry.mutate({ id: row.id, reason: "User requested" })} disabled={row.status === "VOID"}>Void</Button>
-    ) }
+    {
+      key: "actions",
+      label: "Actions",
+      render: (row: any) => (
+        <RowActionMenu
+          actions={[
+            {
+              label: "Void",
+              danger: true,
+              disabled: row.status === "VOID",
+              onClick: () => voidEntry.mutate({ id: row.id, reason: "User requested" })
+            }
+          ]}
+        />
+      )
+    }
   ];
 
   const rows = (entries?.items || []).map((row: any) => ({

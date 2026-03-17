@@ -19,6 +19,7 @@ import {
   usePayrollRuns
 } from "../../hooks/usePayroll";
 import DataTable from "../../components/DataTable";
+import RowActionMenu from "../../components/RowActionMenu";
 
 function currentMonth() {
   const now = new Date();
@@ -140,21 +141,13 @@ export default function Payroll() {
             key: "actions",
             label: "Actions",
             render: (row: any) => (
-              <Stack direction="row" spacing={1}>
-                <Button size="small" onClick={() => handleExport(row._id)}>
-                  Export
-                </Button>
-                {row.status === "DRAFT" ? (
-                  <Button size="small" onClick={() => handleFinalize(row._id)}>
-                    Finalize
-                  </Button>
-                ) : null}
-                {row.status !== "PAID" ? (
-                  <Button size="small" variant="contained" onClick={() => handleMarkPaid(row._id)}>
-                    Mark Paid
-                  </Button>
-                ) : null}
-              </Stack>
+              <RowActionMenu
+                actions={[
+                  { label: "Export", onClick: () => handleExport(row._id) },
+                  { label: "Finalize", disabled: row.status !== "DRAFT", onClick: () => handleFinalize(row._id) },
+                  { label: "Mark Paid", disabled: row.status === "PAID", onClick: () => handleMarkPaid(row._id) }
+                ]}
+              />
             )
           }
         ]}

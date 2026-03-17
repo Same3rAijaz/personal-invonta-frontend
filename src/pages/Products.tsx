@@ -7,6 +7,7 @@ import PageHeader from "../components/PageHeader";
 import { useToast } from "../hooks/useToast";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { useConfirmDialog } from "../hooks/useConfirmDialog";
+import RowActionMenu from "../components/RowActionMenu";
 
 export default function Products() {
   const [page, setPage] = React.useState(0);
@@ -108,6 +109,12 @@ export default function Products() {
             )
           },
           { key: "category", label: "Category" },
+          { key: "unit", label: "Unit" },
+          {
+            key: "availableQuantity",
+            label: "Quantity",
+            render: (row: any) => row.availableQuantity ?? row.quantity ?? 0
+          },
           { key: "salePrice", label: "Price" },
           { key: "visibility", label: "Visibility" },
           {
@@ -119,20 +126,14 @@ export default function Products() {
             key: "actions",
             label: "Actions",
             render: (row: any) => (
-              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                <Button size="small" onClick={() => navigate(`/products/${row._id}`)}>
-                  View
-                </Button>
-                <Button size="small" disabled={row.isSharedWithMe} onClick={() => navigate(`/products/${row._id}/edit`)}>
-                  Edit
-                </Button>
-                <Button size="small" disabled={row.isSharedWithMe} onClick={() => openShareDialog(row)}>
-                  Share
-                </Button>
-                <Button size="small" color="error" disabled={row.isSharedWithMe} onClick={() => handleDelete(row._id)}>
-                  Delete
-                </Button>
-              </Box>
+              <RowActionMenu
+                actions={[
+                  { label: "View", onClick: () => navigate(`/products/${row._id}`) },
+                  { label: "Edit", disabled: row.isSharedWithMe, onClick: () => navigate(`/products/${row._id}/edit`) },
+                  { label: "Share", disabled: row.isSharedWithMe, onClick: () => openShareDialog(row) },
+                  { label: "Delete", disabled: row.isSharedWithMe, danger: true, onClick: () => handleDelete(row._id) }
+                ]}
+              />
             )
           }
         ]}

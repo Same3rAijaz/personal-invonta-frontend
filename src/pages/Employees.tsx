@@ -10,6 +10,7 @@ import { api } from "../api/client";
 import { useAuth } from "../hooks/useAuth";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { useConfirmDialog } from "../hooks/useConfirmDialog";
+import RowActionMenu from "../components/RowActionMenu";
 
 export default function Employees() {
   const [page, setPage] = React.useState(0);
@@ -117,41 +118,41 @@ export default function Employees() {
             key: "actions",
             label: "Actions",
             render: (row: any) => (
-              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                <Button
-                  size="small"
-                  disabled={Boolean(row.isBusinessAdmin) && !canManageBusinessAdmin}
-                  onClick={() => navigate(`/employees/${row._id}/edit`)}
-                >
-                  Edit
-                </Button>
-                <Button
-                  size="small"
-                  color="error"
-                  disabled={Boolean(row.isBusinessAdmin) && !canManageBusinessAdmin}
-                  onClick={() => handleDelete(row._id)}
-                >
-                  Delete
-                </Button>
-                {row.userId && (!row.isBusinessAdmin || canManageBusinessAdmin) ? (
-                  <>
-                    <Button size="small" onClick={() => handleOpenBlockLogin(row._id)}>
-                      Block Login
-                    </Button>
-                    <Button size="small" onClick={() => handleUnblockLogin(row._id)}>
-                      Unblock Login
-                    </Button>
-                    <Button size="small" onClick={() => handleOpenResetPassword(row._id)}>
-                      Reset Password
-                    </Button>
-                  </>
-                ) : null}
-                {row.isBusinessAdmin && !canManageBusinessAdmin ? (
-                  <Button size="small" disabled>
-                    Restricted
-                  </Button>
-                ) : null}
-              </Box>
+              <RowActionMenu
+                actions={[
+                  {
+                    label: "Edit",
+                    disabled: Boolean(row.isBusinessAdmin) && !canManageBusinessAdmin,
+                    onClick: () => navigate(`/employees/${row._id}/edit`)
+                  },
+                  {
+                    label: "Delete",
+                    danger: true,
+                    disabled: Boolean(row.isBusinessAdmin) && !canManageBusinessAdmin,
+                    onClick: () => handleDelete(row._id)
+                  },
+                  {
+                    label: "Block Login",
+                    disabled: !row.userId || (Boolean(row.isBusinessAdmin) && !canManageBusinessAdmin),
+                    onClick: () => handleOpenBlockLogin(row._id)
+                  },
+                  {
+                    label: "Unblock Login",
+                    disabled: !row.userId || (Boolean(row.isBusinessAdmin) && !canManageBusinessAdmin),
+                    onClick: () => handleUnblockLogin(row._id)
+                  },
+                  {
+                    label: "Reset Password",
+                    disabled: !row.userId || (Boolean(row.isBusinessAdmin) && !canManageBusinessAdmin),
+                    onClick: () => handleOpenResetPassword(row._id)
+                  },
+                  {
+                    label: "Restricted",
+                    disabled: true,
+                    onClick: () => undefined
+                  }
+                ].filter((item) => item.label !== "Restricted" || (row.isBusinessAdmin && !canManageBusinessAdmin))}
+              />
             )
           }
         ]}

@@ -8,6 +8,7 @@ import { useToast } from "../../hooks/useToast";
 import { useCities, useCountries, useStates } from "../../hooks/useGeo";
 import { DEFAULT_CITY, DEFAULT_COUNTRY, DEFAULT_STATE } from "../../constants/locationDefaults";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
+import RowActionMenu from "../../components/RowActionMenu";
 
 const REQUEST_MARKET_VALUE = "__REQUEST_MARKET__";
 
@@ -125,35 +126,31 @@ export default function ShopRequests() {
             key: "actions",
             label: "Actions",
             render: (row: any) => (
-              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                <Button
-                  size="small"
-                  disabled={row.status !== "PENDING"}
-                  onClick={() => {
-                    setEditDialog({ open: true, row });
-                    setEditValues({
-                      marketId: row.marketId?._id || row.marketId || REQUEST_MARKET_VALUE,
-                      marketName: row.marketName || "",
-                      country: row.country || DEFAULT_COUNTRY,
-                      state: row.state || DEFAULT_STATE,
-                      city: row.city || DEFAULT_CITY
-                    });
-                  }}
-                >
-                  Edit
-                </Button>
-                <Button size="small" disabled={row.status !== "PENDING"} onClick={() => handleApprove(row)}>
-                  Approve
-                </Button>
-                <Button
-                  size="small"
-                  color="error"
-                  disabled={row.status !== "PENDING"}
-                  onClick={() => setRejectDialog({ open: true, id: row._id })}
-                >
-                  Reject
-                </Button>
-              </Box>
+              <RowActionMenu
+                actions={[
+                  {
+                    label: "Edit",
+                    disabled: row.status !== "PENDING",
+                    onClick: () => {
+                      setEditDialog({ open: true, row });
+                      setEditValues({
+                        marketId: row.marketId?._id || row.marketId || REQUEST_MARKET_VALUE,
+                        marketName: row.marketName || "",
+                        country: row.country || DEFAULT_COUNTRY,
+                        state: row.state || DEFAULT_STATE,
+                        city: row.city || DEFAULT_CITY
+                      });
+                    }
+                  },
+                  { label: "Approve", disabled: row.status !== "PENDING", onClick: () => handleApprove(row) },
+                  {
+                    label: "Reject",
+                    danger: true,
+                    disabled: row.status !== "PENDING",
+                    onClick: () => setRejectDialog({ open: true, id: row._id })
+                  }
+                ]}
+              />
             )
           }
         ]}

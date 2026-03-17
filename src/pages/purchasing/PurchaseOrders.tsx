@@ -1,6 +1,6 @@
-import { Box, Button, TextField } from "@mui/material";
+import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, TextField } from "@mui/material";
 import React from "react";
-import { useDeletePurchaseOrder, usePurchaseOrders } from "../../hooks/usePurchasing";
+import { useApprovePurchaseOrder, useDeletePurchaseOrder, usePurchaseOrders, useReceivePurchaseOrder } from "../../hooks/usePurchasing";
 import DataTable from "../../components/DataTable";
 import { useNavigate } from "react-router-dom";
 import PageHeader from "../../components/PageHeader";
@@ -8,6 +8,8 @@ import { useVendors } from "../../hooks/useVendors";
 import { useToast } from "../../hooks/useToast";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import { useConfirmDialog } from "../../hooks/useConfirmDialog";
+import RowActionMenu from "../../components/RowActionMenu";
+import { useWarehouses } from "../../hooks/useWarehouses";
 
 export default function PurchaseOrders() {
   const [page, setPage] = React.useState(0);
@@ -16,7 +18,10 @@ export default function PurchaseOrders() {
   const debouncedSearch = useDebouncedValue(search.trim());
   const { data, isLoading } = usePurchaseOrders({ page: page + 1, limit: rowsPerPage, search: debouncedSearch || undefined });
   const deletePO = useDeletePurchaseOrder();
+  const approvePO = useApprovePurchaseOrder();
+  const receivePO = useReceivePurchaseOrder();
   const { data: vendors } = useVendors({ page: 1, limit: 1000 });
+  const { data: warehouses } = useWarehouses({ page: 1, limit: 1000 });
   const navigate = useNavigate();
   const vendorMap = new Map((vendors?.items || []).map((v: any) => [v._id, v.name]));
   const rows = (data?.items || []).map((po: any) => ({
@@ -26,6 +31,9 @@ export default function PurchaseOrders() {
   }));
   const { notify } = useToast();
   const { confirm, confirmDialog } = useConfirmDialog();
+  const [receiveDialog, setReceiveDialog] = React.useState<{ open: boolean; id: string | null }>({ open: false, id: null });
+  const [receiveWarehouseId, setReceiveWarehouseId] = React.useState("");
+  const [receiveLocationId, setReceiveLocationId] = React.useState("");
 
   React.useEffect(() => {
     setPage(0);
@@ -36,6 +44,37 @@ export default function PurchaseOrders() {
     try {
       await deletePO.mutateAsync(id);
       notify("Purchase order deleted", "success");
+    } catch (err: any) {
+      notify(err?.response?.data?.error?.message || "Failed", "error");
+    }
+  };
+
+  const handleApprovePurchaseOrder = async (id: string) => {
+    try {
+      await approvePO.mutateAsync(id);
+      notify("Purchase order approved", "success");
+    } catch (err: any) {
+      notify(err?.response?.data?.error?.message || "Failed", "error");
+    }
+  };
+
+  const handleReceivePurchaseOrder = async () => {
+    if (!receiveDialog.id || !receiveWarehouseId) {
+      notify("Select a warehouse before receiving", "error");
+      return;
+    }
+    try {
+      await receivePO.mutateAsync({
+        id: receiveDialog.id,
+        payload: {
+          warehouseId: receiveWarehouseId,
+          locationId: receiveLocationId || undefined
+        }
+      });
+      notify("Purchase order received and inventory updated", "success");
+      setReceiveDialog({ open: false, id: null });
+      setReceiveWarehouseId("");
+      setReceiveLocationId("");
     } catch (err: any) {
       notify(err?.response?.data?.error?.message || "Failed", "error");
     }
@@ -54,14 +93,22 @@ export default function PurchaseOrders() {
             key: "actions",
             label: "Actions",
             render: (row: any) => (
-              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                <Button size="small" disabled={row.status !== "DRAFT"} onClick={() => navigate(`/purchasing/${row._id}/edit`)}>
-                  Edit
-                </Button>
-                <Button size="small" color="error" disabled={row.status !== "DRAFT"} onClick={() => handleDelete(row._id)}>
-                  Delete
-                </Button>
-              </Box>
+              <RowActionMenu
+                actions={[
+                  { label: "Edit", disabled: row.status !== "DRAFT", onClick: () => navigate(`/purchasing/${row._id}/edit`) },
+                  { label: "Approve", disabled: row.status !== "DRAFT", onClick: () => handleApprovePurchaseOrder(row._id) },
+                  {
+                    label: "Receive",
+                    disabled: !["DRAFT", "APPROVED"].includes(row.status),
+                    onClick: () => {
+                      setReceiveDialog({ open: true, id: row._id });
+                      setReceiveWarehouseId("");
+                      setReceiveLocationId("");
+                    }
+                  },
+                  { label: "Delete", danger: true, disabled: row.status !== "DRAFT", onClick: () => handleDelete(row._id) }
+                ]}
+              />
             )
           }
         ]}
@@ -85,6 +132,37 @@ export default function PurchaseOrders() {
           setPage(0);
         }}
       />
+      <Dialog open={receiveDialog.open} onClose={() => setReceiveDialog({ open: false, id: null })} fullWidth maxWidth="sm">
+        <DialogTitle>Receive Purchase Order</DialogTitle>
+        <DialogContent sx={{ display: "grid", gap: 2, pt: "12px !important" }}>
+          <TextField
+            select
+            fullWidth
+            label="Warehouse *"
+            value={receiveWarehouseId}
+            onChange={(event) => setReceiveWarehouseId(event.target.value)}
+            helperText={(warehouses?.items || []).length === 0 ? "Create a warehouse first." : undefined}
+          >
+            {(warehouses?.items || []).map((item: any) => (
+              <MenuItem key={item._id} value={item._id}>
+                {item.name}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            fullWidth
+            label="Location ID"
+            value={receiveLocationId}
+            onChange={(event) => setReceiveLocationId(event.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setReceiveDialog({ open: false, id: null })}>Cancel</Button>
+          <Button variant="contained" onClick={handleReceivePurchaseOrder} disabled={receivePO.isPending}>
+            Receive Order
+          </Button>
+        </DialogActions>
+      </Dialog>
       {confirmDialog}
     </Box>
   );

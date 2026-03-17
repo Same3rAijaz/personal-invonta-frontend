@@ -136,6 +136,7 @@ export default function Marketplace() {
       if (semanticMode && search.trim()) {
         return semanticSearchPublicProducts({
           query: search,
+          page,
           limit: LIMIT,
           marketId: marketId || undefined,
           country: country || undefined,

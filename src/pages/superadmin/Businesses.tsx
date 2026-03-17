@@ -9,6 +9,7 @@ import { useToast } from "../../hooks/useToast";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import { useConfirmDialog } from "../../hooks/useConfirmDialog";
 import { useCities, useCountries, useStates } from "../../hooks/useGeo";
+import RowActionMenu from "../../components/RowActionMenu";
 
 export default function Businesses() {
   const [page, setPage] = React.useState(0);
@@ -161,20 +162,14 @@ export default function Businesses() {
             key: "actions",
             label: "Actions",
             render: (row: any) => (
-              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                <Button size="small" onClick={() => navigate(`/superadmin/businesses/${row._id}/edit`)}>
-                  Edit
-                </Button>
-                <Button size="small" onClick={() => handleOpenBlock(row._id)}>
-                  Block
-                </Button>
-                <Button size="small" onClick={() => handleUnblock(row._id)}>
-                  Unblock
-                </Button>
-                <Button size="small" color="error" onClick={() => handleDelete(row._id)}>
-                  Delete
-                </Button>
-              </Box>
+              <RowActionMenu
+                actions={[
+                  { label: "Edit", onClick: () => navigate(`/superadmin/businesses/${row._id}/edit`) },
+                  { label: "Block", onClick: () => handleOpenBlock(row._id) },
+                  { label: "Unblock", onClick: () => handleUnblock(row._id) },
+                  { label: "Delete", danger: true, onClick: () => handleDelete(row._id) }
+                ]}
+              />
             )
           }
         ]}

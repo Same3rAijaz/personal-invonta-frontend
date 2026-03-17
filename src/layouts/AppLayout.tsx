@@ -1,6 +1,5 @@
 import React from "react";
 import { AppBar, Toolbar, Typography, Box, Drawer, List, ListItemButton, ListItemText, IconButton, Divider, Avatar, Stack, Menu, MenuItem, ListItemIcon, ListSubheader, Collapse } from "@mui/material";
-import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import LogoutIcon from "@mui/icons-material/Logout";
 import MenuIcon from "@mui/icons-material/Menu";
@@ -318,20 +317,17 @@ export default function AppLayout() {
               </Typography>
             </Box>
             <IconButton onClick={(event) => setMenuAnchor(event.currentTarget)} sx={{ p: 0.4, borderRadius: 1 }}>
-              <Stack direction="row" alignItems="center" spacing={0.5}>
-                <Avatar
-                  sx={{
-                    bgcolor: "rgba(14,165,233,0.9)",
-                    color: "#ffffff",
-                    width: 34,
-                    height: 34,
-                    fontSize: 13
-                  }}
-                >
-                  {initials}
-                </Avatar>
-                <ArrowDropDownIcon sx={{ color: "rgba(226,232,240,0.75)" }} />
-              </Stack>
+              <Avatar
+                sx={{
+                  bgcolor: "rgba(14,165,233,0.9)",
+                  color: "#ffffff",
+                  width: 34,
+                  height: 34,
+                  fontSize: 13
+                }}
+              >
+                {initials}
+              </Avatar>
             </IconButton>
             <Menu
               anchorEl={menuAnchor}
@@ -416,5 +412,4 @@ export default function AppLayout() {
     </Box>
   );
 }
-
 

@@ -1,20 +1,46 @@
 import { Box, Button, Paper, Typography, Grid, MenuItem, Divider, TextField } from "@mui/material";
+import React from "react";
 import { useForm } from "react-hook-form";
 import { api } from "../../api/client";
 import { useToast } from "../../hooks/useToast";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useProducts } from "../../hooks/useProducts";
 import { useWarehouses } from "../../hooks/useWarehouses";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function InventoryCreate() {
   const { notify } = useToast();
   const navigate = useNavigate();
-  const { register, handleSubmit, watch, formState: { errors } } = useForm<any>({
-    defaultValues: { action: "receive" }
+  const [searchParams] = useSearchParams();
+  const client = useQueryClient();
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<any>({
+    defaultValues: {
+      action: searchParams.get("action") || "receive",
+      productId: searchParams.get("productId") || "",
+      warehouseId: searchParams.get("warehouseId") || ""
+    }
   });
   const action = watch("action");
   const { data: products } = useProducts({ page: 1, limit: 1000 });
   const { data: warehouses } = useWarehouses({ page: 1, limit: 1000 });
+
+  const selectedProductId = watch("productId");
+
+  React.useEffect(() => {
+    const actionValue = searchParams.get("action");
+    const productIdValue = searchParams.get("productId");
+    const warehouseIdValue = searchParams.get("warehouseId");
+    if (actionValue) setValue("action", actionValue);
+    if (productIdValue) setValue("productId", productIdValue);
+    if (warehouseIdValue) setValue("warehouseId", warehouseIdValue);
+  }, [searchParams, setValue]);
+
+  React.useEffect(() => {
+    const selectedProduct = (products?.items || []).find((item: any) => String(item._id) === String(selectedProductId || ""));
+    if (selectedProduct && action !== "stocktake") {
+      setValue("unitCost", Number(selectedProduct.costPrice || 0), { shouldDirty: true });
+    }
+  }, [action, products?.items, selectedProductId, setValue]);
 
   const onSubmit = async (values: any) => {
     try {
@@ -32,9 +58,7 @@ export default function InventoryCreate() {
             productId: values.productId,
             warehouseId: values.warehouseId,
             qty: Number(values.qty),
-            unitCost: Number(values.unitCost),
-            refType: values.refType || undefined,
-            refId: values.refId || undefined
+            unitCost: Number(values.unitCost)
           }],
           toWarehouseId: values.toWarehouseId
         });
@@ -44,12 +68,14 @@ export default function InventoryCreate() {
             productId: values.productId,
             warehouseId: values.warehouseId,
             qty: Number(values.qty),
-            unitCost: Number(values.unitCost),
-            refType: values.refType || undefined,
-            refId: values.refId || undefined
+            unitCost: Number(values.unitCost)
           }]
         });
       }
+      await Promise.all([
+        client.invalidateQueries({ queryKey: ["inventory", "balances"] }),
+        client.invalidateQueries({ queryKey: ["products"] })
+      ]);
       notify("Inventory updated", "success");
       navigate("/inventory");
     } catch (err: any) {
@@ -129,16 +155,6 @@ export default function InventoryCreate() {
               label="Unit Cost"
               type="number"
               {...register("unitCost")}
-            />
-          </Grid>
-          <Grid item xs={12} md={3}>
-            <TextField fullWidth label="Ref Type" {...register("refType")} />
-          </Grid>
-          <Grid item xs={12} md={3}>
-            <TextField
-              fullWidth
-              label="Ref ID"
-              {...register("refId")}
             />
           </Grid>
           {action === "transfer" ? (

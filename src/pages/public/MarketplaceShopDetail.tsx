@@ -114,6 +114,7 @@ export default function MarketplaceShopDetail() {
       if (semanticMode && search.trim() && shop?._id) {
         const result = await semanticSearchPublicProducts({
           query: search,
+          page,
           limit: LIMIT,
           businessId: String(shop._id),
           category: category || undefined

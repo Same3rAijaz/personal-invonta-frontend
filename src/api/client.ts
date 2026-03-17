@@ -8,8 +8,11 @@ type RetryableRequest = {
   _retry?: boolean;
   skipAuth?: boolean;
   skipLoader?: boolean;
+  showLoader?: boolean;
+  __loaderTracked?: boolean;
   skipGlobalErrorToast?: boolean;
   headers?: any;
+  method?: string;
   [key: string]: any;
 };
 
@@ -20,14 +23,24 @@ function emitLoading() {
   window.dispatchEvent(new CustomEvent("api:loading", { detail: { pending: pendingRequests } }));
 }
 
+function shouldTrackLoader(config: RetryableRequest) {
+  if (config.skipLoader) return false;
+  if (config.showLoader) return true;
+  const method = String(config.method || "get").toLowerCase();
+  // Keep GET/HEAD/OPTIONS silent to avoid global loader flicker from background/refetch traffic.
+  return method !== "get" && method !== "head" && method !== "options";
+}
+
 function startLoading(config: RetryableRequest) {
-  if (config.skipLoader) return;
+  if (!shouldTrackLoader(config)) return;
+  config.__loaderTracked = true;
   pendingRequests += 1;
   emitLoading();
 }
 
 function stopLoading(config?: RetryableRequest) {
-  if (config?.skipLoader) return;
+  if (!config?.__loaderTracked) return;
+  config.__loaderTracked = false;
   pendingRequests = Math.max(0, pendingRequests - 1);
   emitLoading();
 }

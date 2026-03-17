@@ -7,6 +7,7 @@ import PageHeader from "../components/PageHeader";
 import { useToast } from "../hooks/useToast";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { useConfirmDialog } from "../hooks/useConfirmDialog";
+import RowActionMenu from "../components/RowActionMenu";
 
 export default function Customers() {
   const [page, setPage] = React.useState(0);
@@ -48,14 +49,12 @@ export default function Customers() {
             key: "actions",
             label: "Actions",
             render: (row: any) => (
-              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                <Button size="small" onClick={() => navigate(`/customers/${row._id}/edit`)}>
-                  Edit
-                </Button>
-                <Button size="small" color="error" onClick={() => handleDelete(row._id)}>
-                  Delete
-                </Button>
-              </Box>
+              <RowActionMenu
+                actions={[
+                  { label: "Edit", onClick: () => navigate(`/customers/${row._id}/edit`) },
+                  { label: "Delete", danger: true, onClick: () => handleDelete(row._id) }
+                ]}
+              />
             )
           }
         ]}

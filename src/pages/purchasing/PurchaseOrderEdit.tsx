@@ -1,5 +1,5 @@
 import { Box, Button, Paper, Typography, Grid, TextField, MenuItem, Divider, IconButton } from "@mui/material";
-import { useEffect } from "react";
+import React, { useEffect } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { useUpdatePurchaseOrder, usePurchaseOrders } from "../../hooks/usePurchasing";
 import { useToast } from "../../hooks/useToast";
@@ -17,10 +17,14 @@ export default function PurchaseOrderEdit() {
   const updatePO = useUpdatePurchaseOrder();
   const { notify } = useToast();
   const navigate = useNavigate();
-  const { register, handleSubmit, control, watch, reset, formState: { errors } } = useForm<any>({
+  const { register, handleSubmit, control, watch, reset, setValue, formState: { errors } } = useForm<any>({
     defaultValues: { vendorId: "", items: [{ productId: "", qty: 1, unitCost: 0 }] }
   });
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
+  const productMap = React.useMemo(
+    () => new Map((products?.items || []).map((item: any) => [String(item._id), item])),
+    [products?.items]
+  );
 
   const order = (data?.items || []).find((po: any) => po._id === id);
 
@@ -96,7 +100,15 @@ export default function PurchaseOrderEdit() {
                   select 
                   fullWidth 
                   label="Product *" 
-                  {...register(`items.${index}.productId` as const, { required: "Product is required" })}
+                  {...register(`items.${index}.productId` as const, {
+                    required: "Product is required",
+                    onChange: (event) => {
+                      const selectedProduct = productMap.get(String(event.target.value || ""));
+                      if (selectedProduct) {
+                        setValue(`items.${index}.unitCost`, Number(selectedProduct.costPrice || 0), { shouldDirty: true });
+                      }
+                    }
+                  })}
                   value={watch(`items.${index}.productId`) || ""}
                   error={!!(errors.items as any)?.[index]?.productId}
                   helperText={(errors.items as any)?.[index]?.productId?.message as string}

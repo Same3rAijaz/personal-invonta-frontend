@@ -5,12 +5,35 @@ export function useProducts(params?: { page?: number; limit?: number; search?: s
   return useQuery({
     queryKey: ["products", params?.page, params?.limit, params?.search, params?.filters],
     queryFn: async () => {
+      const normalizedFilters =
+        params?.filters && Object.keys(params.filters).length > 0
+          ? JSON.stringify(params.filters)
+          : undefined;
       if (params?.search) {
-        return (
-          await api.get("/products/semantic-search", {
-            params: { query: params.search, limit: params.limit }
-          })
-        ).data.data;
+        try {
+          return (
+            await api.get("/products/semantic-search", {
+              params: {
+                query: params.search,
+                page: params.page,
+                limit: params.limit,
+                filters: normalizedFilters
+              }
+            })
+          ).data.data;
+        } catch {
+          // Fallback to lexical endpoint if semantic path fails.
+          return (
+            await api.get("/products", {
+              params: {
+                page: params?.page,
+                limit: params?.limit,
+                search: params?.search,
+                filters: normalizedFilters
+              }
+            })
+          ).data.data;
+        }
       }
       return (
         await api.get("/products", {
@@ -18,10 +41,7 @@ export function useProducts(params?: { page?: number; limit?: number; search?: s
             page: params?.page,
             limit: params?.limit,
             search: params?.search,
-            filters:
-              params?.filters && Object.keys(params.filters).length > 0
-                ? JSON.stringify(params.filters)
-                : undefined
+            filters: normalizedFilters
           }
         })
       ).data.data;
@@ -41,7 +61,10 @@ export function useCreateProduct() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: async (payload: any) => (await api.post("/products", payload)).data.data,
-    onSuccess: () => client.invalidateQueries({ queryKey: ["products"] })
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: ["products"] });
+      client.invalidateQueries({ queryKey: ["inventory", "balances"] });
+    }
   });
 }
 
