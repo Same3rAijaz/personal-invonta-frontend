@@ -59,7 +59,8 @@ export default function AppLayout() {
             { label: "Markets", to: "/superadmin/markets" },
             { label: "Businesses", to: "/superadmin/businesses" },
             { label: "Categories", to: "/superadmin/categories" },
-            { label: "Approval Requests", to: "/superadmin/requests" }
+            { label: "Approval Requests", to: "/superadmin/requests" },
+            { label: "Transactions", to: "/superadmin/transactions" }
           ]
         },
         {

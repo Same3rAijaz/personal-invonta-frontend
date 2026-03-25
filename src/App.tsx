@@ -58,6 +58,10 @@ import Notifications from "./pages/Notifications";
 import UdhaarParties from "./pages/udhaar/Parties";
 import PartyDetail from "./pages/udhaar/PartyDetail";
 import UdhaarReports from "./pages/udhaar/Reports";
+import SubscriptionPaywall from "./pages/SubscriptionPaywall";
+import PaymentSuccess from "./pages/PaymentSuccess";
+import PaymentCancel from "./pages/PaymentCancel";
+import Transactions from "./pages/superadmin/Transactions";
 
 export default function App() {
   return (
@@ -66,6 +70,8 @@ export default function App() {
       <Route path="/signup" element={<Signup />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/payment/success" element={<PaymentSuccess />} />
+      <Route path="/payment/cancel" element={<PaymentCancel />} />
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/terms" element={<Terms />} />
       <Route path="/tutorial" element={<Tutorial />} />
@@ -112,6 +118,7 @@ export default function App() {
             <Route path="/udhaar/reports" element={<UdhaarReports />} />
             <Route path="/settings/profile" element={<BusinessProfile />} />
             <Route path="/referrals" element={<MyReferrals />} />
+            <Route path="/subscription" element={<SubscriptionPaywall />} />
           </Route>
           <Route element={<SuperAdminOnlyRoute />}>
             <Route path="/superadmin/markets" element={<Markets />} />
@@ -125,6 +132,7 @@ export default function App() {
             <Route path="/superadmin/businesses/:id/edit" element={<BusinessEdit />} />
             <Route path="/superadmin/requests" element={<ShopRequests />} />
             <Route path="/referrals/settings" element={<ReferralSettings />} />
+            <Route path="/superadmin/transactions" element={<Transactions />} />
           </Route>
         </Route>
       </Route>
