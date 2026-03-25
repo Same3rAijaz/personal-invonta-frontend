@@ -85,8 +85,8 @@ export default function App() {
       <Route element={<ProtectedRoute />}
       >
         <Route element={<AppLayout />}>
-          <Route index element={<Dashboard />} />
           <Route element={<BusinessUserRoute />}>
+            <Route index element={<Dashboard />} />
             <Route path="/products" element={<Products />} />
             <Route path="/products/new" element={<ProductCreate />} />
             <Route path="/products/:id" element={<ProductView />} />
@@ -118,7 +118,6 @@ export default function App() {
             <Route path="/udhaar/reports" element={<UdhaarReports />} />
             <Route path="/settings/profile" element={<BusinessProfile />} />
             <Route path="/referrals" element={<MyReferrals />} />
-            <Route path="/subscription" element={<SubscriptionPaywall />} />
           </Route>
           <Route element={<SuperAdminOnlyRoute />}>
             <Route path="/superadmin/markets" element={<Markets />} />

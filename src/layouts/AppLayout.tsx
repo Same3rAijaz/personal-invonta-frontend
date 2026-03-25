@@ -1,12 +1,15 @@
 import React from "react";
-import { AppBar, Toolbar, Typography, Box, Drawer, List, ListItemButton, ListItemText, IconButton, Divider, Avatar, Stack, Menu, MenuItem, ListItemIcon, ListSubheader, Collapse } from "@mui/material";
+import { AppBar, Toolbar, Typography, Box, Drawer, List, ListItemButton, ListItemText, IconButton, Divider, Avatar, Stack, Menu, MenuItem, ListItemIcon, ListSubheader, Collapse, Modal, Button, CircularProgress, Paper } from "@mui/material";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import LogoutIcon from "@mui/icons-material/Logout";
 import MenuIcon from "@mui/icons-material/Menu";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import { api } from "../api/client";
+import { useToast } from "../hooks/useToast";
 
 const drawerWidth = 248;
 type NavItem = { label: string; to: string };
@@ -16,6 +19,29 @@ export default function AppLayout() {
   const [menuAnchor, setMenuAnchor] = React.useState<null | HTMLElement>(null);
   const location = useLocation();
   const { logout, user, business } = useAuth();
+  const { notify } = useToast();
+  const [subLoading, setSubLoading] = React.useState(false);
+
+  const isSuperAdmin = user?.role === "SUPER_ADMIN";
+  const showPaywall = !isSuperAdmin && user?.role === "ADMIN" && business && business.subscriptionStatus !== "active";
+
+  const handleSubscribe = async () => {
+    setSubLoading(true);
+    try {
+      const { data } = await api.post("/subscriptions/checkout");
+      const url = data?.data?.url || data?.url;
+      if (url) {
+        window.location.href = url;
+      } else {
+        notify("Failed to create checkout session", "error");
+      }
+    } catch (err: any) {
+      notify(err?.response?.data?.error?.message || "Payment initiation failed", "error");
+    } finally {
+      setSubLoading(false);
+    }
+  };
+
   const displayName = user?.name || user?.fullName || user?.email || "Account";
   const initials = String(displayName)
     .split(" ")
@@ -40,7 +66,6 @@ export default function AppLayout() {
   const userModules = user?.allowedModules || [];
   const hasBusinessLimit = businessModules.length > 0;
   const hasUserLimit = userModules.length > 0 && user?.role !== "ADMIN";
-  const isSuperAdmin = user?.role === "SUPER_ADMIN";
   const isAllowed = (key: string) => {
     if (isSuperAdmin) return false;
     const mapped = moduleMap[key] || [];
@@ -410,6 +435,110 @@ export default function AppLayout() {
       >
         <Outlet />
       </Box>
+
+      {/* Subscription paywall modal — locks entire UI */}
+      {showPaywall && (
+        <Box
+          sx={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            bgcolor: "rgba(0,0,0,0.7)",
+            backdropFilter: "blur(8px)"
+          }}
+        >
+          <Paper
+            elevation={0}
+            sx={{
+              maxWidth: 480,
+              width: "90%",
+              p: { xs: 3, md: 5 },
+              borderRadius: 3,
+              textAlign: "center",
+              background: "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)",
+              boxShadow: "0 32px 80px rgba(0,0,0,0.3)"
+            }}
+          >
+            <Box
+              sx={{
+                width: 64,
+                height: 64,
+                borderRadius: "50%",
+                background: "linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                mx: "auto",
+                mb: 2.5,
+                boxShadow: "0 8px 24px rgba(14,165,233,0.3)"
+              }}
+            >
+              <LockOutlinedIcon sx={{ color: "#fff", fontSize: 32 }} />
+            </Box>
+
+            <Typography variant="h5" sx={{ fontWeight: 800, color: "#0f172a", mb: 0.5 }}>
+              Subscription Required
+            </Typography>
+            <Typography variant="body2" sx={{ color: "#64748b", mb: 3 }}>
+              Activate your plan to unlock all features
+            </Typography>
+
+            <Box
+              sx={{
+                p: 2.5,
+                borderRadius: 2,
+                border: "2px solid rgba(14,165,233,0.15)",
+                background: "linear-gradient(135deg, rgba(14,165,233,0.04) 0%, rgba(99,102,241,0.04) 100%)",
+                mb: 3
+              }}
+            >
+              <Typography variant="overline" sx={{ color: "#6366f1", fontWeight: 700, letterSpacing: 1.5 }}>
+                Monthly Plan
+              </Typography>
+              <Box sx={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: 0.5, mt: 0.5 }}>
+                <Typography variant="h4" sx={{ fontWeight: 800, color: "#0f172a" }}>₨5,000</Typography>
+                <Typography variant="body2" sx={{ color: "#94a3b8" }}>/month</Typography>
+              </Box>
+              <Box sx={{ mt: 1.5, textAlign: "left" }}>
+                <Typography variant="body2" sx={{ color: "#475569", py: 0.3 }}>✓ Full dashboard access</Typography>
+                <Typography variant="body2" sx={{ color: "#475569", py: 0.3 }}>✓ Inventory & sales management</Typography>
+                <Typography variant="body2" sx={{ color: "#475569", py: 0.3 }}>✓ Reports & team management</Typography>
+              </Box>
+            </Box>
+
+            <Button
+              variant="contained"
+              fullWidth
+              size="large"
+              onClick={handleSubscribe}
+              disabled={subLoading}
+              sx={{
+                py: 1.4,
+                fontWeight: 700,
+                fontSize: "0.95rem",
+                borderRadius: 2,
+                background: "linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%)",
+                boxShadow: "0 8px 24px rgba(14,165,233,0.3)",
+                "&:hover": { background: "linear-gradient(135deg, #0284c7 0%, #4f46e5 100%)" }
+              }}
+            >
+              {subLoading ? <CircularProgress size={22} sx={{ color: "#fff" }} /> : "Subscribe Now"}
+            </Button>
+
+            <Button
+              variant="text"
+              fullWidth
+              onClick={logout}
+              sx={{ mt: 1.5, color: "#94a3b8", fontWeight: 600 }}
+            >
+              Logout
+            </Button>
+          </Paper>
+        </Box>
+      )}
     </Box>
   );
 }
