@@ -23,7 +23,7 @@ export default function AppLayout() {
   const [subLoading, setSubLoading] = React.useState(false);
 
   const isSuperAdmin = user?.role === "SUPER_ADMIN";
-  const showPaywall = !isSuperAdmin && business && business.subscriptionStatus !== "active";
+  const showPaywall = !isSuperAdmin && business && business.subscriptionStatus !== "active" && business.subscriptionStatus !== "pending";
 
   const handleSubscribe = async () => {
     setSubLoading(true);
