@@ -62,6 +62,12 @@ import SubscriptionPaywall from "./pages/SubscriptionPaywall";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentCancel from "./pages/PaymentCancel";
 import Transactions from "./pages/superadmin/Transactions";
+import BorrowOrders from "./pages/borrows/BorrowOrders";
+import BorrowOrderCreate from "./pages/borrows/BorrowOrderCreate";
+import BorrowOrderDetail from "./pages/borrows/BorrowOrderDetail";
+import BorrowProfitReport from "./pages/borrows/BorrowProfitReport";
+import SalesReturns from "./pages/sales/SalesReturns";
+import SalesReturnCreate from "./pages/sales/SalesReturnCreate";
 
 export default function App() {
   return (
@@ -108,6 +114,12 @@ export default function App() {
             <Route path="/sales" element={<Sales />} />
             <Route path="/sales/new" element={<SalesOrderCreate />} />
             <Route path="/sales/:id/edit" element={<SalesOrderEdit />} />
+            <Route path="/sales/returns" element={<SalesReturns />} />
+            <Route path="/sales/returns/new" element={<SalesReturnCreate />} />
+            <Route path="/borrows" element={<BorrowOrders />} />
+            <Route path="/borrows/new" element={<BorrowOrderCreate />} />
+            <Route path="/borrows/:id" element={<BorrowOrderDetail />} />
+            <Route path="/borrows/profit-report" element={<BorrowProfitReport />} />
             <Route path="/employees" element={<Employees />} />
             <Route path="/employees/new" element={<EmployeeCreate />} />
             <Route path="/employees/:id/edit" element={<EmployeeEdit />} />

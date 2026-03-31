@@ -103,7 +103,9 @@ export default function AppLayout() {
             ...(isAllowed("inventory") ? [{ label: "Inventory", to: "/inventory" }] : []),
             ...(isAllowed("warehouses") ? [{ label: "Warehouses", to: "/warehouses" }] : []),
             ...(isAllowed("purchasing") ? [{ label: "Purchasing", to: "/purchasing" }] : []),
-            ...(isAllowed("sales") ? [{ label: "Sales", to: "/sales" }] : [])
+            ...(isAllowed("sales") ? [{ label: "Sales", to: "/sales" }] : []),
+            ...(isAllowed("sales") ? [{ label: "Sales Returns", to: "/sales/returns" }] : []),
+            ...(isAllowed("sales") ? [{ label: "Borrows", to: "/borrows" }] : [])
           ]
         },
         {
@@ -126,6 +128,7 @@ export default function AppLayout() {
           label: "Analytics",
           items: [
             ...(isAllowed("reports") ? [{ label: "Reports", to: "/reports" }] : []),
+            ...(isAllowed("sales") ? [{ label: "Borrow Profit Report", to: "/borrows/profit-report" }] : []),
             ...(isAllowed("udhaar") ? [{ label: "Udhaar", to: "/udhaar/parties" }] : []),
             ...(isAllowed("udhaar") ? [{ label: "Udhaar Reports", to: "/udhaar/reports" }] : [])
           ]

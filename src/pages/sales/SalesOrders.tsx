@@ -171,6 +171,11 @@ export default function SalesOrders() {
                       disabled: !!loadingInvoiceId,
                       onClick: () => openInvoice(row._id, true)
                     },
+                    {
+                      label: "Create Return",
+                      disabled: row.status !== "SHIPPED" && row.status !== "INVOICED",
+                      onClick: () => navigate(`/sales/returns/new?soId=${row._id}`)
+                    },
                     { label: "Delete", danger: true, disabled: !canEdit, onClick: () => handleDelete(row._id) }
                   ]}
                 />
