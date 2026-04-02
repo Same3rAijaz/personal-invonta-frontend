@@ -1,9 +1,9 @@
-import { Box, Button, Paper, Typography, Grid, TextField, MenuItem, Divider, IconButton } from "@mui/material";
+import { Alert, Box, Button, Paper, Typography, Grid, TextField, MenuItem, Divider, IconButton } from "@mui/material";
 import React from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { useCreateSalesOrder } from "../../hooks/useSales";
 import { useToast } from "../../hooks/useToast";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useCustomers } from "../../hooks/useCustomers";
 import { useProducts } from "../../hooks/useProducts";
 import AddCircleOutline from "@mui/icons-material/AddCircleOutline";
@@ -13,10 +13,17 @@ export default function SalesOrderCreate() {
   const createSO = useCreateSalesOrder();
   const { notify } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
+  const borrowState = (location.state as any) || null;
   const { data: customers } = useCustomers({ page: 1, limit: 1000 });
   const { data: products } = useProducts({ page: 1, limit: 1000 });
+
+  const defaultItems = borrowState?.items?.length
+    ? borrowState.items.map((i: any) => ({ productId: i.productId, qty: i.qty, unitPrice: i.unitPrice || 0 }))
+    : [{ productId: "", qty: 1, unitPrice: 0 }];
+
   const { register, handleSubmit, watch, control, setValue, formState: { errors } } = useForm<any>({
-    defaultValues: { status: "DRAFT", items: [{ productId: "", qty: 1, unitPrice: 0 }] }
+    defaultValues: { status: "DRAFT", items: defaultItems }
   });
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
   const productMap = React.useMemo(
@@ -26,11 +33,19 @@ export default function SalesOrderCreate() {
 
   const onSubmit = async (values: any) => {
     try {
-      const items = values.items.map((item: any) => ({
-        productId: item.productId,
-        qty: Number(item.qty),
-        unitPrice: Number(item.unitPrice)
-      }));
+      const items = values.items.map((item: any, idx: number) => {
+        const borrowItem = borrowState?.items?.[idx];
+        return {
+          productId: item.productId,
+          qty: Number(item.qty),
+          unitPrice: Number(item.unitPrice),
+          ...(borrowItem && borrowState?.borrowOrderId ? {
+            borrowOrderId: borrowState.borrowOrderId,
+            lenderBusinessId: borrowState.lenderBusinessId,
+            agreedUnitCost: borrowItem.agreedUnitCost || 0
+          } : {})
+        };
+      });
       await createSO.mutateAsync({ customerId: values.customerId, items, status: values.status });
       notify("SO created", "success");
       navigate("/sales");
@@ -42,6 +57,11 @@ export default function SalesOrderCreate() {
   return (
     <Box>
       <Typography variant="h5" gutterBottom>Create Sales Order</Typography>
+      {borrowState?.borrowOrderId && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Selling borrowed stock from borrow order. When this order is shipped, the borrow order quantities will update automatically.
+        </Alert>
+      )}
       <Paper sx={{ p: 3, borderRadius: 3, boxShadow: "0 18px 40px rgba(15,23,42,0.08)" }}>
         <Grid container spacing={2} component="form" onSubmit={handleSubmit(onSubmit)}>
           <Grid item xs={12} md={6}>
@@ -69,10 +89,10 @@ export default function SalesOrderCreate() {
           {fields.map((field, index) => (
             <Grid container spacing={2} item xs={12} key={field.id}>
               <Grid item xs={12} md={6}>
-                <TextField 
-                  select 
-                  fullWidth 
-                  label="Product *" 
+                <TextField
+                  select
+                  fullWidth
+                  label="Product *"
                   {...register(`items.${index}.productId` as const, {
                     required: "Product is required",
                     onChange: (event) => {
@@ -89,6 +109,12 @@ export default function SalesOrderCreate() {
                   {(products?.items || []).map((p: any) => (
                     <MenuItem key={p._id} value={p._id}>{p.name}</MenuItem>
                   ))}
+                  {/* Include borrowed item if not already in product list */}
+                  {borrowState?.items?.[index] && !productMap.has(borrowState.items[index].productId) && (
+                    <MenuItem key={borrowState.items[index].productId} value={borrowState.items[index].productId}>
+                      {borrowState.items[index].productName || `Product ${borrowState.items[index].productId}`} (borrowed)
+                    </MenuItem>
+                  )}
                 </TextField>
               </Grid>
               <Grid item xs={6} md={2}>

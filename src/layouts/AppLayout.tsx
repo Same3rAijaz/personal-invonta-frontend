@@ -105,7 +105,7 @@ export default function AppLayout() {
             ...(isAllowed("purchasing") ? [{ label: "Purchasing", to: "/purchasing" }] : []),
             ...(isAllowed("sales") ? [{ label: "Sales", to: "/sales" }] : []),
             ...(isAllowed("sales") ? [{ label: "Sales Returns", to: "/sales/returns" }] : []),
-            ...(isAllowed("sales") ? [{ label: "Borrows", to: "/borrows" }] : [])
+            ...(isAllowed("sales") ? [{ label: "Stock Loans", to: "/borrows" }] : [])
           ]
         },
         {
@@ -120,7 +120,9 @@ export default function AppLayout() {
           label: "Partners",
           items: [
             ...(isAllowed("customers") ? [{ label: "Customers", to: "/customers" }] : []),
-            ...(isAllowed("vendors") ? [{ label: "Vendors", to: "/vendors" }] : [])
+            ...(isAllowed("vendors") ? [{ label: "Vendors", to: "/vendors" }] : []),
+            { label: "Shop Friends", to: "/shop-friends" },
+            { label: "Discover Shops", to: "/shop-discover" }
           ]
         },
         {
@@ -128,7 +130,7 @@ export default function AppLayout() {
           label: "Analytics",
           items: [
             ...(isAllowed("reports") ? [{ label: "Reports", to: "/reports" }] : []),
-            ...(isAllowed("sales") ? [{ label: "Borrow Profit Report", to: "/borrows/profit-report" }] : []),
+            ...(isAllowed("sales") ? [{ label: "Loan Profit Report", to: "/borrows/profit-report" }] : []),
             ...(isAllowed("udhaar") ? [{ label: "Udhaar", to: "/udhaar/parties" }] : []),
             ...(isAllowed("udhaar") ? [{ label: "Udhaar Reports", to: "/udhaar/reports" }] : [])
           ]
@@ -145,7 +147,22 @@ export default function AppLayout() {
       ];
   const filteredNavGroups = navGroups.filter((group) => group.items.length > 0);
 
-  const isActive = (path: string) => (path === "/" ? location.pathname === "/" : location.pathname.startsWith(path));
+  const allNavPaths = [
+    ...directNavItems.map((i) => i.to),
+    ...filteredNavGroups.flatMap((g) => g.items.map((i) => i.to))
+  ];
+
+  const isActive = (path: string) => {
+    if (path === "/") return location.pathname === "/";
+    if (location.pathname === path) return true;
+    if (!location.pathname.startsWith(path + "/")) return false;
+    // Don't highlight a parent if a more-specific nav item already matches
+    const moreSpecificMatch = allNavPaths.some(
+      (p) => p !== path && p.startsWith(path + "/") &&
+        (location.pathname === p || location.pathname.startsWith(p + "/"))
+    );
+    return !moreSpecificMatch;
+  };
   const [openGroups, setOpenGroups] = React.useState<Record<string, boolean>>({});
   React.useEffect(() => {
     setOpenGroups((prev) => {

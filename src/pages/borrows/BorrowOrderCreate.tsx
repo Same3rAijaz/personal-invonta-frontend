@@ -1,6 +1,6 @@
 import {
-  Autocomplete, Box, Button, Divider, Grid, IconButton,
-  MenuItem, Paper, TextField, Typography
+  Box, Button, Divider, Grid, IconButton,
+  MenuItem, Paper, TextField, Typography, Alert
 } from "@mui/material";
 import React from "react";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -8,20 +8,29 @@ import { useNavigate } from "react-router-dom";
 import AddCircleOutline from "@mui/icons-material/AddCircleOutline";
 import RemoveCircleOutline from "@mui/icons-material/RemoveCircleOutline";
 import { useCreateBorrowOrder } from "../../hooks/useBorrows";
-import { useBusinessDirectory } from "../../hooks/useBusinessDirectory";
+import { useShopFriends, useFriendProducts } from "../../hooks/useShopFriends";
 import { useToast } from "../../hooks/useToast";
-import { useProducts } from "../../hooks/useProducts";
 import { useWarehouses } from "../../hooks/useWarehouses";
 
 export default function BorrowOrderCreate() {
   const createBO = useCreateBorrowOrder();
   const { notify } = useToast();
   const navigate = useNavigate();
-  const { data: products } = useProducts({ page: 1, limit: 1000 });
   const { data: warehouses } = useWarehouses({ page: 1, limit: 1000 });
-  const [shopSearch, setShopSearch] = React.useState("");
-  const { data: directory } = useBusinessDirectory(shopSearch || undefined);
-  const [selectedShop, setSelectedShop] = React.useState<any>(null);
+  const { data: friendsData, isLoading: friendsLoading } = useShopFriends();
+  const [selectedShopId, setSelectedShopId] = React.useState<string>("");
+
+  const friendList: any[] = friendsData?.items || friendsData || [];
+  const selectedFriend = friendList.find((f: any) => {
+    const shop = f.business || f;
+    return String(shop._id) === selectedShopId;
+  });
+  const lenderBusinessId = selectedFriend
+    ? String((selectedFriend.business || selectedFriend)._id)
+    : "";
+
+  const { data: lenderProductsData } = useFriendProducts(lenderBusinessId || null);
+  const lenderProducts: any[] = lenderProductsData?.items || lenderProductsData || [];
 
   const { register, handleSubmit, watch, control, setValue, formState: { errors } } = useForm<any>({
     defaultValues: {
@@ -33,7 +42,7 @@ export default function BorrowOrderCreate() {
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
 
   const onSubmit = async (values: any) => {
-    if (!selectedShop) {
+    if (!lenderBusinessId) {
       notify("Select a lender shop", "error");
       return;
     }
@@ -44,12 +53,12 @@ export default function BorrowOrderCreate() {
         agreedUnitCost: Number(item.agreedUnitCost)
       }));
       await createBO.mutateAsync({
-        lenderBusinessId: selectedShop._id,
+        lenderBusinessId,
         borrowerWarehouseId: values.borrowerWarehouseId,
         items,
         notes: values.notes || undefined
       });
-      notify("Borrow request sent — waiting for the lender shop to accept", "success");
+      notify("Stock loan request sent — waiting for the lender shop to accept", "success");
       navigate("/borrows");
     } catch (err: any) {
       notify(err?.response?.data?.error?.message || "Failed", "error");
@@ -58,29 +67,44 @@ export default function BorrowOrderCreate() {
 
   return (
     <Box>
-      <Typography variant="h5" gutterBottom>Request to Borrow</Typography>
+      <Typography variant="h5" gutterBottom>Request Stock Loan</Typography>
       <Paper sx={{ p: 3, borderRadius: 3, boxShadow: "0 18px 40px rgba(15,23,42,0.08)" }}>
         <Grid container spacing={2} component="form" onSubmit={handleSubmit(onSubmit)}>
 
           <Grid item xs={12} md={6}>
-            <Autocomplete
-              options={directory?.items || []}
-              getOptionLabel={(option: any) =>
-                `${option.name}${option.city ? ` — ${option.city}` : ""}`
-              }
-              value={selectedShop}
-              onChange={(_, value) => setSelectedShop(value)}
-              onInputChange={(_, value) => setShopSearch(value)}
-              isOptionEqualToValue={(a: any, b: any) => a._id === b._id}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="Lender Shop *"
-                  helperText="Search and select the shop you want to borrow from"
-                />
-              )}
-              noOptionsText="No shops found"
-            />
+            {friendsLoading ? (
+              <TextField select fullWidth label="Lender Shop *" disabled value="">
+                <MenuItem value="">Loading friends…</MenuItem>
+              </TextField>
+            ) : friendList.length === 0 ? (
+              <Alert severity="info" sx={{ borderRadius: 2 }}>
+                Add shop friends first to borrow stock from them.{" "}
+                <Box component="a" href="/shop-friends" sx={{ color: "inherit", fontWeight: 700 }}>
+                  Go to Shop Friends →
+                </Box>
+              </Alert>
+            ) : (
+              <TextField
+                select
+                fullWidth
+                label="Lender Shop *"
+                value={selectedShopId}
+                onChange={(e) => {
+                  setSelectedShopId(e.target.value);
+                  setValue("items", [{ productId: "", qty: 1, agreedUnitCost: 0 }]);
+                }}
+                helperText="Only your shop friends are listed here"
+              >
+                {friendList.map((f: any) => {
+                  const shop = f.business || f;
+                  return (
+                    <MenuItem key={String(shop._id)} value={String(shop._id)}>
+                      {shop.name}{shop.city ? ` — ${shop.city}` : ""}
+                    </MenuItem>
+                  );
+                })}
+              </TextField>
+            )}
           </Grid>
 
           <Grid item xs={12} md={6}>
@@ -91,7 +115,7 @@ export default function BorrowOrderCreate() {
               {...register("borrowerWarehouseId", { required: "Warehouse is required" })}
               value={watch("borrowerWarehouseId") || ""}
               error={!!errors.borrowerWarehouseId}
-              helperText={(errors.borrowerWarehouseId?.message as string) || "Stock will land in this warehouse"}
+              helperText={(errors.borrowerWarehouseId?.message as string) || "Borrowed stock will be placed in this warehouse"}
             >
               {(warehouses?.items || []).map((w: any) => (
                 <MenuItem key={w._id} value={w._id}>{w.name}</MenuItem>
@@ -106,7 +130,7 @@ export default function BorrowOrderCreate() {
               multiline
               rows={2}
               {...register("notes")}
-              placeholder="Reason for borrowing, any special instructions…"
+              placeholder="Reason for the loan, special instructions…"
             />
           </Grid>
 
@@ -115,8 +139,13 @@ export default function BorrowOrderCreate() {
               Items to Borrow
             </Typography>
             <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1 }}>
-              The lender shop will assign their warehouse when they accept your request.
+              Only products the lender has marked as <b>Public (available for lending)</b> are shown here.
             </Typography>
+            {selectedShopId && lenderProducts.length === 0 && (
+              <Alert severity="info" sx={{ borderRadius: 2, mt: 0.5, mb: 0.5 }}>
+                This shop has no products available for lending yet. Ask them to mark products as <b>Public</b> in their product settings.
+              </Alert>
+            )}
           </Grid>
 
           {fields.map((field, index) => (
@@ -129,9 +158,16 @@ export default function BorrowOrderCreate() {
                   {...register(`items.${index}.productId` as const, { required: "Required" })}
                   value={watch(`items.${index}.productId`) || ""}
                   error={!!(errors.items as any)?.[index]?.productId}
-                  helperText={(errors.items as any)?.[index]?.productId?.message as string}
+                  helperText={
+                    !selectedShopId
+                      ? "Select a lender shop first"
+                      : lenderProducts.length === 0
+                      ? "No public products from this shop"
+                      : ((errors.items as any)?.[index]?.productId?.message as string) || "Only their public products are listed"
+                  }
+                  disabled={!selectedShopId || lenderProducts.length === 0}
                 >
-                  {(products?.items || []).map((p: any) => (
+                  {lenderProducts.map((p: any) => (
                     <MenuItem key={p._id} value={p._id}>{p.name}</MenuItem>
                   ))}
                 </TextField>
@@ -153,7 +189,7 @@ export default function BorrowOrderCreate() {
                   type="number"
                   inputProps={{ step: "0.01" }}
                   {...register(`items.${index}.agreedUnitCost` as const, { required: "Required", min: { value: 0, message: ">= 0" } })}
-                  helperText="You'll pay this per unit sold"
+                  helperText="Cost you'll pay per unit sold"
                   error={!!(errors.items as any)?.[index]?.agreedUnitCost}
                 />
               </Grid>
@@ -169,6 +205,7 @@ export default function BorrowOrderCreate() {
             <Button
               startIcon={<AddCircleOutline />}
               onClick={() => append({ productId: "", qty: 1, agreedUnitCost: 0 })}
+              disabled={!selectedShopId}
             >
               Add Item
             </Button>
@@ -181,9 +218,9 @@ export default function BorrowOrderCreate() {
               variant="contained"
               fullWidth
               sx={{ py: 1.4, fontWeight: 700 }}
-              disabled={createBO.isPending}
+              disabled={createBO.isPending || !lenderBusinessId}
             >
-              Send Borrow Request
+              Send Loan Request
             </Button>
           </Grid>
         </Grid>

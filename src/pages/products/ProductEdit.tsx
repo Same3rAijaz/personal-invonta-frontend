@@ -65,7 +65,8 @@ export default function ProductEdit() {
         salePrice: product.salePrice || 0,
         reorderLevel: product.reorderLevel || 0,
         visibility: product.visibility === "MARKET" ? "PUBLIC" : (product.visibility || "PRIVATE"),
-        isActive: product.isActive ?? true
+        isActive: product.isActive ?? true,
+        availableForLending: product.availableForLending ?? false
       });
       setExistingImages(product.images || []);
       setSelectedKey(product.thumbnailUrl ? `existing:${product.thumbnailUrl}` : (product.images?.[0] ? `existing:${product.images[0]}` : null));
@@ -149,21 +150,20 @@ export default function ProductEdit() {
       <Paper sx={{ p: 3, borderRadius: 3, boxShadow: "0 18px 40px rgba(15,23,42,0.08)" }}>
         <Grid container spacing={2} component="form" onSubmit={handleSubmit(onSubmit)}>
           <Grid item xs={12} md={3}>
-            <TextField 
-              fullWidth 
-              label="SKU *" 
+            <TextField
+              fullWidth
+              label="SKU *"
               {...register("sku", { required: "SKU is required" })}
-              InputProps={{ readOnly: true }}
               error={!!errors.sku}
-              helperText={errors.sku?.message as string} 
+              helperText={errors.sku?.message as string}
             />
           </Grid>
           <Grid item xs={12} md={3}>
-            <TextField 
-              fullWidth 
-              label="Barcode" 
-              {...register("barcode")} 
-              InputProps={{ readOnly: true }}
+            <TextField
+              fullWidth
+              label="Barcode"
+              {...register("barcode")}
+              helperText="Optional — scan or type a barcode"
             />
           </Grid>
           <Grid item xs={12} md={6}>
@@ -274,9 +274,15 @@ export default function ProductEdit() {
               name="visibility"
               control={control}
               render={({ field }) => (
-                <TextField select fullWidth label="Visibility" value={field.value || "PRIVATE"} onChange={(event) => field.onChange(event.target.value)}>
-                  <MenuItem value="PRIVATE">Private</MenuItem>
-                  <MenuItem value="PUBLIC">Public</MenuItem>
+                <TextField
+                  select fullWidth
+                  label="Visible to Other Shops"
+                  value={field.value || "PRIVATE"}
+                  onChange={(event) => field.onChange(event.target.value)}
+                  helperText="Set to Public to allow other shops to borrow this product"
+                >
+                  <MenuItem value="PRIVATE">Private (my shop only)</MenuItem>
+                  <MenuItem value="PUBLIC">Public (available for lending)</MenuItem>
                 </TextField>
               )}
             />
@@ -346,7 +352,29 @@ export default function ProductEdit() {
             </Grid>
           ) : null}
           <Grid item xs={12}>
-            <FormControlLabel control={<Checkbox defaultChecked {...register("isActive")} />} label="Active" />
+            <Stack direction="row" spacing={3} flexWrap="wrap">
+              <FormControlLabel
+                control={<Checkbox {...register("isActive")} checked={!!watch("isActive")} />}
+                label="Active"
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    {...register("availableForLending")}
+                    checked={!!watch("availableForLending")}
+                    sx={{ color: "#0ea5e9", "&.Mui-checked": { color: "#0ea5e9" } }}
+                  />
+                }
+                label={
+                  <Box>
+                    <Typography variant="body2" fontWeight={600}>Available for Lending / Borrowing</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Other shops can see and request to borrow this product
+                    </Typography>
+                  </Box>
+                }
+              />
+            </Stack>
           </Grid>
           <Grid item xs={12}>
             <Divider sx={{ my: 1 }} />

@@ -68,6 +68,8 @@ import BorrowOrderDetail from "./pages/borrows/BorrowOrderDetail";
 import BorrowProfitReport from "./pages/borrows/BorrowProfitReport";
 import SalesReturns from "./pages/sales/SalesReturns";
 import SalesReturnCreate from "./pages/sales/SalesReturnCreate";
+import ShopFriends from "./pages/friends/ShopFriends";
+import ShopDiscover from "./pages/friends/ShopDiscover";
 
 export default function App() {
   return (
@@ -120,6 +122,8 @@ export default function App() {
             <Route path="/borrows/new" element={<BorrowOrderCreate />} />
             <Route path="/borrows/:id" element={<BorrowOrderDetail />} />
             <Route path="/borrows/profit-report" element={<BorrowProfitReport />} />
+            <Route path="/shop-friends" element={<ShopFriends />} />
+            <Route path="/shop-discover" element={<ShopDiscover />} />
             <Route path="/employees" element={<Employees />} />
             <Route path="/employees/new" element={<EmployeeCreate />} />
             <Route path="/employees/:id/edit" element={<EmployeeEdit />} />

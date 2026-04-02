@@ -14,7 +14,7 @@ import RowActionMenu from "../../components/RowActionMenu";
 import { useToast } from "../../hooks/useToast";
 import { useConfirmDialog } from "../../hooks/useConfirmDialog";
 import { useWarehouses } from "../../hooks/useWarehouses";
-import { useProducts } from "../../hooks/useProducts";
+import { useAuth } from "../../hooks/useAuth";
 
 const statusColor: Record<string, "default" | "warning" | "info" | "success" | "error"> = {
   PENDING: "warning",
@@ -26,23 +26,28 @@ const statusColor: Record<string, "default" | "warning" | "info" | "success" | "
   CANCELLED: "error"
 };
 
+const statusLabel: Record<string, string> = {
+  PENDING: "Awaiting Approval",
+  APPROVED: "Approved — Transfer Pending",
+  ACTIVE: "Active",
+  PARTIALLY_RETURNED: "Partially Returned",
+  FULLY_RETURNED: "Fully Returned",
+  REJECTED: "Rejected",
+  CANCELLED: "Cancelled"
+};
+
 export default function BorrowOrders() {
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(20);
   const [tab, setTab] = React.useState<"all" | "borrower" | "lender">("all");
 
-  // Approve-inline state
   const [approveDialog, setApproveDialog] = React.useState<{ open: boolean; bo: any }>({ open: false, bo: null });
   const [warehouseAssignments, setWarehouseAssignments] = React.useState<Record<string, string>>({});
-
   const [activateId, setActivateId] = React.useState<string | null>(null);
 
   const { data: warehouses } = useWarehouses({ page: 1, limit: 1000 });
-  const { data: products } = useProducts({ page: 1, limit: 1000 });
-  const productMap = React.useMemo(
-    () => new Map((products?.items || []).map((p: any) => [String(p._id), p])),
-    [products?.items]
-  );
+  const { business } = useAuth();
+  const myBusinessId = String((business as any)?._id || "");
 
   const roleParam = tab === "all" ? undefined : tab;
   const { data, isLoading } = useBorrowOrders({ page: page + 1, limit: rowsPerPage, role: roleParam });
@@ -53,7 +58,6 @@ export default function BorrowOrders() {
   const { notify } = useToast();
   const { confirm, confirmDialog } = useConfirmDialog();
 
-  // Count pending lend requests for badge
   const { data: lendRequests } = useBorrowOrders({ page: 1, limit: 100, role: "lender" });
   const pendingCount = (lendRequests?.items || []).filter((b: any) => b.status === "PENDING").length;
 
@@ -76,7 +80,7 @@ export default function BorrowOrders() {
     }
     try {
       await approve.mutateAsync({ id: bo._id, payload: { items } });
-      notify("Request accepted", "success");
+      notify("Loan request approved", "success");
       setApproveDialog({ open: false, bo: null });
     } catch (err: any) {
       notify(err?.response?.data?.error?.message || "Failed", "error");
@@ -84,8 +88,8 @@ export default function BorrowOrders() {
   };
 
   const handleReject = async (id: string) => {
-    if (!(await confirm({ title: "Reject", message: "Reject this borrow request?", confirmText: "Reject" }))) return;
-    try { await reject.mutateAsync(id); notify("Rejected", "success"); }
+    if (!(await confirm({ title: "Reject Loan Request", message: "Reject this stock loan request?", confirmText: "Reject" }))) return;
+    try { await reject.mutateAsync(id); notify("Loan request rejected", "success"); }
     catch (err: any) { notify(err?.response?.data?.error?.message || "Failed", "error"); }
   };
 
@@ -93,29 +97,37 @@ export default function BorrowOrders() {
     if (!activateId) return;
     try {
       await activate.mutateAsync(activateId);
-      notify("Stock transferred — borrow is now ACTIVE", "success");
+      notify("Stock transferred — loan is now ACTIVE", "success");
       setActivateId(null);
     } catch (err: any) {
       notify(err?.response?.data?.error?.message || "Failed", "error");
     }
   };
 
-  const rows = (data?.items || []).map((bo: any) => ({
-    ...bo,
-    itemsCount: bo.items?.length || 0
-  }));
+  const rows = (data?.items || []).map((bo: any) => {
+    const isLender = String(bo.lenderBusinessId) === myBusinessId;
+    const isBorrower = String(bo.borrowerBusinessId) === myBusinessId;
+    const otherParty = isLender
+      ? bo.borrowerBusiness?.name || `Shop …${String(bo.borrowerBusinessId || "").slice(-6)}`
+      : isBorrower
+      ? bo.lenderBusiness?.name || `Shop …${String(bo.lenderBusinessId || "").slice(-6)}`
+      : "—";
+    const role = isLender ? "Lending" : isBorrower ? "Borrowing" : "—";
+    const productNames = (bo.items || []).map((i: any) => i.productName || i.product?.name || `…${String(i.productId || "").slice(-4)}`).join(", ");
+    return { ...bo, itemsCount: bo.items?.length || 0, productNames, otherParty, role, isLender, isBorrower };
+  });
 
   return (
     <Box>
-      <PageHeader title="Borrow Orders" actionLabel="Request to Borrow" onAction={() => navigate("/borrows/new")} />
+      <PageHeader title="Stock Loans" actionLabel="Request a Stock Loan" onAction={() => navigate("/borrows/new")} />
 
       <Tabs value={tab} onChange={(_, v) => { setTab(v); setPage(0); }} sx={{ mb: 2 }}>
         <Tab label="All" value="all" />
-        <Tab label="I Borrowed" value="borrower" />
+        <Tab label="Borrowed Stock" value="borrower" />
         <Tab
           label={
             <Stack direction="row" spacing={0.5} alignItems="center">
-              <span>Lend Requests</span>
+              <span>Lending Requests</span>
               {pendingCount > 0 && (
                 <Chip label={pendingCount} size="small" color="warning" sx={{ height: 18, fontSize: 11 }} />
               )}
@@ -128,28 +140,39 @@ export default function BorrowOrders() {
       {tab === "lender" && pendingCount > 0 && (
         <Paper
           sx={{
-            p: 2,
-            mb: 2,
-            borderRadius: 2,
+            p: 2, mb: 2, borderRadius: 2,
             background: "linear-gradient(135deg, rgba(245,158,11,0.08) 0%, rgba(245,158,11,0.04) 100%)",
             border: "1px solid rgba(245,158,11,0.3)"
           }}
         >
           <Typography variant="body2" fontWeight={600} color="warning.dark">
-            You have {pendingCount} pending lend request{pendingCount > 1 ? "s" : ""} waiting for your acceptance.
+            You have {pendingCount} pending loan request{pendingCount > 1 ? "s" : ""} waiting for your approval.
           </Typography>
         </Paper>
       )}
 
       <DataTable
         columns={[
-          { key: "number", label: "Number" },
+          { key: "number", label: "Order #" },
+          { key: "role", label: "Your Role" },
+          { key: "otherParty", label: "Other Shop" },
           {
             key: "status",
             label: "Status",
-            render: (row: any) => <Chip label={row.status} color={statusColor[row.status] || "default"} size="small" />
+            render: (row: any) => <Chip label={statusLabel[row.status] || row.status} color={statusColor[row.status] || "default"} size="small" />
           },
-          { key: "itemsCount", label: "Items" },
+          {
+            key: "productNames",
+            label: "Items",
+            render: (row: any) => (
+              <Box>
+                <Typography variant="body2" fontWeight={600}>{row.itemsCount} item{row.itemsCount !== 1 ? "s" : ""}</Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ display: "block", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {row.productNames}
+                </Typography>
+              </Box>
+            )
+          },
           {
             key: "totalSettlementDue",
             label: "Settlement Due",
@@ -161,9 +184,26 @@ export default function BorrowOrders() {
             render: (row: any) => (
               <RowActionMenu
                 actions={[
-                  { label: "View Detail", onClick: () => navigate(`/borrows/${row._id}`) },
+                  { label: "View Details", onClick: () => navigate(`/borrows/${row._id}`) },
                   {
-                    label: "Accept Lend Request",
+                    label: "Create Sales Order",
+                    disabled: !row.isBorrower || !["ACTIVE", "PARTIALLY_RETURNED"].includes(row.status),
+                    onClick: () => navigate("/sales/new", {
+                      state: {
+                        borrowOrderId: row._id,
+                        lenderBusinessId: row.lenderBusinessId,
+                        items: (row.items || []).map((i: any) => ({
+                          productId: String(i.productId),
+                          productName: i.productName || i.product?.name || "",
+                          qty: i.qty - (i.soldQty || 0) - (i.returnedQty || 0),
+                          unitPrice: 0,
+                          agreedUnitCost: i.agreedUnitCost || 0
+                        })).filter((i: any) => i.qty > 0)
+                      }
+                    })
+                  },
+                  {
+                    label: "Approve Loan Request",
                     disabled: row.status !== "PENDING",
                     onClick: () => openApproveDialog(row)
                   },
@@ -174,7 +214,7 @@ export default function BorrowOrders() {
                     danger: true
                   },
                   {
-                    label: "Activate (Transfer Stock)",
+                    label: "Transfer Stock to Borrower",
                     disabled: row.status !== "APPROVED",
                     onClick: () => setActivateId(row._id)
                   }
@@ -192,21 +232,21 @@ export default function BorrowOrders() {
         onRowsPerPageChange={(value) => { setRowsPerPage(value); setPage(0); }}
       />
 
-      {/* Accept lend request dialog */}
+      {/* Approve loan request dialog */}
       <Dialog open={approveDialog.open} onClose={() => setApproveDialog({ open: false, bo: null })} maxWidth="sm" fullWidth>
-        <DialogTitle>Accept Lend Request — {approveDialog.bo?.number}</DialogTitle>
+        <DialogTitle>Approve Loan Request — {approveDialog.bo?.number}</DialogTitle>
         <DialogContent sx={{ pt: "12px !important" }}>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Assign one of your warehouses to each item. Stock will be pulled from there when the borrower activates the order.
+            Assign one of your warehouses to each item. Stock will be pulled from there when the borrower confirms the transfer.
           </Typography>
           {(approveDialog.bo?.items || []).map((item: any) => {
-            const product = productMap.get(String(item.productId));
+            const productName = item.productName || item.product?.name || item.productId;
             return (
               <Stack key={String(item.productId)} direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
                 <Box sx={{ flex: 1 }}>
-                  <Typography fontWeight={600}>{product?.name || item.productId}</Typography>
+                  <Typography fontWeight={600}>{productName}</Typography>
                   <Typography variant="caption" color="text.secondary">
-                    Qty: {item.qty} &nbsp;·&nbsp; Agreed cost: {item.agreedUnitCost}
+                    Qty: {item.qty} &nbsp;·&nbsp; Agreed cost: {item.agreedUnitCost} / unit
                   </Typography>
                 </Box>
                 <TextField
@@ -228,23 +268,23 @@ export default function BorrowOrders() {
         <DialogActions>
           <Button onClick={() => setApproveDialog({ open: false, bo: null })}>Cancel</Button>
           <Button variant="contained" color="success" onClick={handleApprove} disabled={approve.isPending}>
-            Accept & Assign Warehouses
+            Approve & Assign Warehouses
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* Activate confirm dialog */}
+      {/* Transfer stock confirm dialog */}
       <Dialog open={!!activateId} onClose={() => setActivateId(null)} maxWidth="xs" fullWidth>
-        <DialogTitle>Transfer Stock</DialogTitle>
+        <DialogTitle>Confirm Stock Transfer</DialogTitle>
         <DialogContent>
           <Typography variant="body2" sx={{ mt: 1 }}>
-            This will move stock from the lender's warehouse to your warehouse. The borrow order becomes ACTIVE.
+            This will move stock from the lender's warehouse to your warehouse. The loan order will become ACTIVE and the stock will appear in your inventory.
           </Typography>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setActivateId(null)}>Cancel</Button>
           <Button variant="contained" onClick={handleActivate} disabled={activate.isPending}>
-            Transfer Now
+            Transfer Stock Now
           </Button>
         </DialogActions>
       </Dialog>

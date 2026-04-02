@@ -1,5 +1,5 @@
 ﻿import { useForm } from "react-hook-form";
-import { Box, Button, Container, Grid, IconButton, InputAdornment, Paper, TextField, Typography, FormControlLabel, Checkbox, Stack, MenuItem } from "@mui/material";
+import { Box, Button, Grid, IconButton, InputAdornment, Paper, TextField, Typography, MenuItem } from "@mui/material";
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import { useToast } from "../hooks/useToast";
@@ -11,8 +11,6 @@ import { PublicCategoryNode } from "../api/public";
 import { useCities, useCountries, useStates } from "../hooks/useGeo";
 import { DEFAULT_CITY, DEFAULT_COUNTRY, DEFAULT_STATE } from "../constants/locationDefaults";
 
-const AVAILABLE_MODULES = ["products", "inventory", "warehouses", "customers", "vendors", "purchasing", "sales", "reports"];
-const labelize = (value: string) => (value === "hr" ? "HR" : value.charAt(0).toUpperCase() + value.slice(1));
 const REQUEST_MARKET_VALUE = "__REQUEST_MARKET__";
 
 export default function Signup() {
@@ -125,26 +123,15 @@ export default function Signup() {
 
   const onSubmit = async (values: any) => {
     try {
-      const requestedModules = Object.keys(values)
-        .filter((key) => key.startsWith("module_") && values[key])
-        .map((key) => key.replace("module_", ""));
       const payload: any = { ...values };
-      Object.keys(payload).forEach((key) => {
-        if (key.startsWith("module_")) delete payload[key];
-      });
-
       const selectedMarketIdRaw = String(values.marketId || "").trim();
       const selectedMarketId = selectedMarketIdRaw === REQUEST_MARKET_VALUE ? "" : selectedMarketIdRaw;
       const requestedMarketName = String(values.marketName || "").trim();
-      if (!selectedMarketId && !requestedMarketName) {
-        notify("Select a market or request a new market name.", "error");
-        return;
-      }
       payload.marketId = selectedMarketId || undefined;
-      payload.marketName = selectedMarketId ? undefined : requestedMarketName;
+      payload.marketName = selectedMarketId ? undefined : requestedMarketName || undefined;
 
-      await api.post("/public/signup", { ...payload, requestedModules });
-      notify("Signup request submitted. We will review and approve shortly.", "success");
+      await api.post("/public/signup", payload);
+      notify("Account created successfully! Please log in.", "success");
       navigate("/login");
     } catch (err: any) {
       notify(err?.response?.data?.error?.message || "Failed", "error");
@@ -195,7 +182,7 @@ export default function Signup() {
           <Paper sx={{ p: { xs: 3, md: 5 }, borderRadius: 2, boxShadow: "0 18px 40px rgba(15,23,42,0.12)", width: "100%", maxWidth: 640, mx: "auto", backgroundColor: "#ffffff" }}>
             <Typography variant="h4" gutterBottom>Create your shop account</Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Tell us a little about your business to get started.
+              Fill in your business details and get instant access — no approval needed.
             </Typography>
             <Box component="form" onSubmit={handleSubmit(onSubmit)}>
               <input type="hidden" {...register("businessCategoryId")} />
@@ -371,36 +358,8 @@ export default function Signup() {
                   <TextField fullWidth label="Referral Code (optional)" {...register("referralCode")} sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1 } }} />
                 </Grid>
                 <Grid item xs={12}>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>Requested Modules</Typography>
-                  <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap>
-                    {AVAILABLE_MODULES.map((mod) => (
-                      <FormControlLabel
-                        key={mod}
-                        control={
-                          <Checkbox
-                            {...register(`module_${mod}`)}
-                            sx={{
-                              color: "#94a3b8",
-                              "&.Mui-checked": { color: "#0ea5e9" }
-                            }}
-                          />
-                        }
-                        label={labelize(mod)}
-                        sx={{
-                          m: 0,
-                          px: 1.5,
-                          py: 0.5,
-                          borderRadius: 1.5,
-                          border: "1px solid rgba(148,163,184,0.35)",
-                          backgroundColor: "rgba(248,250,252,0.9)"
-                        }}
-                      />
-                    ))}
-                  </Stack>
-                </Grid>
-                <Grid item xs={12}>
                   <Button type="submit" variant="contained" fullWidth sx={{ py: 1.4, fontWeight: 700, borderRadius: 1 }}>
-                    Submit Request
+                    Create Account
                   </Button>
                 </Grid>
               </Grid>

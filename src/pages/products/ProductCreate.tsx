@@ -58,11 +58,6 @@ export default function ProductCreate() {
     setValue("categoryId", categoryId);
   }, [selectedPathIds, setValue]);
 
-  useEffect(() => {
-    const now = Date.now().toString();
-    setValue("sku", `SKU-${now.slice(-6)}`, { shouldDirty: true });
-    setValue("barcode", now, { shouldDirty: true });
-  }, [setValue]);
 
   useEffect(() => {
     if (files.length === 0) {
@@ -118,21 +113,20 @@ export default function ProductCreate() {
       <Paper sx={{ p: 3, borderRadius: 3, boxShadow: "0 18px 40px rgba(15,23,42,0.08)" }}>
         <Grid container spacing={2} component="form" onSubmit={handleSubmit(onSubmit)}>
           <Grid item xs={12} md={3}>
-            <TextField 
-              fullWidth 
-              label="SKU *" 
+            <TextField
+              fullWidth
+              label="SKU *"
               {...register("sku", { required: "SKU is required" })}
-              InputProps={{ readOnly: true }}
               error={!!errors.sku}
-              helperText={errors.sku?.message as string}
+              helperText={errors.sku?.message as string || "Enter a unique product code"}
             />
           </Grid>
           <Grid item xs={12} md={3}>
-            <TextField 
-              fullWidth 
-              label="Barcode" 
-              {...register("barcode")} 
-              InputProps={{ readOnly: true }}
+            <TextField
+              fullWidth
+              label="Barcode"
+              {...register("barcode")}
+              helperText="Optional — scan or type a barcode"
             />
           </Grid>
           <Grid item xs={12} md={6}>
@@ -270,9 +264,15 @@ export default function ProductCreate() {
             />
           </Grid>
           <Grid item xs={12} md={3}>
-            <TextField select fullWidth label="Visibility" {...register("visibility")} value={watch("visibility") || "PRIVATE"}>
-              <MenuItem value="PRIVATE">Private</MenuItem>
-              <MenuItem value="PUBLIC">Public</MenuItem>
+            <TextField
+              select fullWidth
+              label="Visible to Other Shops"
+              {...register("visibility")}
+              value={watch("visibility") || "PRIVATE"}
+              helperText="Set to Public to allow other shops to borrow this product"
+            >
+              <MenuItem value="PRIVATE">Private (my shop only)</MenuItem>
+              <MenuItem value="PUBLIC">Public (available for lending)</MenuItem>
             </TextField>
           </Grid>
           <Grid item xs={12}>
@@ -341,7 +341,28 @@ export default function ProductCreate() {
             </Grid>
           ) : null}
           <Grid item xs={12}>
-            <FormControlLabel control={<Checkbox defaultChecked {...register("isActive")} />} label="Active" />
+            <Stack direction="row" spacing={3} flexWrap="wrap">
+              <FormControlLabel
+                control={<Checkbox defaultChecked {...register("isActive")} />}
+                label="Active"
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    {...register("availableForLending")}
+                    sx={{ color: "#0ea5e9", "&.Mui-checked": { color: "#0ea5e9" } }}
+                  />
+                }
+                label={
+                  <Box>
+                    <Typography variant="body2" fontWeight={600}>Available for Lending / Borrowing</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Other shops can see and request to borrow this product
+                    </Typography>
+                  </Box>
+                }
+              />
+            </Stack>
           </Grid>
           <Grid item xs={12}>
             <Divider sx={{ my: 1 }} />

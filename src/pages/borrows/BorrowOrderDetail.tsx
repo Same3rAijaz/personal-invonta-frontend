@@ -26,8 +26,8 @@ const statusColor: Record<string, "default" | "warning" | "info" | "success" | "
 };
 
 const statusLabel: Record<string, string> = {
-  PENDING: "Pending Lender Acceptance",
-  APPROVED: "Accepted — Awaiting Stock Transfer",
+  PENDING: "Awaiting Lender Approval",
+  APPROVED: "Approved — Transfer Pending",
   ACTIVE: "Active",
   PARTIALLY_RETURNED: "Partially Returned",
   FULLY_RETURNED: "Fully Returned",
@@ -138,7 +138,7 @@ export default function BorrowOrderDetail() {
 
       {bo.status === "PENDING" && isLender && (
         <Alert severity="warning" sx={{ mb: 3 }}>
-          <b>{bo.borrowerBusinessId}</b> wants to borrow stock from you. Review the request below and accept or reject it.
+          <b>{bo.borrowerBusiness?.name || `Shop …${String(bo.borrowerBusinessId || "").slice(-6)}`}</b> wants to borrow stock from you. Review the items below and approve or reject.
         </Alert>
       )}
       {bo.status === "APPROVED" && isBorrower && (
@@ -150,24 +150,26 @@ export default function BorrowOrderDetail() {
       <Grid container spacing={3}>
         <Grid item xs={12} md={8}>
           <Paper sx={{ p: 3, borderRadius: 3, boxShadow: "0 18px 40px rgba(15,23,42,0.08)" }}>
-            <Typography variant="subtitle1" fontWeight={700} gutterBottom>Items</Typography>
+            <Typography variant="subtitle1" fontWeight={700} gutterBottom>Loan Items</Typography>
             <Divider sx={{ mb: 2 }} />
             {bo.items?.map((item: any, idx: number) => {
               const product = productMap.get(String(item.productId));
+              const productName = item.productName || item.product?.name || product?.name || `Product …${String(item.productId || "").slice(-6)}`;
+              const warehouseObj = (warehouses?.items || []).find((w: any) => String(w._id) === String(item.lenderWarehouseId));
               return (
                 <Box key={idx} sx={{ py: 1.5, borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
                   <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
                     <Box>
-                      <Typography fontWeight={600}>{product?.name || item.productId}</Typography>
+                      <Typography fontWeight={600}>{productName}</Typography>
                       <Typography variant="caption" color="text.secondary">
                         Agreed Cost: <b>{item.agreedUnitCost}</b> / unit
                         {item.lenderWarehouseId && (
-                          <> &nbsp;·&nbsp; Lender Warehouse: <b>{item.lenderWarehouseId}</b></>
+                          <> &nbsp;·&nbsp; Lender Warehouse: <b>{warehouseObj?.name || item.lenderWarehouseId}</b></>
                         )}
                       </Typography>
                     </Box>
                     <Stack spacing={0.3} textAlign="right">
-                      <Typography variant="body2">Borrowed: <b>{item.qty}</b></Typography>
+                      <Typography variant="body2">Loaned Qty: <b>{item.qty}</b></Typography>
                       <Typography variant="body2" color="success.main">Sold: <b>{item.soldQty || 0}</b></Typography>
                       <Typography variant="body2" color="info.main">Returned: <b>{item.returnedQty || 0}</b></Typography>
                     </Stack>
@@ -205,7 +207,7 @@ export default function BorrowOrderDetail() {
               {bo.status === "PENDING" && isLender && (
                 <>
                   <Button variant="contained" color="success" fullWidth onClick={openApproveDialog}>
-                    Accept Lend Request
+                    Approve Loan Request
                   </Button>
                   <Button variant="outlined" color="error" fullWidth onClick={handleReject} disabled={reject.isPending}>
                     Reject Request
@@ -214,18 +216,45 @@ export default function BorrowOrderDetail() {
               )}
               {bo.status === "APPROVED" && isBorrower && (
                 <Button variant="contained" fullWidth onClick={handleActivate} disabled={activate.isPending}>
-                  Activate — Transfer Stock to My Warehouse
+                  Transfer Stock to My Warehouse
                 </Button>
               )}
               {["ACTIVE", "PARTIALLY_RETURNED"].includes(bo.status) && isBorrower && (
-                <Button variant="outlined" fullWidth onClick={() => {
-                  const initial: Record<string, number> = {};
-                  (bo.items || []).forEach((i: any) => { initial[String(i.productId)] = 0; });
-                  setReturnQtys(initial);
-                  setReturnDialog(true);
-                }}>
-                  Return Items to Lender
-                </Button>
+                <>
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    fullWidth
+                    onClick={() => {
+                      navigate("/sales/new", {
+                        state: {
+                          borrowOrderId: bo._id,
+                          lenderBusinessId: bo.lenderBusinessId,
+                          items: (bo.items || []).map((i: any) => {
+                            const p = productMap.get(String(i.productId));
+                            return {
+                              productId: String(i.productId),
+                              productName: i.productName || i.product?.name || p?.name || "",
+                              qty: i.qty - (i.soldQty || 0) - (i.returnedQty || 0),
+                              unitPrice: p?.salePrice || 0,
+                              agreedUnitCost: i.agreedUnitCost || 0
+                            };
+                          }).filter((i: any) => i.qty > 0)
+                        }
+                      });
+                    }}
+                  >
+                    Create Sales Order
+                  </Button>
+                  <Button variant="outlined" fullWidth onClick={() => {
+                    const initial: Record<string, number> = {};
+                    (bo.items || []).forEach((i: any) => { initial[String(i.productId)] = 0; });
+                    setReturnQtys(initial);
+                    setReturnDialog(true);
+                  }}>
+                    Return Stock to Lender
+                  </Button>
+                </>
               )}
             </Stack>
           </Paper>
@@ -241,11 +270,12 @@ export default function BorrowOrderDetail() {
           </Typography>
           {(bo?.items || []).map((item: any) => {
             const product = productMap.get(String(item.productId));
+            const productName = item.productName || item.product?.name || product?.name || `Product …${String(item.productId || "").slice(-6)}`;
             return (
               <Stack key={String(item.productId)} direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
                 <Box sx={{ flex: 1 }}>
-                  <Typography fontWeight={600}>{product?.name || item.productId}</Typography>
-                  <Typography variant="caption" color="text.secondary">Qty: {item.qty} &nbsp;·&nbsp; Agreed cost: {item.agreedUnitCost}</Typography>
+                  <Typography fontWeight={600}>{productName}</Typography>
+                  <Typography variant="caption" color="text.secondary">Qty: {item.qty} &nbsp;·&nbsp; Agreed cost: {item.agreedUnitCost} / unit</Typography>
                 </Box>
                 <TextField
                   select
@@ -277,10 +307,11 @@ export default function BorrowOrderDetail() {
         <DialogContent sx={{ pt: "12px !important" }}>
           {(bo?.items || []).map((item: any) => {
             const product = productMap.get(String(item.productId));
+            const productName = item.productName || item.product?.name || product?.name || `Product …${String(item.productId || "").slice(-6)}`;
             const maxReturn = item.qty - (item.returnedQty || 0);
             return (
               <Stack key={String(item.productId)} direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
-                <Typography sx={{ flex: 1 }}>{product?.name || item.productId}</Typography>
+                <Typography sx={{ flex: 1 }}>{productName}</Typography>
                 <TextField
                   label={`Qty (max ${maxReturn})`}
                   type="number"
