@@ -1,6 +1,7 @@
 import { Autocomplete, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField, Typography } from "@mui/material";
 import React from "react";
 import { useDeleteProduct, useProductShareTargets, useProducts, useShareProduct } from "../hooks/useProducts";
+import { useInventoryBalances } from "../hooks/useInventory";
 import DataTable from "../components/DataTable";
 import { useNavigate } from "react-router-dom";
 import PageHeader from "../components/PageHeader";
@@ -21,6 +22,7 @@ export default function Products() {
     search: debouncedSearch || undefined,
     filters
   });
+  const { data: balancesData, isLoading: isBalancesLoading } = useInventoryBalances({ page: 1, limit: 5000 });
   const deleteProduct = useDeleteProduct();
   const shareProduct = useShareProduct();
   const navigate = useNavigate();
@@ -35,13 +37,24 @@ export default function Products() {
     setPage(0);
   }, [debouncedSearch, filters]);
 
+  const quantityByProductId = React.useMemo(() => {
+    const map = new Map<string, number>();
+    (balancesData?.items || []).forEach((row: any) => {
+      const productId = String(row.productId || "");
+      if (!productId) return;
+      map.set(productId, (map.get(productId) || 0) + Number(row.qty || 0));
+    });
+    return map;
+  }, [balancesData?.items]);
+
   const tableRows = React.useMemo(
     () =>
       (data?.items || []).map((row: any) => ({
         ...row,
+        displayQuantity: quantityByProductId.get(String(row._id || row.id || "")) ?? row.availableQuantity ?? row.quantity ?? 0,
         ownership: row.isSharedWithMe ? "OWNED_BY_OTHERS" : "OWNED_BY_ME"
       })),
-    [data?.items]
+    [data?.items, quantityByProductId]
   );
 
   const handleDelete = async (id: string) => {
@@ -111,9 +124,9 @@ export default function Products() {
           { key: "category", label: "Category" },
           { key: "unit", label: "Unit" },
           {
-            key: "availableQuantity",
+            key: "displayQuantity",
             label: "Quantity",
-            render: (row: any) => row.availableQuantity ?? row.quantity ?? 0
+            render: (row: any) => row.displayQuantity ?? 0
           },
           { key: "salePrice", label: "Price" },
           { key: "visibility", label: "Visibility" },
@@ -138,7 +151,7 @@ export default function Products() {
           }
         ]}
         rows={tableRows}
-        loading={isLoading}
+        loading={isLoading || isBalancesLoading}
         serverFiltering
         filters={filters}
         onFiltersChange={setFilters}

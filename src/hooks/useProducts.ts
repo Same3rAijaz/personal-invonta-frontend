@@ -73,7 +73,11 @@ export function useUpdateProduct() {
   return useMutation({
     mutationFn: async ({ id, payload }: { id: string; payload: any }) =>
       (await api.patch(`/products/${id}`, payload)).data.data,
-    onSuccess: () => client.invalidateQueries({ queryKey: ["products"] })
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: ["products"] });
+      client.invalidateQueries({ queryKey: ["product"] });
+      client.invalidateQueries({ queryKey: ["inventory", "balances"] });
+    }
   });
 }
 

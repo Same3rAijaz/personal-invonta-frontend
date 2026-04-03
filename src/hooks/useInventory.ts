@@ -1,9 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../api/client";
 
-export function useInventoryBalances(params?: { page?: number; limit?: number; search?: string }) {
+export function useInventoryBalances(params?: { page?: number; limit?: number; search?: string; productId?: string }) {
   return useQuery({
-    queryKey: ["inventory", "balances", params?.page, params?.limit, params?.search],
+    queryKey: ["inventory", "balances", params?.page, params?.limit, params?.search, params?.productId],
     queryFn: async () => (await api.get("/inventory/balances", { params })).data.data
   });
 }

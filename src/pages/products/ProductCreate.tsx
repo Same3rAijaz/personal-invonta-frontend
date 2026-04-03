@@ -1,6 +1,6 @@
 import { Box, Button, Paper, Typography, Grid, TextField, Divider, FormControlLabel, Checkbox, MenuItem, Stack, Avatar, IconButton } from "@mui/material";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { useCreateProduct } from "../../hooks/useProducts";
 import { useToast } from "../../hooks/useToast";
 import { useNavigate } from "react-router-dom";
@@ -13,7 +13,7 @@ export default function ProductCreate() {
   const createProduct = useCreateProduct();
   const { notify } = useToast();
   const navigate = useNavigate();
-  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<any>({
+  const { register, handleSubmit, watch, setValue, control, formState: { errors } } = useForm<any>({
     defaultValues: { isActive: true, visibility: "PRIVATE", unit: "pcs", quantity: 0, warehouseId: "" }
   });
   const { data: categories = [] } = useCategories({ activeOnly: true });
@@ -193,28 +193,35 @@ export default function ProductCreate() {
           ))}
 
           <Grid item xs={12} md={3}>
-            <TextField
-              select
-              fullWidth
-              label="Unit *"
-              {...register("unit", { required: "Unit is required" })}
-              value={watch("unit") || "pcs"}
-              error={!!errors.unit}
-              helperText={(errors.unit?.message as string) || "Use a standard unit to keep stock records consistent."}
-            >
-              {STANDARD_UNITS.map((item) => (
-                <MenuItem key={item.value} value={item.value}>
-                  {item.label}
-                </MenuItem>
-              ))}
-            </TextField>
+            <Controller
+              name="unit"
+              control={control}
+              rules={{ required: "Unit is required" }}
+              render={({ field }) => (
+                <TextField
+                  select
+                  fullWidth
+                  label="Unit *"
+                  value={field.value || "pcs"}
+                  onChange={(event) => field.onChange(event.target.value)}
+                  error={!!errors.unit}
+                  helperText={(errors.unit?.message as string) || "Use a standard unit to keep stock records consistent."}
+                >
+                  {STANDARD_UNITS.map((item) => (
+                    <MenuItem key={item.value} value={item.value}>
+                      {item.label}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              )}
+            />
           </Grid>
           <Grid item xs={12} md={3}>
             <TextField 
               fullWidth 
               label="Cost Price *" 
               type="number" 
-              {...register("costPrice", { required: "Cost Price is required" })}
+              {...register("costPrice", { required: "Cost Price is required", valueAsNumber: true })}
               error={!!errors.costPrice}
               helperText={errors.costPrice?.message as string} 
             />
@@ -224,56 +231,79 @@ export default function ProductCreate() {
               fullWidth 
               label="Sale Price *" 
               type="number" 
-              {...register("salePrice", { required: "Sale Price is required" })}
+              {...register("salePrice", { required: "Sale Price is required", valueAsNumber: true })}
               error={!!errors.salePrice}
               helperText={errors.salePrice?.message as string} 
             />
           </Grid>
           <Grid item xs={12} md={3}>
-            <TextField fullWidth label="Reorder Level" type="number" {...register("reorderLevel")} />
+            <TextField fullWidth label="Reorder Level" type="number" {...register("reorderLevel", { valueAsNumber: true })} />
           </Grid>
           <Grid item xs={12} md={3}>
-            <TextField
-              select
-              fullWidth
-              label="Warehouse *"
-              {...register("warehouseId", { required: "Warehouse is required" })}
-              value={watch("warehouseId") || ""}
-              error={!!errors.warehouseId}
-              helperText={(errors.warehouseId?.message as string) || ((warehouses?.items || []).length === 0 ? "Create a warehouse first." : undefined)}
-            >
-              <MenuItem value="">Select Warehouse</MenuItem>
-              {(warehouses?.items || []).map((item: any) => (
-                <MenuItem key={item._id} value={item._id}>
-                  {item.name}
-                </MenuItem>
-              ))}
-            </TextField>
-          </Grid>
-          <Grid item xs={12} md={3}>
-            <TextField
-              fullWidth
-              label="Initial Quantity *"
-              type="number"
-              {...register("quantity", {
-                required: "Initial quantity is required",
-                min: { value: 0, message: "Quantity must be zero or greater" }
-              })}
-              error={!!errors.quantity}
-              helperText={errors.quantity?.message as string}
+            <Controller
+              name="warehouseId"
+              control={control}
+              rules={{ required: "Warehouse is required" }}
+              render={({ field }) => (
+                <TextField
+                  select
+                  fullWidth
+                  label="Warehouse *"
+                  value={field.value || ""}
+                  onChange={(event) => field.onChange(event.target.value)}
+                  error={!!errors.warehouseId}
+                  helperText={(errors.warehouseId?.message as string) || ((warehouses?.items || []).length === 0 ? "Create a warehouse first." : undefined)}
+                >
+                  <MenuItem value="">Select Warehouse</MenuItem>
+                  {(warehouses?.items || []).map((item: any) => (
+                    <MenuItem key={item._id} value={item._id}>
+                      {item.name}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              )}
             />
           </Grid>
           <Grid item xs={12} md={3}>
-            <TextField
-              select fullWidth
-              label="Visible to Other Shops"
-              {...register("visibility")}
-              value={watch("visibility") || "PRIVATE"}
-              helperText="Set to Public to allow other shops to borrow this product"
-            >
-              <MenuItem value="PRIVATE">Private (my shop only)</MenuItem>
-              <MenuItem value="PUBLIC">Public (available for lending)</MenuItem>
-            </TextField>
+            <Controller
+              name="quantity"
+              control={control}
+              rules={{
+                required: "Initial quantity is required",
+                min: { value: 0, message: "Quantity must be zero or greater" }
+              }}
+              render={({ field }) => (
+                <TextField
+                  fullWidth
+                  label="Initial Quantity *"
+                  type="number"
+                  value={field.value ?? 0}
+                  onChange={(event) => field.onChange(event.target.value === "" ? "" : Number(event.target.value))}
+                  error={!!errors.quantity}
+                  helperText={errors.quantity?.message as string}
+                  inputProps={{ min: 0 }}
+                />
+              )}
+            />
+          </Grid>
+          <Grid item xs={12} md={3}>
+            <Controller
+              name="visibility"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  select
+                  fullWidth
+                  label="Visible to Other Shops"
+                  value={field.value || "PRIVATE"}
+                  onChange={(event) => field.onChange(event.target.value)}
+                  helperText="Set to Public to allow other shops to borrow this product"
+                >
+                  <MenuItem value="PRIVATE">Private (my shop only)</MenuItem>
+                  <MenuItem value="PUBLIC">Public (available for lending)</MenuItem>
+                </TextField>
+              )}
+            />
           </Grid>
           <Grid item xs={12}>
             <Button variant="outlined" component="label">

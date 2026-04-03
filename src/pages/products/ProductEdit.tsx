@@ -1,27 +1,33 @@
 import { Box, Button, Paper, Typography, Grid, TextField, Divider, FormControlLabel, Checkbox, MenuItem, Stack, Avatar, IconButton } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { useUpdateProduct, useProducts } from "../../hooks/useProducts";
+import { useUpdateProduct, useProduct } from "../../hooks/useProducts";
 import { useToast } from "../../hooks/useToast";
 import { useNavigate, useParams } from "react-router-dom";
 import { uploadImage } from "../../utils/upload";
 import { useCategories } from "../../hooks/useCategories";
 import { STANDARD_UNITS } from "../../constants/units";
+import { useWarehouses } from "../../hooks/useWarehouses";
+import { useInventoryBalances } from "../../hooks/useInventory";
 
 export default function ProductEdit() {
   const { id } = useParams();
-  const { data } = useProducts({ page: 1, limit: 1000 });
+  const { data: product, isLoading } = useProduct(id);
   const updateProduct = useUpdateProduct();
   const { notify } = useToast();
   const navigate = useNavigate();
-  const { register, handleSubmit, reset, watch, setValue, control, formState: { errors } } = useForm<any>({ defaultValues: { isActive: true, visibility: "PRIVATE" } });
+  const { register, handleSubmit, reset, watch, setValue, control, formState: { errors } } = useForm<any>({
+    defaultValues: { isActive: true, visibility: "PRIVATE", unit: "pcs", quantity: 0, warehouseId: "" }
+  });
   const { data: categories = [] } = useCategories({ activeOnly: true });
+  const { data: warehouses } = useWarehouses({ page: 1, limit: 1000 });
+  const { data: balanceData } = useInventoryBalances({ page: 1, limit: 1000, productId: id });
   const [existingImages, setExistingImages] = useState<string[]>([]);
   const [newFiles, setNewFiles] = useState<File[]>([]);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [selectedPathIds, setSelectedPathIds] = useState<string[]>([]);
-
-  const product = (data?.items || []).find((p: any) => p._id === id);
+  const productBalances = balanceData?.items || [];
+  const selectedWarehouseId = watch("warehouseId");
   const categoriesById = useMemo(() => {
     const map = new Map<string, any>();
     (categories || []).forEach((item: any) => map.set(String(item._id), item));
@@ -64,6 +70,8 @@ export default function ProductEdit() {
         costPrice: product.costPrice || 0,
         salePrice: product.salePrice || 0,
         reorderLevel: product.reorderLevel || 0,
+        warehouseId: "",
+        quantity: product.availableQuantity ?? product.quantity ?? 0,
         visibility: product.visibility === "MARKET" ? "PUBLIC" : (product.visibility || "PRIVATE"),
         isActive: product.isActive ?? true,
         availableForLending: product.availableForLending ?? false
@@ -72,6 +80,31 @@ export default function ProductEdit() {
       setSelectedKey(product.thumbnailUrl ? `existing:${product.thumbnailUrl}` : (product.images?.[0] ? `existing:${product.images[0]}` : null));
     }
   }, [product, reset]);
+
+  useEffect(() => {
+    if (!product) return;
+    if (productBalances.length === 0) {
+      if (selectedWarehouseId) return;
+      setValue("quantity", 0, { shouldDirty: false });
+      return;
+    }
+
+    const hasSelectedWarehouse = selectedWarehouseId
+      ? productBalances.some((item: any) => String(item.warehouseId) === String(selectedWarehouseId))
+      : false;
+
+    if (!hasSelectedWarehouse) {
+      const initialBalance = productBalances[0];
+      setValue("warehouseId", String(initialBalance.warehouseId || ""), { shouldDirty: false });
+      setValue("quantity", Number(initialBalance.qty || 0), { shouldDirty: false });
+    }
+  }, [product, productBalances, selectedWarehouseId, setValue]);
+
+  useEffect(() => {
+    if (!selectedWarehouseId) return;
+    const selectedBalance = productBalances.find((item: any) => String(item.warehouseId) === String(selectedWarehouseId));
+    setValue("quantity", Number(selectedBalance?.qty || 0), { shouldDirty: false });
+  }, [productBalances, selectedWarehouseId, setValue]);
 
   useEffect(() => {
     if (!product || !categories.length) return;
@@ -126,6 +159,8 @@ export default function ProductEdit() {
           categoryId: values.categoryId || undefined,
           subcategory: undefined,
           description: values.description || undefined,
+          warehouseId: values.warehouseId || undefined,
+          quantity: Number(values.quantity || 0),
           costPrice: Number(values.costPrice),
           salePrice: Number(values.salePrice),
           reorderLevel: Number(values.reorderLevel || 0),
@@ -139,6 +174,10 @@ export default function ProductEdit() {
       notify(err?.response?.data?.error?.message || "Failed", "error");
     }
   };
+
+  if (isLoading) {
+    return <Typography>Loading...</Typography>;
+  }
 
   if (!product) {
     return <Typography>Loading...</Typography>;
@@ -230,28 +269,35 @@ export default function ProductEdit() {
           ))}
 
           <Grid item xs={12} md={3}>
-            <TextField
-              select
-              fullWidth
-              label="Unit *"
-              {...register("unit", { required: "Unit is required" })}
-              value={watch("unit") || "pcs"}
-              error={!!errors.unit}
-              helperText={(errors.unit?.message as string) || "Use a standard unit to keep stock records consistent."}
-            >
-              {STANDARD_UNITS.map((item) => (
-                <MenuItem key={item.value} value={item.value}>
-                  {item.label}
-                </MenuItem>
-              ))}
-            </TextField>
+            <Controller
+              name="unit"
+              control={control}
+              rules={{ required: "Unit is required" }}
+              render={({ field }) => (
+                <TextField
+                  select
+                  fullWidth
+                  label="Unit *"
+                  value={field.value || "pcs"}
+                  onChange={(event) => field.onChange(event.target.value)}
+                  error={!!errors.unit}
+                  helperText={(errors.unit?.message as string) || "Use a standard unit to keep stock records consistent."}
+                >
+                  {STANDARD_UNITS.map((item) => (
+                    <MenuItem key={item.value} value={item.value}>
+                      {item.label}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              )}
+            />
           </Grid>
           <Grid item xs={12} md={3}>
             <TextField 
               fullWidth 
               label="Cost Price *" 
               type="number" 
-              {...register("costPrice", { required: "Cost Price is required" })}
+              {...register("costPrice", { required: "Cost Price is required", valueAsNumber: true })}
               error={!!errors.costPrice}
               helperText={errors.costPrice?.message as string} 
             />
@@ -261,13 +307,60 @@ export default function ProductEdit() {
               fullWidth 
               label="Sale Price *" 
               type="number" 
-              {...register("salePrice", { required: "Sale Price is required" })}
+              {...register("salePrice", { required: "Sale Price is required", valueAsNumber: true })}
               error={!!errors.salePrice}
               helperText={errors.salePrice?.message as string} 
             />
           </Grid>
           <Grid item xs={12} md={3}>
-            <TextField fullWidth label="Reorder Level" type="number" {...register("reorderLevel")} />
+            <TextField fullWidth label="Reorder Level" type="number" {...register("reorderLevel", { valueAsNumber: true })} />
+          </Grid>
+          <Grid item xs={12} md={3}>
+            <Controller
+              name="warehouseId"
+              control={control}
+              rules={{ required: "Warehouse is required" }}
+              render={({ field }) => (
+                <TextField
+                  select
+                  fullWidth
+                  label="Warehouse *"
+                  value={field.value || ""}
+                  onChange={(event) => field.onChange(event.target.value)}
+                  error={!!errors.warehouseId}
+                  helperText={(errors.warehouseId?.message as string) || ((warehouses?.items || []).length === 0 ? "Create a warehouse first." : "Quantity is updated for the selected warehouse.")}
+                >
+                  <MenuItem value="">Select Warehouse</MenuItem>
+                  {(warehouses?.items || []).map((item: any) => (
+                    <MenuItem key={item._id} value={item._id}>
+                      {item.name}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              )}
+            />
+          </Grid>
+          <Grid item xs={12} md={3}>
+            <Controller
+              name="quantity"
+              control={control}
+              rules={{
+                required: "Quantity is required",
+                min: { value: 0, message: "Quantity must be zero or greater" }
+              }}
+              render={({ field }) => (
+                <TextField
+                  fullWidth
+                  label="Quantity *"
+                  type="number"
+                  value={field.value ?? 0}
+                  onChange={(event) => field.onChange(event.target.value === "" ? "" : Number(event.target.value))}
+                  error={!!errors.quantity}
+                  helperText={(errors.quantity?.message as string) || "This sets the current stock for the selected warehouse."}
+                  inputProps={{ min: 0 }}
+                />
+              )}
+            />
           </Grid>
           <Grid item xs={12} md={3}>
             <Controller
