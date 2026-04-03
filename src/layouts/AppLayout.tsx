@@ -345,7 +345,7 @@ export default function AppLayout() {
         }}
       >
         <Toolbar sx={{ minHeight: 68 }}>
-          <IconButton color="inherit" edge="start" onClick={() => setMobileOpen(!mobileOpen)} sx={{ mr: 2, display: { sm: "none" } }}>
+          <IconButton color="inherit" edge="start" onClick={() => setMobileOpen(!mobileOpen)} sx={{ mr: 2, display: { md: "none" } }}>
             <MenuIcon />
           </IconButton>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -407,14 +407,14 @@ export default function AppLayout() {
           </Stack>
         </Toolbar>
       </AppBar>
-      <Box component="nav" sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}>
+      <Box component="nav" sx={{ width: { md: drawerWidth }, flexShrink: { md: 0 } }}>
         <Drawer
           variant="temporary"
           open={mobileOpen}
           onClose={() => setMobileOpen(false)}
           ModalProps={{ keepMounted: true }}
           sx={{
-            display: { xs: "block", sm: "none" },
+            display: { xs: "block", md: "none" },
             "& .MuiDrawer-paper": {
               width: drawerWidth,
               background: "linear-gradient(180deg, #0b1220 0%, #111827 100%)",
@@ -427,7 +427,7 @@ export default function AppLayout() {
         <Drawer
           variant="permanent"
           sx={{
-            display: { xs: "none", sm: "block" },
+            display: { xs: "none", md: "block" },
             "& .MuiDrawer-paper": {
               width: drawerWidth,
               background: "linear-gradient(180deg, #0b1220 0%, #111827 100%)",
@@ -444,9 +444,10 @@ export default function AppLayout() {
         sx={{
           flexGrow: 1,
           minWidth: 0,
-          px: { xs: 2, md: 4 },
-          py: { xs: 3, md: 4 },
-          mt: 9,
+          width: { xs: "100%", md: `calc(100% - ${drawerWidth}px)` },
+          px: { xs: 2, sm: 3, md: 4 },
+          py: { xs: 2.5, sm: 3, md: 4 },
+          mt: { xs: "68px", md: "68px" },
           minHeight: "100vh",
           overflowX: "hidden",
           background: "radial-gradient(circle at top, #eff6ff 0%, #f8fafc 40%, #eef2f7 100%)",

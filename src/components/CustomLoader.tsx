@@ -1,31 +1,29 @@
 import React from "react";
-import { Box, keyframes } from "@mui/material";
+import { Box, Typography, keyframes } from "@mui/material";
 
-const pulse = keyframes`
-  0% {
-    transform: scale(0.95);
-    box-shadow: 0 0 0 0 rgba(33, 166, 223, 0.7);
-  }
-  70% {
-    transform: scale(1);
-    box-shadow: 0 0 0 20px rgba(33, 166, 223, 0);
-  }
-  100% {
-    transform: scale(0.95);
-    box-shadow: 0 0 0 0 rgba(33, 166, 223, 0);
-  }
+const spin = keyframes`
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 `;
 
-const float = keyframes`
-  0% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
-  100% {
-    transform: translateY(0px);
-  }
+const spinReverse = keyframes`
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(-360deg); }
+`;
+
+const pulse = keyframes`
+  0%, 100% { opacity: 0.5; transform: scale(0.92); }
+  50%       { opacity: 1;   transform: scale(1); }
+`;
+
+const shimmer = keyframes`
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+`;
+
+const fadeIn = keyframes`
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
 `;
 
 export default function CustomLoader() {
@@ -36,47 +34,104 @@ export default function CustomLoader() {
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
+        gap: 2.5,
+        animation: `${fadeIn} 0.35s ease`,
       }}
     >
-      <Box
-        component="img"
-        src="/Invonta.png"
-        alt="Invonta Loader"
-        sx={{
-          width: 80,
-          height: 80,
-          mb: 2,
-          animation: `${float} 2s ease-in-out infinite, ${pulse} 2s infinite`,
-          borderRadius: "50%",
-        }}
-      />
-      <Box
-        sx={{
-          display: "flex",
-          gap: 0.5,
-        }}
-      >
-        {[0, 1, 2].map((i) => (
+      {/* Orbital ring system */}
+      <Box sx={{ position: "relative", width: 88, height: 88 }}>
+        {/* Outer orbit ring */}
+        <Box
+          sx={{
+            position: "absolute",
+            inset: 0,
+            borderRadius: "50%",
+            border: "2.5px solid transparent",
+            borderTopColor: "#0ea5e9",
+            borderRightColor: "#0ea5e940",
+            animation: `${spin} 1.1s linear infinite`,
+          }}
+        />
+
+        {/* Middle orbit ring */}
+        <Box
+          sx={{
+            position: "absolute",
+            inset: 10,
+            borderRadius: "50%",
+            border: "2px solid transparent",
+            borderTopColor: "#6366f1",
+            borderLeftColor: "#6366f140",
+            animation: `${spinReverse} 0.9s linear infinite`,
+          }}
+        />
+
+        {/* Inner orbit ring */}
+        <Box
+          sx={{
+            position: "absolute",
+            inset: 20,
+            borderRadius: "50%",
+            border: "1.5px solid transparent",
+            borderTopColor: "#22d3ee",
+            animation: `${spin} 0.7s linear infinite`,
+          }}
+        />
+
+        {/* Center logo */}
+        <Box
+          sx={{
+            position: "absolute",
+            inset: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
           <Box
-            key={i}
+            component="img"
+            src="/Invonta.png"
+            alt="Invonta"
             sx={{
-              width: 8,
-              height: 8,
+              width: 34,
+              height: 34,
               borderRadius: "50%",
-              bgcolor: "#21a6df",
-              animation: `bounce 1.4s infinite ease-in-out both`,
-              animationDelay: `${i * 0.16}s`,
-              "@keyframes bounce": {
-                "0%, 80%, 100%": {
-                  transform: "scale(0)",
-                },
-                "40%": {
-                  transform: "scale(1)",
-                },
-              },
+              animation: `${pulse} 1.8s ease-in-out infinite`,
+              objectFit: "contain",
             }}
           />
-        ))}
+        </Box>
+      </Box>
+
+      {/* Brand name with shimmer */}
+      <Box sx={{ textAlign: "center" }}>
+        <Typography
+          sx={{
+            fontWeight: 800,
+            fontSize: "1rem",
+            letterSpacing: "0.08em",
+            background: "linear-gradient(90deg, #0f172a 20%, #0ea5e9 50%, #6366f1 65%, #0f172a 80%)",
+            backgroundSize: "200% auto",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            backgroundClip: "text",
+            animation: `${shimmer} 2.4s linear infinite`,
+          }}
+        >
+          INVONTA
+        </Typography>
+        <Typography
+          variant="caption"
+          sx={{
+            color: "#94a3b8",
+            letterSpacing: "0.12em",
+            fontWeight: 500,
+            display: "block",
+            mt: 0.25,
+          }}
+        >
+          Loading…
+        </Typography>
       </Box>
     </Box>
   );

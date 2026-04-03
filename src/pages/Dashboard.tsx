@@ -5,7 +5,6 @@ import {
   Stack,
   Typography,
   useTheme,
-  SvgIconProps
 } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../api/client";
@@ -13,6 +12,7 @@ import { useAuth } from "../hooks/useAuth";
 import { useReports } from "../hooks/useReports";
 import PageHeader from "../components/PageHeader";
 import DataTable from "../components/DataTable";
+import { SummaryCard } from "../components/SummaryCard";
 import {
   BarChart,
   Bar,
@@ -42,73 +42,12 @@ import CategoryIcon from "@mui/icons-material/Category";
 
 const numberFormat = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 const integerFormat = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
-const formatValue = (value: number | null | undefined, compact = false) => {
+const formatValue = (value: number | null | undefined) => {
   if (value === null || value === undefined) return "-";
-  return compact
-    ? new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 }).format(value)
-    : integerFormat.format(value);
+  return integerFormat.format(value);
 };
 
-// Reusable Summary Card Component
-interface SummaryCardProps {
-  title: string;
-  value: string | number;
-  icon: React.ElementType<SvgIconProps>;
-  color: "primary" | "secondary" | "success" | "error" | "warning" | "info";
-}
-
-function SummaryCard({ title, value, icon: Icon, color }: SummaryCardProps) {
-  const theme = useTheme();
-  const themeColor = theme.palette[color].main;
-  const lightColor = `${themeColor}20`; // 12% opacity roughly
-
-  return (
-    <Paper
-      elevation={0}
-      sx={{
-        p: 3,
-        borderRadius: 2,
-        border: "1px solid",
-        borderColor: "divider",
-        transition: "all 0.3s ease",
-        height: "100%",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "space-between",
-        "&:hover": {
-          transform: "translateY(-4px)",
-          boxShadow: `0 12px 24px -10px ${themeColor}60`,
-          borderColor: themeColor
-        }
-      }}
-    >
-      <Stack direction="row" justifyContent="space-between" alignItems="flex-start" mb={2}>
-        <Typography variant="subtitle2" color="text.secondary" fontWeight={600} sx={{ textTransform: "uppercase", letterSpacing: "0.5px" }}>
-          {title}
-        </Typography>
-        <Box
-          sx={{
-            backgroundColor: lightColor,
-            color: themeColor,
-            borderRadius: 2,
-            width: 48,
-            height: 48,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center"
-          }}
-        >
-          <Icon />
-        </Box>
-      </Stack>
-      <Typography variant="h4" fontWeight={800} color="text.primary">
-        {value}
-      </Typography>
-    </Paper>
-  );
-}
-
-// Chart Tooltip Customization
+// Chart Tooltip
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
@@ -117,7 +56,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
         sx={{
           p: 1.5,
           borderRadius: 2,
-          backgroundColor: "rgba(255, 255, 255, 0.95)",
+          backgroundColor: "rgba(255, 255, 255, 0.97)",
           backdropFilter: "blur(8px)",
           border: "1px solid",
           borderColor: "divider"
@@ -130,7 +69,10 @@ const CustomTooltip = ({ active, payload, label }: any) => {
           <Stack key={index} direction="row" alignItems="center" spacing={1}>
             <Box sx={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: entry.color }} />
             <Typography variant="body2" color="text.secondary">
-              {entry.name}: <Typography component="span" fontWeight={600} color="text.primary">{entry.value}</Typography>
+              {entry.name}:{" "}
+              <Typography component="span" fontWeight={600} color="text.primary">
+                {entry.value}
+              </Typography>
             </Typography>
           </Stack>
         ))}
@@ -166,40 +108,61 @@ function ShopDashboard({ udhaarEnabled }: { udhaarEnabled: boolean }) {
     { name: "Sales", total: reports.salesSummary.data?.total || 0 }
   ];
 
+  const inventoryValue = reports.valuation.data?.totalValue;
+  const inventoryDisplay =
+    inventoryValue === null || inventoryValue === undefined
+      ? "-"
+      : new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 }).format(inventoryValue);
+
+  const profitValue = reports.profit.data?.totalProfit;
+  const profitDisplay =
+    profitValue === null || profitValue === undefined
+      ? "-"
+      : new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 }).format(profitValue);
+
+  const receivableDisplay = udhaarEnabled
+    ? new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 }).format(receivables.data?.dueTotal || 0)
+    : "-";
+
   return (
     <Box>
       <PageHeader title="Overview Dashboard" />
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={6} md={4} lg={2}>
-          <SummaryCard title="Inventory Value" value={reports.valuation.data?.totalValue ?? "-"} icon={AttachMoneyIcon} color="primary" />
-        </Grid>
-        <Grid item xs={12} sm={6} md={4} lg={2}>
-          <SummaryCard title="Low Stock" value={lowStockCount} icon={WarningAmberIcon} color="error" />
-        </Grid>
-        <Grid item xs={12} sm={6} md={4} lg={2}>
-          <SummaryCard title="Sales Orders" value={reports.salesSummary.data?.total ?? 0} icon={ShoppingCartIcon} color="info" />
-        </Grid>
-        <Grid item xs={12} sm={6} md={4} lg={2}>
-          <SummaryCard title="Total Products" value={totalProducts} icon={InventoryIcon} color="secondary" />
-        </Grid>
-        <Grid item xs={12} sm={6} md={4} lg={2}>
-          <SummaryCard title="Total Profit" value={reports.profit.data?.totalProfit ?? 0} icon={TrendingUpIcon} color="success" />
-        </Grid>
-        <Grid item xs={12} sm={6} md={4} lg={2}>
-          <SummaryCard title="Receivables" value={udhaarEnabled ? numberFormat.format(receivables.data?.dueTotal || 0) : "-"} icon={ReceiptLongIcon} color="warning" />
-        </Grid>
+
+      {/* Summary Cards */}
+      <Grid container spacing={{ xs: 1.5, sm: 2, md: 2.5 }} sx={{ mb: { xs: 2.5, md: 3.5 } }}>
+        {[
+          { title: "Inventory Value", value: inventoryDisplay, icon: AttachMoneyIcon, color: "primary" as const },
+          { title: "Low Stock", value: lowStockCount, icon: WarningAmberIcon, color: "error" as const },
+          { title: "Sales Orders", value: reports.salesSummary.data?.total ?? 0, icon: ShoppingCartIcon, color: "info" as const },
+          { title: "Total Products", value: totalProducts, icon: InventoryIcon, color: "secondary" as const },
+          { title: "Total Profit", value: profitDisplay, icon: TrendingUpIcon, color: "success" as const },
+          { title: "Receivables", value: receivableDisplay, icon: ReceiptLongIcon, color: "warning" as const },
+        ].map((card) => (
+          <Grid key={card.title} item xs={6} sm={4} md={4} lg={2}>
+            <SummaryCard {...card} />
+          </Grid>
+        ))}
       </Grid>
 
-      <Grid container spacing={3}>
+      {/* Charts */}
+      <Grid container spacing={{ xs: 1.5, sm: 2, md: 2.5 }}>
         <Grid item xs={12} md={7}>
-          <Paper sx={{ p: 3, borderRadius: 2, border: "1px solid", borderColor: "divider", boxShadow: "none" }}>
-            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
+          <Paper
+            sx={{
+              p: { xs: 2, sm: 3 },
+              borderRadius: 2.5,
+              border: "1px solid",
+              borderColor: "divider",
+              boxShadow: "none",
+            }}
+          >
+            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2.5 }}>
               <Box>
                 <Typography variant="h6" fontWeight={700}>Stock On Hand</Typography>
                 <Typography variant="body2" color="text.secondary">Top items by quantity</Typography>
               </Box>
             </Stack>
-            <ResponsiveContainer width="100%" height={320}>
+            <ResponsiveContainer width="100%" height={280}>
               <BarChart data={stockRows} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorQty" x1="0" y1="0" x2="0" y2="1">
@@ -208,8 +171,8 @@ function ShopDashboard({ udhaarEnabled }: { udhaarEnabled: boolean }) {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={theme.palette.divider} />
-                <XAxis dataKey="name" tick={{ fill: theme.palette.text.secondary, fontSize: 12, fontWeight: 500 }} axisLine={false} tickLine={false} dy={10} />
-                <YAxis tick={{ fill: theme.palette.text.secondary, fontSize: 12, fontWeight: 500 }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="name" tick={{ fill: theme.palette.text.secondary, fontSize: 11, fontWeight: 500 }} axisLine={false} tickLine={false} dy={10} />
+                <YAxis tick={{ fill: theme.palette.text.secondary, fontSize: 11, fontWeight: 500 }} axisLine={false} tickLine={false} />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: theme.palette.action.hover }} />
                 <Bar dataKey="qty" fill="url(#colorQty)" radius={[4, 4, 0, 0]} maxBarSize={50} />
               </BarChart>
@@ -218,29 +181,46 @@ function ShopDashboard({ udhaarEnabled }: { udhaarEnabled: boolean }) {
         </Grid>
 
         <Grid item xs={12} md={5}>
-          <Paper sx={{ p: 3, borderRadius: 2, border: "1px solid", borderColor: "divider", boxShadow: "none", height: "100%" }}>
-            <Typography variant="h6" fontWeight={700} sx={{ mb: 3 }}>Stock Health Overview</Typography>
-            <ResponsiveContainer width="100%" height={320}>
+          <Paper
+            sx={{
+              p: { xs: 2, sm: 3 },
+              borderRadius: 2.5,
+              border: "1px solid",
+              borderColor: "divider",
+              boxShadow: "none",
+              height: "100%",
+            }}
+          >
+            <Typography variant="h6" fontWeight={700} sx={{ mb: 2.5 }}>Stock Health Overview</Typography>
+            <ResponsiveContainer width="100%" height={280}>
               <BarChart data={stockHealth} layout="vertical" margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={theme.palette.divider} />
-                <XAxis type="number" tick={{ fill: theme.palette.text.secondary, fontSize: 12, fontWeight: 500 }} axisLine={false} tickLine={false} />
-                <YAxis type="category" dataKey="name" tick={{ fill: theme.palette.text.secondary, fontSize: 12, fontWeight: 500 }} axisLine={false} tickLine={false} dx={-10} />
+                <XAxis type="number" tick={{ fill: theme.palette.text.secondary, fontSize: 11, fontWeight: 500 }} axisLine={false} tickLine={false} />
+                <YAxis type="category" dataKey="name" tick={{ fill: theme.palette.text.secondary, fontSize: 11, fontWeight: 500 }} axisLine={false} tickLine={false} dx={-10} />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: theme.palette.action.hover }} />
-                <Legend wrapperStyle={{ paddingTop: "20px" }} />
-                <Bar dataKey="healthy" stackId="a" fill={theme.palette.success.main} name="Healthy" radius={[4, 0, 0, 4]} barSize={32} />
-                <Bar dataKey="low" stackId="a" fill={theme.palette.error.main} name="Low Stock" radius={[0, 4, 4, 0]} barSize={32} />
+                <Legend wrapperStyle={{ paddingTop: "16px", fontSize: 12 }} />
+                <Bar dataKey="healthy" stackId="a" fill={theme.palette.success.main} name="Healthy" radius={[4, 0, 0, 4]} barSize={28} />
+                <Bar dataKey="low" stackId="a" fill={theme.palette.error.main} name="Low Stock" radius={[0, 4, 4, 0]} barSize={28} />
               </BarChart>
             </ResponsiveContainer>
           </Paper>
         </Grid>
 
         <Grid item xs={12}>
-          <Paper sx={{ p: 3, borderRadius: 2, border: "1px solid", borderColor: "divider", boxShadow: "none" }}>
-            <Box sx={{ mb: 3 }}>
+          <Paper
+            sx={{
+              p: { xs: 2, sm: 3 },
+              borderRadius: 2.5,
+              border: "1px solid",
+              borderColor: "divider",
+              boxShadow: "none",
+            }}
+          >
+            <Box sx={{ mb: 2.5 }}>
               <Typography variant="h6" fontWeight={700}>Orders Summary</Typography>
               <Typography variant="body2" color="text.secondary">Comparison of your total sales vs purchases</Typography>
             </Box>
-            <ResponsiveContainer width="100%" height={280}>
+            <ResponsiveContainer width="100%" height={240}>
               <BarChart data={orderSummary} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorOrders" x1="0" y1="0" x2="0" y2="1">
@@ -263,6 +243,7 @@ function ShopDashboard({ udhaarEnabled }: { udhaarEnabled: boolean }) {
 }
 
 function SuperAdminDashboard() {
+  const theme = useTheme();
   const markets = useQuery({
     queryKey: ["sa-dashboard-markets"],
     queryFn: async () => (await api.get("/superadmin/markets", { params: { page: 1, limit: 1000 } })).data.data
@@ -294,53 +275,43 @@ function SuperAdminDashboard() {
   return (
     <Box>
       <PageHeader title="Super Admin Dashboard" />
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={6} md={3}>
-          <SummaryCard title="Markets" value={formatValue(markets.data?.total || 0)} icon={StorefrontIcon} color="primary" />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <SummaryCard title="Businesses" value={formatValue(businesses.data?.total || 0)} icon={BusinessIcon} color="info" />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <SummaryCard title="Active Businesses" value={formatValue(activeBusinesses.length)} icon={CheckCircleOutlineIcon} color="success" />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <SummaryCard title="Blocked Businesses" value={formatValue(blockedBusinesses.length)} icon={BlockIcon} color="error" />
-        </Grid>
-        
-        <Grid item xs={12} sm={6} md={3}>
-          <SummaryCard title="Pending Requests" value={formatValue(pendingRequests.length)} icon={PendingActionsIcon} color="warning" />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <SummaryCard title="Approved Requests" value={formatValue(approvedRequests.length)} icon={AssignmentTurnedInIcon} color="success" />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <SummaryCard title="Rejected Requests" value={formatValue(rejectedRequests.length)} icon={CancelIcon} color="error" />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <SummaryCard title="Categories" value={formatValue(categories.data?.total || 0)} icon={CategoryIcon} color="secondary" />
-        </Grid>
+
+      <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }} sx={{ mb: { xs: 3, md: 4 } }}>
+        {[
+          { title: "Markets", value: formatValue(markets.data?.total || 0), icon: StorefrontIcon, color: "primary" as const },
+          { title: "Businesses", value: formatValue(businesses.data?.total || 0), icon: BusinessIcon, color: "info" as const },
+          { title: "Active Businesses", value: formatValue(activeBusinesses.length), icon: CheckCircleOutlineIcon, color: "success" as const },
+          { title: "Blocked Businesses", value: formatValue(blockedBusinesses.length), icon: BlockIcon, color: "error" as const },
+          { title: "Pending Requests", value: formatValue(pendingRequests.length), icon: PendingActionsIcon, color: "warning" as const },
+          { title: "Approved Requests", value: formatValue(approvedRequests.length), icon: AssignmentTurnedInIcon, color: "success" as const },
+          { title: "Rejected Requests", value: formatValue(rejectedRequests.length), icon: CancelIcon, color: "error" as const },
+          { title: "Categories", value: formatValue(categories.data?.total || 0), icon: CategoryIcon, color: "secondary" as const },
+        ].map((card) => (
+          <Grid key={card.title} item xs={6} sm={6} md={3}>
+            <SummaryCard {...card} />
+          </Grid>
+        ))}
       </Grid>
 
-      <Paper sx={{ p: 0, borderRadius: 2, border: "1px solid", borderColor: "divider", overflow: "hidden", boxShadow: "none" }}>
+      <Paper sx={{ p: 0, borderRadius: 2.5, border: "1px solid", borderColor: "divider", overflow: "hidden", boxShadow: "none" }}>
         <DataTable
           title="Recent Shop Requests"
           subtitle={`${recentRequests.length} latest records`}
           columns={[
             { key: "businessName", label: "Business", render: (row: any) => <Typography fontWeight={600} variant="body2">{row.businessName || "-"}</Typography> },
             { key: "adminEmail", label: "Admin Email", render: (row: any) => row.adminEmail || "-" },
-            { 
-              key: "status", 
-              label: "Status", 
+            {
+              key: "status",
+              label: "Status",
               render: (row: any) => (
-                <Box component="span" sx={{ 
+                <Box component="span" sx={{
                   px: 1.5, py: 0.5, borderRadius: 2, fontSize: "0.75rem", fontWeight: 700,
                   bgcolor: row.status === "APPROVED" ? "success.light" : row.status === "REJECTED" ? "error.light" : "warning.light",
                   color: row.status === "APPROVED" ? "success.dark" : row.status === "REJECTED" ? "error.dark" : "warning.dark"
                 }}>
                   {row.status || "-"}
                 </Box>
-              ) 
+              )
             },
             { key: "city", label: "City", render: (row: any) => row.city || "-" },
             {
