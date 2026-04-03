@@ -39,8 +39,22 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={{ notify }}>
       {children}
-      <Snackbar open={!!toast} autoHideDuration={3000} onClose={() => setToast(null)}>
-        {toast ? <Alert severity={toast.severity}>{toast.message}</Alert> : null}
+      <Snackbar
+        open={!!toast}
+        autoHideDuration={3000}
+        onClose={() => setToast(null)}
+        anchorOrigin={{ vertical: "top", horizontal: "right" }}
+      >
+        {toast ? (
+          <Alert
+            severity={toast.severity}
+            variant="filled"
+            onClose={() => setToast(null)}
+            sx={{ width: "100%", minWidth: 280, boxShadow: 3, alignItems: "center" }}
+          >
+            {toast.message}
+          </Alert>
+        ) : null}
       </Snackbar>
     </ToastContext.Provider>
   );

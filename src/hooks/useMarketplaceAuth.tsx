@@ -31,6 +31,15 @@ const MARKETPLACE_PROFILE_KEY = "marketplaceProfile";
 
 const MarketplaceAuthContext = React.createContext<MarketplaceAuthState | undefined>(undefined);
 
+function buildMarketplaceProfile(user: any, overrides?: Partial<MarketplaceProfile> | null): MarketplaceProfile {
+  const firebaseUser = getFirebaseAuth().currentUser;
+  return {
+    email: overrides?.email ?? user?.email ?? firebaseUser?.email ?? null,
+    fullName: overrides?.fullName ?? user?.fullName ?? user?.name ?? firebaseUser?.displayName ?? user?.email ?? firebaseUser?.email ?? null,
+    avatarUrl: overrides?.avatarUrl ?? user?.avatarUrl ?? user?.photoURL ?? firebaseUser?.photoURL ?? null
+  };
+}
+
 export function MarketplaceAuthProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
   const [accessToken, setAccessToken] = React.useState<string | null>(localStorage.getItem(MARKETPLACE_ACCESS_TOKEN_KEY));
@@ -56,11 +65,11 @@ export function MarketplaceAuthProvider({ children }: { children: React.ReactNod
         queryClient.removeQueries({ queryKey: ["public-favorites"] });
         return;
       }
-      const nextProfile: MarketplaceProfile = {
+      const nextProfile = buildMarketplaceProfile(user, {
         email: firebaseUser.email,
         fullName: firebaseUser.displayName,
         avatarUrl: firebaseUser.photoURL
-      };
+      });
       localStorage.setItem(MARKETPLACE_PROFILE_KEY, JSON.stringify(nextProfile));
       setProfile(nextProfile);
     });
@@ -71,11 +80,7 @@ export function MarketplaceAuthProvider({ children }: { children: React.ReactNod
     localStorage.setItem(MARKETPLACE_ACCESS_TOKEN_KEY, session.accessToken);
     localStorage.setItem(MARKETPLACE_REFRESH_TOKEN_KEY, session.refreshToken);
     localStorage.setItem(MARKETPLACE_USER_KEY, JSON.stringify(session.user));
-    const nextProfile: MarketplaceProfile = {
-      email: session.user?.email,
-      fullName: session.user?.fullName || session.user?.name || session.user?.email,
-      avatarUrl: profile?.avatarUrl
-    };
+    const nextProfile = buildMarketplaceProfile(session.user, profile);
     localStorage.setItem(MARKETPLACE_PROFILE_KEY, JSON.stringify(nextProfile));
     setAccessToken(session.accessToken);
     setUser(session.user);
