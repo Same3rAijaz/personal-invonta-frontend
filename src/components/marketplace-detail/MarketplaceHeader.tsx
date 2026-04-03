@@ -1,5 +1,5 @@
 import React from "react";
-import { AppBar, Avatar, Box, Button, CircularProgress, Container, IconButton, MenuItem, Stack, TextField, Toolbar, Typography, alpha, useTheme } from "@mui/material";
+import { AppBar, Avatar, Box, Button, CircularProgress, Container, MenuItem, Stack, TextField, Toolbar, Typography, alpha, useTheme } from "@mui/material";
 import LocationOnOutlinedIcon from "@mui/icons-material/LocationOnOutlined";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import SearchIcon from "@mui/icons-material/Search";
@@ -119,9 +119,27 @@ export default function MarketplaceHeader(props: MarketplaceHeaderProps) {
             <Stack direction="row" spacing={1.2} alignItems="center">
               {marketplaceAuth.isAuthenticated ? (
                 <>
-                  <IconButton component={Link} to="/marketplace/favorites" sx={{ color: "#ffffff", mr: 1 }}>
-                    <FavoriteBorderIcon />
-                  </IconButton>
+                  <Button
+                    component={Link}
+                    to="/marketplace/favorites"
+                    size="small"
+                    variant="outlined"
+                    startIcon={<FavoriteBorderIcon />}
+                    sx={{
+                      color: "#ffffff",
+                      borderColor: alpha("#ffffff", 0.35),
+                      fontWeight: 700,
+                      px: 1.75,
+                      textTransform: "none",
+                      whiteSpace: "nowrap",
+                      "&:hover": {
+                        borderColor: "#ffffff",
+                        bgcolor: alpha("#ffffff", 0.08)
+                      }
+                    }}
+                  >
+                    Favorites
+                  </Button>
                   <Stack direction="row" spacing={1} alignItems="center">
                     {marketplaceAuth.profile?.avatarUrl ? (
                       <Avatar src={marketplaceAuth.profile.avatarUrl} sx={{ width: 32, height: 32, fontSize: 12 }} />
@@ -145,30 +163,37 @@ export default function MarketplaceHeader(props: MarketplaceHeaderProps) {
                 </>
               ) : (
                 <>
-                  <IconButton component={Link} to="/marketplace/favorites" sx={{ color: "#ffffff", mr: 1 }}>
-                    <FavoriteBorderIcon />
-                  </IconButton>
                   <Button
                     size="small"
                     variant="contained"
-                    startIcon={isGoogleLoading ? <CircularProgress size={14} sx={{ color: "#0b1220" }} /> : <GoogleIcon />}
+                    startIcon={
+                      isGoogleLoading ? (
+                        <CircularProgress size={16} thickness={5} sx={{ color: "#0b1220" }} />
+                      ) : (
+                        <GoogleIcon />
+                      )
+                    }
                     disabled={isGoogleLoading}
                     onClick={handleGoogleLogin}
                     sx={{
                       color: "#0b1220",
                       bgcolor: "#ffffff",
                       fontWeight: 700,
-                      minWidth: { xs: 40, sm: "auto" },
-                      px: { xs: 1, sm: 2 },
+                      minWidth: { xs: 170, sm: 210 },
+                      px: { xs: 1.5, sm: 2.25 },
+                      textTransform: "none",
+                      transition: "all 160ms ease",
                       "& .MuiButton-startIcon": {
-                        margin: { xs: 0, sm: "0 8px 0 -4px" }
+                        margin: "0 8px 0 -4px"
                       },
-                      "&:hover": { bgcolor: alpha("#ffffff", 0.92) }
+                      "&:hover": { bgcolor: alpha("#ffffff", 0.92) },
+                      "&.Mui-disabled": {
+                        bgcolor: alpha("#ffffff", 0.88),
+                        color: alpha("#0b1220", 0.88)
+                      }
                     }}
                   >
-                    <Box component="span" sx={{ display: { xs: "none", sm: "block" } }}>
-                      Continue with Google
-                    </Box>
+                    {isGoogleLoading ? "Connecting to Google..." : "Continue with Google"}
                   </Button>
                   <Button
                     component={Link}
