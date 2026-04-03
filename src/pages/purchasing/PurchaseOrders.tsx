@@ -27,6 +27,7 @@ export default function PurchaseOrders() {
   const rows = (data?.items || []).map((po: any) => ({
     ...po,
     itemsCount: po.items?.length || 0,
+    purchasedQuantity: (po.items || []).reduce((sum: number, item: any) => sum + Number(item.qty || 0), 0),
     vendorName: vendorMap.get(po.vendorId) || po.vendorId
   }));
   const { notify } = useToast();
@@ -89,6 +90,7 @@ export default function PurchaseOrders() {
           { key: "vendorName", label: "Vendor" },
           { key: "status", label: "Status" },
           { key: "itemsCount", label: "Items" },
+          { key: "purchasedQuantity", label: "Purchase Qty" },
           {
             key: "actions",
             label: "Actions",
