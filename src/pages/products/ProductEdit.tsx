@@ -10,6 +10,11 @@ import { STANDARD_UNITS } from "../../constants/units";
 import { useWarehouses } from "../../hooks/useWarehouses";
 import { useInventoryBalances } from "../../hooks/useInventory";
 
+function getSuggestedReorderLevel(quantity: number) {
+  if (!Number.isFinite(quantity) || quantity <= 0) return 0;
+  return Math.max(1, Math.ceil(quantity * 0.2));
+}
+
 export default function ProductEdit() {
   const { id } = useParams();
   const { data: product, isLoading } = useProduct(id);
@@ -28,6 +33,7 @@ export default function ProductEdit() {
   const [selectedPathIds, setSelectedPathIds] = useState<string[]>([]);
   const productBalances = balanceData?.items || [];
   const selectedWarehouseId = watch("warehouseId");
+  const watchedQuantity = watch("quantity");
   const categoriesById = useMemo(() => {
     const map = new Map<string, any>();
     (categories || []).forEach((item: any) => map.set(String(item._id), item));
@@ -129,6 +135,11 @@ export default function ProductEdit() {
     const categoryId = selectedPathIds.length > 0 ? selectedPathIds[selectedPathIds.length - 1] : "";
     setValue("categoryId", categoryId, { shouldDirty: true });
   }, [selectedPathIds, setValue]);
+
+  useEffect(() => {
+    const numericQuantity = Number(watchedQuantity || 0);
+    setValue("reorderLevel", getSuggestedReorderLevel(numericQuantity), { shouldDirty: true });
+  }, [setValue, watchedQuantity]);
 
   const previewItems = useMemo(() => {
     const existing = existingImages.map((url) => ({ key: `existing:${url}`, url }));
@@ -313,7 +324,13 @@ export default function ProductEdit() {
             />
           </Grid>
           <Grid item xs={12} md={3}>
-            <TextField fullWidth label="Reorder Level" type="number" {...register("reorderLevel", { valueAsNumber: true })} />
+            <TextField
+              fullWidth
+              label="Reorder Level"
+              type="number"
+              {...register("reorderLevel", { valueAsNumber: true })}
+              helperText="Auto-adjusts to 20% of quantity. You can still edit it manually."
+            />
           </Grid>
           <Grid item xs={12} md={3}>
             <Controller

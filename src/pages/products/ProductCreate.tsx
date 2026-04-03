@@ -9,6 +9,11 @@ import { useCategories } from "../../hooks/useCategories";
 import { useWarehouses } from "../../hooks/useWarehouses";
 import { STANDARD_UNITS } from "../../constants/units";
 
+function getSuggestedReorderLevel(quantity: number) {
+  if (!Number.isFinite(quantity) || quantity <= 0) return 0;
+  return Math.max(1, Math.ceil(quantity * 0.2));
+}
+
 export default function ProductCreate() {
   const createProduct = useCreateProduct();
   const { notify } = useToast();
@@ -22,6 +27,7 @@ export default function ProductCreate() {
   const [files, setFiles] = useState<Array<{ id: string; file: File; preview: string }>>([]);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const filesRef = useRef<Array<{ id: string; file: File; preview: string }>>([]);
+  const watchedQuantity = watch("quantity");
 
   const categoriesById = useMemo(() => {
     const map = new Map<string, any>();
@@ -72,6 +78,11 @@ export default function ProductCreate() {
   useEffect(() => {
     filesRef.current = files;
   }, [files]);
+
+  useEffect(() => {
+    const numericQuantity = Number(watchedQuantity || 0);
+    setValue("reorderLevel", getSuggestedReorderLevel(numericQuantity), { shouldDirty: true });
+  }, [setValue, watchedQuantity]);
 
   useEffect(() => {
     return () => {
@@ -237,7 +248,13 @@ export default function ProductCreate() {
             />
           </Grid>
           <Grid item xs={12} md={3}>
-            <TextField fullWidth label="Reorder Level" type="number" {...register("reorderLevel", { valueAsNumber: true })} />
+            <TextField
+              fullWidth
+              label="Reorder Level"
+              type="number"
+              {...register("reorderLevel", { valueAsNumber: true })}
+              helperText="Auto-adjusts to 20% of quantity. You can still edit it manually."
+            />
           </Grid>
           <Grid item xs={12} md={3}>
             <Controller
