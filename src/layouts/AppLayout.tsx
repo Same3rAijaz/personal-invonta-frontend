@@ -42,7 +42,12 @@ export default function AppLayout() {
     }
   };
 
-  const displayName = user?.name || user?.fullName || user?.email || "Account";
+  const rawDisplayName = user?.name || user?.fullName || user?.email || "Account";
+  const displayName = String(rawDisplayName)
+    .split(" ")
+    .filter(Boolean)
+    .map((chunk) => chunk.charAt(0).toUpperCase() + chunk.slice(1))
+    .join(" ");
   const initials = String(displayName)
     .split(" ")
     .filter(Boolean)
