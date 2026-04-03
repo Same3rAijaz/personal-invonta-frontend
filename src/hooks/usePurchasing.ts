@@ -36,8 +36,14 @@ export function useDeletePurchaseOrder() {
 export function useApprovePurchaseOrder() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => (await api.post(`/purchasing/pos/${id}/approve`)).data.data,
-    onSuccess: () => client.invalidateQueries({ queryKey: ["pos"] })
+    mutationFn: async ({ id, payload }: { id: string; payload?: { warehouseId?: string; locationId?: string } }) =>
+      (await api.post(`/purchasing/pos/${id}/approve`, payload || {})).data.data,
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: ["pos"] });
+      client.invalidateQueries({ queryKey: ["inventory", "balances"] });
+      client.invalidateQueries({ queryKey: ["products"] });
+      client.invalidateQueries({ queryKey: ["product"] });
+    }
   });
 }
 
@@ -50,6 +56,7 @@ export function useReceivePurchaseOrder() {
       client.invalidateQueries({ queryKey: ["pos"] });
       client.invalidateQueries({ queryKey: ["inventory", "balances"] });
       client.invalidateQueries({ queryKey: ["products"] });
+      client.invalidateQueries({ queryKey: ["product"] });
     }
   });
 }

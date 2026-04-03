@@ -10,6 +10,8 @@ import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import { useConfirmDialog } from "../../hooks/useConfirmDialog";
 import RowActionMenu from "../../components/RowActionMenu";
 import { useWarehouses } from "../../hooks/useWarehouses";
+import { useProducts } from "../../hooks/useProducts";
+import OrderItemsTable from "../../components/OrderItemsTable";
 
 export default function PurchaseOrders() {
   const [page, setPage] = React.useState(0);
@@ -22,8 +24,10 @@ export default function PurchaseOrders() {
   const receivePO = useReceivePurchaseOrder();
   const { data: vendors } = useVendors({ page: 1, limit: 1000 });
   const { data: warehouses } = useWarehouses({ page: 1, limit: 1000 });
+  const { data: products } = useProducts({ page: 1, limit: 1000 });
   const navigate = useNavigate();
   const vendorMap = new Map((vendors?.items || []).map((v: any) => [v._id, v.name]));
+  const productMap = new Map((products?.items || []).map((p: any) => [String(p._id), p.name]));
   const rows = (data?.items || []).map((po: any) => ({
     ...po,
     itemsCount: po.items?.length || 0,
@@ -32,9 +36,10 @@ export default function PurchaseOrders() {
   }));
   const { notify } = useToast();
   const { confirm, confirmDialog } = useConfirmDialog();
+  const [approveDialog, setApproveDialog] = React.useState<{ open: boolean; id: string | null }>({ open: false, id: null });
+  const [approveWarehouseId, setApproveWarehouseId] = React.useState("");
   const [receiveDialog, setReceiveDialog] = React.useState<{ open: boolean; id: string | null }>({ open: false, id: null });
   const [receiveWarehouseId, setReceiveWarehouseId] = React.useState("");
-  const [receiveLocationId, setReceiveLocationId] = React.useState("");
 
   React.useEffect(() => {
     setPage(0);
@@ -50,10 +55,21 @@ export default function PurchaseOrders() {
     }
   };
 
-  const handleApprovePurchaseOrder = async (id: string) => {
+  const handleApprovePurchaseOrder = async () => {
+    if (!approveDialog.id || !approveWarehouseId) {
+      notify("Select a warehouse before approving", "error");
+      return;
+    }
     try {
-      await approvePO.mutateAsync(id);
-      notify("Purchase order approved", "success");
+      await approvePO.mutateAsync({
+        id: approveDialog.id,
+        payload: {
+          warehouseId: approveWarehouseId
+        }
+      });
+      notify("Purchase order approved and inventory updated", "success");
+      setApproveDialog({ open: false, id: null });
+      setApproveWarehouseId("");
     } catch (err: any) {
       notify(err?.response?.data?.error?.message || "Failed", "error");
     }
@@ -68,14 +84,12 @@ export default function PurchaseOrders() {
       await receivePO.mutateAsync({
         id: receiveDialog.id,
         payload: {
-          warehouseId: receiveWarehouseId,
-          locationId: receiveLocationId || undefined
+          warehouseId: receiveWarehouseId
         }
       });
       notify("Purchase order received and inventory updated", "success");
       setReceiveDialog({ open: false, id: null });
       setReceiveWarehouseId("");
-      setReceiveLocationId("");
     } catch (err: any) {
       notify(err?.response?.data?.error?.message || "Failed", "error");
     }
@@ -89,6 +103,11 @@ export default function PurchaseOrders() {
           { key: "number", label: "Number" },
           { key: "vendorName", label: "Vendor" },
           { key: "status", label: "Status" },
+          {
+            key: "items",
+            label: "Item Details",
+            render: (row: any) => <OrderItemsTable items={row.items} labelByProductId={productMap} />
+          },
           { key: "itemsCount", label: "Items" },
           { key: "purchasedQuantity", label: "Purchase Qty" },
           {
@@ -98,14 +117,20 @@ export default function PurchaseOrders() {
               <RowActionMenu
                 actions={[
                   { label: "Edit", disabled: row.status !== "DRAFT", onClick: () => navigate(`/purchasing/${row._id}/edit`) },
-                  { label: "Approve", disabled: row.status !== "DRAFT", onClick: () => handleApprovePurchaseOrder(row._id) },
+                  {
+                    label: "Approve",
+                    disabled: row.status !== "DRAFT",
+                    onClick: () => {
+                      setApproveDialog({ open: true, id: row._id });
+                      setApproveWarehouseId("");
+                    }
+                  },
                   {
                     label: "Receive",
                     disabled: !["DRAFT", "APPROVED"].includes(row.status),
                     onClick: () => {
                       setReceiveDialog({ open: true, id: row._id });
                       setReceiveWarehouseId("");
-                      setReceiveLocationId("");
                     }
                   },
                   { label: "Delete", danger: true, disabled: row.status !== "DRAFT", onClick: () => handleDelete(row._id) }
@@ -134,6 +159,31 @@ export default function PurchaseOrders() {
           setPage(0);
         }}
       />
+      <Dialog open={approveDialog.open} onClose={() => setApproveDialog({ open: false, id: null })} fullWidth maxWidth="sm">
+        <DialogTitle>Approve Purchase Order</DialogTitle>
+        <DialogContent sx={{ display: "grid", gap: 2, pt: "12px !important" }}>
+          <TextField
+            select
+            fullWidth
+            label="Warehouse *"
+            value={approveWarehouseId}
+            onChange={(event) => setApproveWarehouseId(event.target.value)}
+            helperText={(warehouses?.items || []).length === 0 ? "Create a warehouse first." : "Approval will also add the stock to inventory."}
+          >
+            {(warehouses?.items || []).map((item: any) => (
+              <MenuItem key={item._id} value={item._id}>
+                {item.name}
+              </MenuItem>
+            ))}
+          </TextField>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setApproveDialog({ open: false, id: null })}>Cancel</Button>
+          <Button variant="contained" onClick={handleApprovePurchaseOrder} disabled={approvePO.isPending}>
+            Approve Order
+          </Button>
+        </DialogActions>
+      </Dialog>
       <Dialog open={receiveDialog.open} onClose={() => setReceiveDialog({ open: false, id: null })} fullWidth maxWidth="sm">
         <DialogTitle>Receive Purchase Order</DialogTitle>
         <DialogContent sx={{ display: "grid", gap: 2, pt: "12px !important" }}>
@@ -151,12 +201,6 @@ export default function PurchaseOrders() {
               </MenuItem>
             ))}
           </TextField>
-          <TextField
-            fullWidth
-            label="Location ID"
-            value={receiveLocationId}
-            onChange={(event) => setReceiveLocationId(event.target.value)}
-          />
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setReceiveDialog({ open: false, id: null })}>Cancel</Button>

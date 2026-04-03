@@ -1,4 +1,4 @@
-import { Box, Button, Paper, Typography, Grid, TextField, MenuItem, Divider, IconButton } from "@mui/material";
+import { Box, Button, Paper, Typography, Grid, TextField, MenuItem, Divider, IconButton, Stack } from "@mui/material";
 import React, { useEffect } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { useUpdatePurchaseOrder, usePurchaseOrders } from "../../hooks/usePurchasing";
@@ -8,6 +8,7 @@ import { useVendors } from "../../hooks/useVendors";
 import { useProducts } from "../../hooks/useProducts";
 import AddCircleOutline from "@mui/icons-material/AddCircleOutline";
 import RemoveCircleOutline from "@mui/icons-material/RemoveCircleOutline";
+import RelatedEntityDrawer from "../../components/RelatedEntityDrawer";
 
 export default function PurchaseOrderEdit() {
   const { id } = useParams();
@@ -21,6 +22,7 @@ export default function PurchaseOrderEdit() {
     defaultValues: { vendorId: "", items: [{ productId: "", qty: 1, unitCost: 0 }] }
   });
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
+  const [drawerOpen, setDrawerOpen] = React.useState(false);
   const productMap = React.useMemo(
     () => new Map((products?.items || []).map((item: any) => [String(item._id), item])),
     [products?.items]
@@ -75,19 +77,24 @@ export default function PurchaseOrderEdit() {
       <Paper sx={{ p: 3, borderRadius: 3, boxShadow: "0 18px 40px rgba(15,23,42,0.08)" }}>
         <Grid container spacing={2} component="form" onSubmit={handleSubmit(onSubmit)}>
           <Grid item xs={12} md={6}>
-            <TextField 
-              select 
-              fullWidth 
-              label="Vendor *" 
-              {...register("vendorId", { required: "Vendor is required" })}
-              value={watch("vendorId") || ""}
-              error={!!errors.vendorId}
-              helperText={errors.vendorId?.message as string}
-            >
-              {(vendors?.items || []).map((v: any) => (
-                <MenuItem key={v._id} value={v._id}>{v.name}</MenuItem>
-              ))}
-            </TextField>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "flex-start" }}>
+              <TextField 
+                select 
+                fullWidth 
+                label="Vendor *" 
+                {...register("vendorId", { required: "Vendor is required" })}
+                value={watch("vendorId") || ""}
+                error={!!errors.vendorId}
+                helperText={errors.vendorId?.message as string}
+              >
+                {(vendors?.items || []).map((v: any) => (
+                  <MenuItem key={v._id} value={v._id}>{v.name}</MenuItem>
+                ))}
+              </TextField>
+              <Button variant="outlined" onClick={() => setDrawerOpen(true)} sx={{ minWidth: 110 }}>
+                Create
+              </Button>
+            </Stack>
           </Grid>
           <Grid item xs={12} md={6}>
             <TextField fullWidth label="Status" value={order.status} disabled />
@@ -161,6 +168,14 @@ export default function PurchaseOrderEdit() {
           </Grid>
         </Grid>
       </Paper>
+      <RelatedEntityDrawer
+        open={drawerOpen}
+        type="vendor"
+        onClose={() => setDrawerOpen(false)}
+        onCreated={(entity) => {
+          setValue("vendorId", String(entity?._id || ""), { shouldDirty: true, shouldValidate: true });
+        }}
+      />
     </Box>
   );
 }

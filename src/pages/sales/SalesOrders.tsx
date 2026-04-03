@@ -12,6 +12,8 @@ import { useConfirmDialog } from "../../hooks/useConfirmDialog";
 import { useAuth } from "../../hooks/useAuth";
 import RowActionMenu from "../../components/RowActionMenu";
 import { useWarehouses } from "../../hooks/useWarehouses";
+import { useProducts } from "../../hooks/useProducts";
+import OrderItemsTable from "../../components/OrderItemsTable";
 
 export default function SalesOrders() {
   const [page, setPage] = React.useState(0);
@@ -25,15 +27,16 @@ export default function SalesOrders() {
   const shipSO = useShipSalesOrder();
   const { data: customers } = useCustomers({ page: 1, limit: 1000 });
   const { data: warehouses } = useWarehouses({ page: 1, limit: 1000 });
+  const { data: products } = useProducts({ page: 1, limit: 1000 });
   const navigate = useNavigate();
   const customerMap = new Map((customers?.items || []).map((c: any) => [c._id, c.name]));
+  const productMap = new Map((products?.items || []).map((p: any) => [String(p._id), p.name]));
   const baseUrl = api.defaults.baseURL || "/api";
   const { notify } = useToast();
   const { confirm, confirmDialog } = useConfirmDialog();
   const { business } = useAuth();
   const [shipDialog, setShipDialog] = React.useState<{ open: boolean; id: string | null }>({ open: false, id: null });
   const [shipWarehouseId, setShipWarehouseId] = React.useState("");
-  const [shipLocationId, setShipLocationId] = React.useState("");
 
   const openInvoice = async (id: string, download: boolean) => {
     const token = localStorage.getItem("accessToken");
@@ -81,6 +84,7 @@ export default function SalesOrders() {
   const rows = (data?.items || []).map((so: any) => ({
     ...so,
     itemsCount: so.items?.length || 0,
+    salesQuantity: (so.items || []).reduce((sum: number, item: any) => sum + Number(item.qty || 0), 0),
     customerName: customerMap.get(so.customerId) || so.customerId
   }));
 
@@ -109,21 +113,19 @@ export default function SalesOrders() {
 
   const handleShipSalesOrder = async () => {
     if (!shipDialog.id || !shipWarehouseId) {
-      notify("Select a warehouse before shipping", "error");
+      notify("Select a warehouse before completing the order", "error");
       return;
     }
     try {
       await shipSO.mutateAsync({
         id: shipDialog.id,
         payload: {
-          warehouseId: shipWarehouseId,
-          locationId: shipLocationId || undefined
+          warehouseId: shipWarehouseId
         }
       });
-      notify("Sales order shipped and inventory updated", "success");
+      notify("Sales order completed and inventory updated", "success");
       setShipDialog({ open: false, id: null });
       setShipWarehouseId("");
-      setShipLocationId("");
     } catch (err: any) {
       notify(err?.response?.data?.error?.message || "Failed", "error");
     }
@@ -137,7 +139,13 @@ export default function SalesOrders() {
           { key: "number", label: "Number" },
           { key: "customerName", label: "Customer" },
           { key: "status", label: "Status" },
+          {
+            key: "items",
+            label: "Item Details",
+            render: (row: any) => <OrderItemsTable items={row.items} labelByProductId={productMap} />
+          },
           { key: "itemsCount", label: "Items" },
+          { key: "salesQuantity", label: "Quantity" },
           {
             key: "actions",
             label: "Actions",
@@ -153,12 +161,11 @@ export default function SalesOrders() {
                     { label: "Edit", disabled: !canEdit, onClick: () => navigate(`/sales/${row._id}/edit`) },
                     { label: "Confirm", disabled: !canConfirm, onClick: () => handleConfirmSalesOrder(row._id) },
                     {
-                      label: "Ship",
+                      label: "Complete",
                       disabled: !canShip,
                       onClick: () => {
                         setShipDialog({ open: true, id: row._id });
                         setShipWarehouseId("");
-                        setShipLocationId("");
                       }
                     },
                     {
@@ -204,7 +211,7 @@ export default function SalesOrders() {
         }}
       />
       <Dialog open={shipDialog.open} onClose={() => setShipDialog({ open: false, id: null })} fullWidth maxWidth="sm">
-        <DialogTitle>Ship Sales Order</DialogTitle>
+        <DialogTitle>Complete Sales Order</DialogTitle>
         <DialogContent sx={{ display: "grid", gap: 2, pt: "12px !important" }}>
           <TextField
             select
@@ -212,7 +219,7 @@ export default function SalesOrders() {
             label="Warehouse *"
             value={shipWarehouseId}
             onChange={(event) => setShipWarehouseId(event.target.value)}
-            helperText={(warehouses?.items || []).length === 0 ? "Create a warehouse first." : undefined}
+            helperText={(warehouses?.items || []).length === 0 ? "Create a warehouse first." : "Stock will be deducted from the selected warehouse."}
           >
             {(warehouses?.items || []).map((item: any) => (
               <MenuItem key={item._id} value={item._id}>
@@ -220,17 +227,11 @@ export default function SalesOrders() {
               </MenuItem>
             ))}
           </TextField>
-          <TextField
-            fullWidth
-            label="Location ID"
-            value={shipLocationId}
-            onChange={(event) => setShipLocationId(event.target.value)}
-          />
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setShipDialog({ open: false, id: null })}>Cancel</Button>
           <Button variant="contained" onClick={handleShipSalesOrder} disabled={shipSO.isPending}>
-            Ship Order
+            Complete Order
           </Button>
         </DialogActions>
       </Dialog>

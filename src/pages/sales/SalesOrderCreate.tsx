@@ -1,4 +1,4 @@
-import { Alert, Box, Button, Paper, Typography, Grid, TextField, MenuItem, Divider, IconButton } from "@mui/material";
+import { Alert, Box, Button, Paper, Typography, Grid, TextField, MenuItem, Divider, IconButton, Stack } from "@mui/material";
 import React from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { useCreateSalesOrder } from "../../hooks/useSales";
@@ -8,6 +8,7 @@ import { useCustomers } from "../../hooks/useCustomers";
 import { useProducts } from "../../hooks/useProducts";
 import AddCircleOutline from "@mui/icons-material/AddCircleOutline";
 import RemoveCircleOutline from "@mui/icons-material/RemoveCircleOutline";
+import RelatedEntityDrawer from "../../components/RelatedEntityDrawer";
 
 export default function SalesOrderCreate() {
   const createSO = useCreateSalesOrder();
@@ -26,6 +27,7 @@ export default function SalesOrderCreate() {
     defaultValues: { status: "DRAFT", items: defaultItems }
   });
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
+  const [drawerOpen, setDrawerOpen] = React.useState(false);
   const productMap = React.useMemo(
     () => new Map((products?.items || []).map((item: any) => [String(item._id), item])),
     [products?.items]
@@ -65,19 +67,24 @@ export default function SalesOrderCreate() {
       <Paper sx={{ p: 3, borderRadius: 3, boxShadow: "0 18px 40px rgba(15,23,42,0.08)" }}>
         <Grid container spacing={2} component="form" onSubmit={handleSubmit(onSubmit)}>
           <Grid item xs={12} md={6}>
-            <TextField 
-              select 
-              fullWidth 
-              label="Customer *" 
-              {...register("customerId", { required: "Customer is required" })}
-              value={watch("customerId") || ""}
-              error={!!errors.customerId}
-              helperText={errors.customerId?.message as string}
-            >
-              {(customers?.items || []).map((c: any) => (
-                <MenuItem key={c._id} value={c._id}>{c.name}</MenuItem>
-              ))}
-            </TextField>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "flex-start" }}>
+              <TextField 
+                select 
+                fullWidth 
+                label="Customer *" 
+                {...register("customerId", { required: "Customer is required" })}
+                value={watch("customerId") || ""}
+                error={!!errors.customerId}
+                helperText={errors.customerId?.message as string}
+              >
+                {(customers?.items || []).map((c: any) => (
+                  <MenuItem key={c._id} value={c._id}>{c.name}</MenuItem>
+                ))}
+              </TextField>
+              <Button variant="outlined" onClick={() => setDrawerOpen(true)} sx={{ minWidth: 110 }}>
+                Create
+              </Button>
+            </Stack>
           </Grid>
           <Grid item xs={12} md={6}>
             <TextField select fullWidth label="Status" {...register("status")} value={watch("status") || "DRAFT"}>
@@ -160,6 +167,14 @@ export default function SalesOrderCreate() {
           </Grid>
         </Grid>
       </Paper>
+      <RelatedEntityDrawer
+        open={drawerOpen}
+        type="customer"
+        onClose={() => setDrawerOpen(false)}
+        onCreated={(entity) => {
+          setValue("customerId", String(entity?._id || ""), { shouldDirty: true, shouldValidate: true });
+        }}
+      />
     </Box>
   );
 }

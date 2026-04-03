@@ -8,6 +8,7 @@ import { uploadImage } from "../../utils/upload";
 import { useCategories } from "../../hooks/useCategories";
 import { useWarehouses } from "../../hooks/useWarehouses";
 import { STANDARD_UNITS } from "../../constants/units";
+import RelatedEntityDrawer from "../../components/RelatedEntityDrawer";
 
 function getSuggestedReorderLevel(quantity: number) {
   if (!Number.isFinite(quantity) || quantity <= 0) return 0;
@@ -27,6 +28,7 @@ export default function ProductCreate() {
   const [files, setFiles] = useState<Array<{ id: string; file: File; preview: string }>>([]);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const filesRef = useRef<Array<{ id: string; file: File; preview: string }>>([]);
+  const [warehouseDrawerOpen, setWarehouseDrawerOpen] = useState(false);
   const watchedQuantity = watch("quantity");
 
   const categoriesById = useMemo(() => {
@@ -262,22 +264,27 @@ export default function ProductCreate() {
               control={control}
               rules={{ required: "Warehouse is required" }}
               render={({ field }) => (
-                <TextField
-                  select
-                  fullWidth
-                  label="Warehouse *"
-                  value={field.value || ""}
-                  onChange={(event) => field.onChange(event.target.value)}
-                  error={!!errors.warehouseId}
-                  helperText={(errors.warehouseId?.message as string) || ((warehouses?.items || []).length === 0 ? "Create a warehouse first." : undefined)}
-                >
-                  <MenuItem value="">Select Warehouse</MenuItem>
-                  {(warehouses?.items || []).map((item: any) => (
-                    <MenuItem key={item._id} value={item._id}>
-                      {item.name}
-                    </MenuItem>
-                  ))}
-                </TextField>
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "flex-start" }}>
+                  <TextField
+                    select
+                    fullWidth
+                    label="Warehouse *"
+                    value={field.value || ""}
+                    onChange={(event) => field.onChange(event.target.value)}
+                    error={!!errors.warehouseId}
+                    helperText={(errors.warehouseId?.message as string) || ((warehouses?.items || []).length === 0 ? "Create a warehouse first." : undefined)}
+                  >
+                    <MenuItem value="">Select Warehouse</MenuItem>
+                    {(warehouses?.items || []).map((item: any) => (
+                      <MenuItem key={item._id} value={item._id}>
+                        {item.name}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                  <Button variant="outlined" onClick={() => setWarehouseDrawerOpen(true)} sx={{ minWidth: 110 }}>
+                    Create
+                  </Button>
+                </Stack>
               )}
             />
           </Grid>
@@ -421,6 +428,14 @@ export default function ProductCreate() {
           </Grid>
         </Grid>
       </Paper>
+      <RelatedEntityDrawer
+        open={warehouseDrawerOpen}
+        type="warehouse"
+        onClose={() => setWarehouseDrawerOpen(false)}
+        onCreated={(entity) => {
+          setValue("warehouseId", String(entity?._id || ""), { shouldDirty: true, shouldValidate: true });
+        }}
+      />
     </Box>
   );
 }

@@ -1,4 +1,4 @@
-import { Box, Button, Paper, Typography, Grid, MenuItem, Divider, TextField } from "@mui/material";
+import { Box, Button, Paper, Typography, Grid, MenuItem, Divider, TextField, Stack } from "@mui/material";
 import React from "react";
 import { useForm } from "react-hook-form";
 import { api } from "../../api/client";
@@ -7,6 +7,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useProducts } from "../../hooks/useProducts";
 import { useWarehouses } from "../../hooks/useWarehouses";
 import { useQueryClient } from "@tanstack/react-query";
+import RelatedEntityDrawer from "../../components/RelatedEntityDrawer";
 
 export default function InventoryCreate() {
   const { notify } = useToast();
@@ -23,6 +24,7 @@ export default function InventoryCreate() {
   const action = watch("action");
   const { data: products } = useProducts({ page: 1, limit: 1000 });
   const { data: warehouses } = useWarehouses({ page: 1, limit: 1000 });
+  const [warehouseDrawerOpen, setWarehouseDrawerOpen] = React.useState(false);
 
   const selectedProductId = watch("productId");
 
@@ -123,21 +125,26 @@ export default function InventoryCreate() {
             </TextField>
           </Grid>
           <Grid item xs={12} md={3}>
-            <TextField
-              select
-              fullWidth
-              label="Warehouse *"
-              {...register("warehouseId", { required: "Warehouse is required" })}
-              value={watch("warehouseId") || ""}
-              error={!!errors.warehouseId}
-              helperText={errors.warehouseId?.message as string}
-            >
-              {(warehouses?.items || []).map((item: any) => (
-                <MenuItem key={item._id} value={item._id}>
-                  {item.name}
-                </MenuItem>
-              ))}
-            </TextField>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "flex-start" }}>
+              <TextField
+                select
+                fullWidth
+                label="Warehouse *"
+                {...register("warehouseId", { required: "Warehouse is required" })}
+                value={watch("warehouseId") || ""}
+                error={!!errors.warehouseId}
+                helperText={errors.warehouseId?.message as string}
+              >
+                {(warehouses?.items || []).map((item: any) => (
+                  <MenuItem key={item._id} value={item._id}>
+                    {item.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <Button variant="outlined" onClick={() => setWarehouseDrawerOpen(true)} sx={{ minWidth: 110 }}>
+                Create
+              </Button>
+            </Stack>
           </Grid>
           <Grid item xs={12} md={3}>
             <TextField
@@ -160,21 +167,26 @@ export default function InventoryCreate() {
           {action === "transfer" ? (
             <>
               <Grid item xs={12} md={12}>
-                <TextField 
-                  select
-                  fullWidth 
-                  label="To Warehouse *" 
-                  {...register("toWarehouseId", { required: action === "transfer" ? "Destination warehouse is required" : false })} 
-                  value={watch("toWarehouseId") || ""}
-                  error={action === "transfer" && !!errors.toWarehouseId}
-                  helperText={action === "transfer" ? errors.toWarehouseId?.message as string : undefined}
-                >
-                  {(warehouses?.items || []).map((item: any) => (
-                    <MenuItem key={item._id} value={item._id}>
-                      {item.name}
-                    </MenuItem>
-                  ))}
-                </TextField>
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "flex-start" }}>
+                  <TextField 
+                    select
+                    fullWidth 
+                    label="To Warehouse *" 
+                    {...register("toWarehouseId", { required: action === "transfer" ? "Destination warehouse is required" : false })} 
+                    value={watch("toWarehouseId") || ""}
+                    error={action === "transfer" && !!errors.toWarehouseId}
+                    helperText={action === "transfer" ? errors.toWarehouseId?.message as string : undefined}
+                  >
+                    {(warehouses?.items || []).map((item: any) => (
+                      <MenuItem key={item._id} value={item._id}>
+                        {item.name}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                  <Button variant="outlined" onClick={() => setWarehouseDrawerOpen(true)} sx={{ minWidth: 110 }}>
+                    Create
+                  </Button>
+                </Stack>
               </Grid>
             </>
           ) : null}
@@ -188,6 +200,18 @@ export default function InventoryCreate() {
           </Grid>
         </Grid>
       </Paper>
+      <RelatedEntityDrawer
+        open={warehouseDrawerOpen}
+        type="warehouse"
+        onClose={() => setWarehouseDrawerOpen(false)}
+        onCreated={(entity) => {
+          const nextId = String(entity?._id || "");
+          setValue("warehouseId", nextId, { shouldDirty: true, shouldValidate: true });
+          if (action === "transfer" && !watch("toWarehouseId")) {
+            setValue("toWarehouseId", nextId, { shouldDirty: true, shouldValidate: true });
+          }
+        }}
+      />
     </Box>
   );
 }

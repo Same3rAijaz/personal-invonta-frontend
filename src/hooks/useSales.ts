@@ -50,6 +50,7 @@ export function useShipSalesOrder() {
       client.invalidateQueries({ queryKey: ["sos"] });
       client.invalidateQueries({ queryKey: ["inventory", "balances"] });
       client.invalidateQueries({ queryKey: ["products"] });
+      client.invalidateQueries({ queryKey: ["product"] });
     }
   });
 }
