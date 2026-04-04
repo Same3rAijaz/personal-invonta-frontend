@@ -1,9 +1,10 @@
-import {
-  Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle,
-  MenuItem, Paper, Stack, Tab, Tabs, TextField, Typography
-} from "@mui/material";
+import { Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Paper, Stack, Tab, Tabs, Typography } from "@mui/material";
+import TextField from "../../components/CustomTextField";
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import BorrowOrderCreate from "./BorrowOrderCreate";
+import SalesOrderCreate from "../sales/SalesOrderCreate";
+import { Drawer } from "@mui/material";
 import {
   useActivateBorrowOrder, useApproveBorrowOrder,
   useBorrowOrders, useRejectBorrowOrder
@@ -44,6 +45,7 @@ export default function BorrowOrders() {
   const [approveDialog, setApproveDialog] = React.useState<{ open: boolean; bo: any }>({ open: false, bo: null });
   const [warehouseAssignments, setWarehouseAssignments] = React.useState<Record<string, string>>({});
   const [activateId, setActivateId] = React.useState<string | null>(null);
+  const [drawerState, setDrawerState] = React.useState<{ open: boolean; type: "new" | "edit" | "so" | null; id: string | null; initialSOData?: any }>({ open: false, type: null, id: null });
 
   const { data: warehouses } = useWarehouses({ page: 1, limit: 1000 });
   const { business } = useAuth();
@@ -119,7 +121,7 @@ export default function BorrowOrders() {
 
   return (
     <Box>
-      <PageHeader title="Stock Loans" actionLabel="Request a Stock Loan" onAction={() => navigate("/borrows/new")} />
+      <PageHeader title="Stock Loans" actionLabel="Request a Stock Loan" onAction={() => setDrawerState({ open: true, type: "new", id: null })} />
 
       <Tabs value={tab} onChange={(_, v) => { setTab(v); setPage(0); }} sx={{ mb: 2 }}>
         <Tab label="All" value="all" />
@@ -188,19 +190,23 @@ export default function BorrowOrders() {
                   {
                     label: "Create Sales Order",
                     disabled: !row.isBorrower || !["ACTIVE", "PARTIALLY_RETURNED"].includes(row.status),
-                    onClick: () => navigate("/sales/new", {
-                      state: {
-                        borrowOrderId: row._id,
-                        lenderBusinessId: row.lenderBusinessId,
-                        items: (row.items || []).map((i: any) => ({
-                          productId: String(i.productId),
-                          productName: i.productName || i.product?.name || "",
-                          qty: i.qty - (i.soldQty || 0) - (i.returnedQty || 0),
-                          unitPrice: 0,
-                          agreedUnitCost: i.agreedUnitCost || 0
-                        })).filter((i: any) => i.qty > 0)
-                      }
-                    })
+                    onClick: () => {
+                      setDrawerState({
+                        open: true,
+                        type: "so",
+                        id: null,
+                        initialSOData: {
+                          borrowOrderId: row._id,
+                          lenderBusinessId: row.lenderBusinessId,
+                          items: (row.items || []).map((i: any) => ({
+                            productId: String(i.productId),
+                            qty: i.qty - (i.soldQty || 0) - (i.returnedQty || 0),
+                            unitPrice: 0,
+                            agreedUnitCost: i.agreedUnitCost || 0
+                          })).filter((i: any) => i.qty > 0)
+                        }
+                      });
+                    }
                   },
                   {
                     label: "Approve Loan Request",
@@ -288,6 +294,11 @@ export default function BorrowOrders() {
           </Button>
         </DialogActions>
       </Dialog>
+      
+      <Drawer anchor="right" open={drawerState.open} onClose={() => setDrawerState({ open: false, type: null, id: null })} sx={{ zIndex: 1300 }} PaperProps={{ sx: { width: { xs: "100%", sm: 700, md: 800 }, backdropFilter: "blur(16px)" } }}>
+        {drawerState.type === "new" && <BorrowOrderCreate onSuccess={() => setDrawerState({ open: false, type: null, id: null })} onCancel={() => setDrawerState({ open: false, type: null, id: null })} />}
+        {drawerState.type === "so" && <SalesOrderCreate borrowState={drawerState.initialSOData} onSuccess={() => setDrawerState({ open: false, type: null, id: null })} onCancel={() => setDrawerState({ open: false, type: null, id: null })} />}
+      </Drawer>
 
       {confirmDialog}
     </Box>

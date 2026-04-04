@@ -1,10 +1,12 @@
-import { Box, Button, Checkbox, FormControlLabel, Grid, MenuItem, Paper, TextField, Typography } from "@mui/material";
+import { Box, Button, Checkbox, FormControlLabel, Grid, MenuItem, Typography } from "@mui/material";
+import TextField from "../../components/CustomTextField";
+import SidebarLayout from "../../components/SidebarLayout";
 import { Controller, useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { useCreateCategory, useSuperAdminCategories } from "../../hooks/useCategories";
 import { useToast } from "../../hooks/useToast";
 
-export default function CategoryCreate() {
+export default function CategoryCreate({ onSuccess, onCancel }: { onSuccess?: () => void, onCancel?: () => void } = {}) {
   const ROOT_VALUE = "__ROOT__";
   const navigate = useNavigate();
   const { notify } = useToast();
@@ -21,20 +23,18 @@ export default function CategoryCreate() {
         isActive: Boolean(values.isActive)
       });
       notify("Category created", "success");
-      navigate("/superadmin/categories");
+      if (onSuccess) onSuccess(); else navigate("/superadmin/categories");
     } catch (err: any) {
       notify(err?.response?.data?.error?.message || "Failed", "error");
     }
   };
 
   return (
-    <Box>
-      <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.6 }}>Create Category</Typography>
-      <Typography color="text.secondary" sx={{ mb: 2.2 }}>
-        Build hierarchical categories like Electronics {" > "} Home Appliances {" > "} Fridge.
-      </Typography>
-      <Paper sx={{ p: 3, borderRadius: 4, boxShadow: "0 18px 40px rgba(15,23,42,0.08)" }}>
-        <Grid container spacing={2} component="form" onSubmit={handleSubmit(onSubmit)}>
+    <SidebarLayout title="Create Category" onCancel={onCancel} isSubmitting={createCategory.isPending} submitLabel="Save Category">
+        <Typography color="text.secondary" sx={{ mb: 2.2 }}>
+          Build hierarchical categories like Electronics {" > "} Home Appliances {" > "} Fridge.
+        </Typography>
+        <Grid container spacing={2} component="form" id="sidebar-form" onSubmit={handleSubmit(onSubmit)}>
           <Grid item xs={12} md={6}>
             <TextField 
               fullWidth 
@@ -78,13 +78,7 @@ export default function CategoryCreate() {
           <Grid item xs={12}>
             <FormControlLabel control={<Checkbox defaultChecked {...register("isActive")} />} label="Active" />
           </Grid>
-          <Grid item xs={12}>
-            <Button type="submit" variant="contained" sx={{ px: 3.2, py: 1.2, borderRadius: 2.5, fontWeight: 700 }}>
-              Save Category
-            </Button>
-          </Grid>
         </Grid>
-      </Paper>
-    </Box>
+    </SidebarLayout>
   );
 }

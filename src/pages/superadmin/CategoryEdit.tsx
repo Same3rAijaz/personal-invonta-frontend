@@ -1,13 +1,16 @@
-import { Box, Button, Checkbox, FormControlLabel, Grid, MenuItem, Paper, TextField, Typography } from "@mui/material";
+import { Box, Button, Checkbox, FormControlLabel, Grid, MenuItem, Typography } from "@mui/material";
+import TextField from "../../components/CustomTextField";
+import SidebarLayout from "../../components/SidebarLayout";
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useNavigate, useParams } from "react-router-dom";
 import { useSuperAdminCategories, useUpdateCategory } from "../../hooks/useCategories";
 import { useToast } from "../../hooks/useToast";
 
-export default function CategoryEdit() {
+export default function CategoryEdit({ explicitId, onSuccess, onCancel }: { explicitId?: string, onSuccess?: () => void, onCancel?: () => void } = {}) {
   const ROOT_VALUE = "__ROOT__";
-  const { id } = useParams();
+  const params = useParams();
+  const id = explicitId || params.id;
   const navigate = useNavigate();
   const { notify } = useToast();
   const updateCategory = useUpdateCategory();
@@ -37,7 +40,7 @@ export default function CategoryEdit() {
         }
       });
       notify("Category updated", "success");
-      navigate("/superadmin/categories");
+      if (onSuccess) onSuccess(); else navigate("/superadmin/categories");
     } catch (err: any) {
       notify(err?.response?.data?.error?.message || "Failed", "error");
     }
@@ -46,13 +49,11 @@ export default function CategoryEdit() {
   if (!category) return <Typography>Loading...</Typography>;
 
   return (
-    <Box>
-      <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.6 }}>Edit Category</Typography>
-      <Typography color="text.secondary" sx={{ mb: 2.2 }}>
-        Reorganize the category hierarchy without breaking parent-child structure.
-      </Typography>
-      <Paper sx={{ p: 3, borderRadius: 4, boxShadow: "0 18px 40px rgba(15,23,42,0.08)" }}>
-        <Grid container spacing={2} component="form" onSubmit={handleSubmit(onSubmit)}>
+    <SidebarLayout title="Edit Category" onCancel={onCancel} isSubmitting={updateCategory.isPending} submitLabel="Update Category">
+        <Typography color="text.secondary" sx={{ mb: 2.2 }}>
+          Reorganize the category hierarchy without breaking parent-child structure.
+        </Typography>
+        <Grid container spacing={2} component="form" id="sidebar-form" onSubmit={handleSubmit(onSubmit)}>
           <Grid item xs={12} md={6}>
             <TextField 
               fullWidth 
@@ -87,7 +88,7 @@ export default function CategoryEdit() {
                       .filter((item: any) => item._id !== id)
                       .map((item: any) => (
                         <MenuItem key={item._id} value={item._id}>
-                          {(item.pathNames || [item.name]).join(" > ")}
+                           {(item.pathNames || [item.name]).join(" > ")}
                         </MenuItem>
                       ))}
                 </TextField>
@@ -97,13 +98,7 @@ export default function CategoryEdit() {
           <Grid item xs={12}>
             <FormControlLabel control={<Checkbox defaultChecked {...register("isActive")} />} label="Active" />
           </Grid>
-          <Grid item xs={12}>
-            <Button type="submit" variant="contained" sx={{ px: 3.2, py: 1.2, borderRadius: 2.5, fontWeight: 700 }}>
-              Update Category
-            </Button>
-          </Grid>
         </Grid>
-      </Paper>
-    </Box>
+    </SidebarLayout>
   );
 }

@@ -1,7 +1,8 @@
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Box, Button, Grid, IconButton, InputAdornment, Paper, TextField, Typography } from "@mui/material";
+import { Box, Button, Grid, IconButton, InputAdornment, Paper, Typography } from "@mui/material";
+import TextField from "../components/CustomTextField";;
 import { useState } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { useToast } from "../hooks/useToast";

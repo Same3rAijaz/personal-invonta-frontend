@@ -1,4 +1,6 @@
-import { Box, Button, Paper, Typography, Grid, TextField, MenuItem, Divider, IconButton, Stack } from "@mui/material";
+import { Box, Button, Typography, Grid, MenuItem, Divider, IconButton, Stack } from "@mui/material";
+import TextField from "../../components/CustomTextField";
+import SidebarLayout from "../../components/SidebarLayout";
 import React, { useEffect } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { useUpdateSalesOrder, useSalesOrders } from "../../hooks/useSales";
@@ -10,8 +12,9 @@ import AddCircleOutline from "@mui/icons-material/AddCircleOutline";
 import RemoveCircleOutline from "@mui/icons-material/RemoveCircleOutline";
 import RelatedEntityDrawer from "../../components/RelatedEntityDrawer";
 
-export default function SalesOrderEdit() {
-  const { id } = useParams();
+export default function SalesOrderEdit({ explicitId, onSuccess, onCancel }: { explicitId?: string, onSuccess?: () => void, onCancel?: () => void } = {}) {
+  const params = useParams();
+  const id = explicitId || params.id;
   const { data } = useSalesOrders({ page: 1, limit: 1000 });
   const { data: customers } = useCustomers({ page: 1, limit: 1000 });
   const { data: products } = useProducts({ page: 1, limit: 1000 });
@@ -53,7 +56,7 @@ export default function SalesOrderEdit() {
       }));
       await updateSO.mutateAsync({ id, payload: { customerId: values.customerId, items } });
       notify("SO updated", "success");
-      navigate("/sales");
+      if (onSuccess) onSuccess(); else navigate("/sales");
     } catch (err: any) {
       notify(err?.response?.data?.error?.message || "Failed", "error");
     }
@@ -72,10 +75,8 @@ export default function SalesOrderEdit() {
   }
 
   return (
-    <Box>
-      <Typography variant="h5" gutterBottom>Edit Sales Order</Typography>
-      <Paper sx={{ p: 3, borderRadius: 3, boxShadow: "0 18px 40px rgba(15,23,42,0.08)" }}>
-        <Grid container spacing={2} component="form" onSubmit={handleSubmit(onSubmit)}>
+    <SidebarLayout title="Edit Sales Order" onCancel={onCancel} isSubmitting={updateSO.isPending} submitLabel="Update Sales Order">
+      <Grid container spacing={2} component="form" id="sidebar-form" onSubmit={handleSubmit(onSubmit)}>
           <Grid item xs={12} md={6}>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "flex-start" }}>
               <TextField 
@@ -110,7 +111,7 @@ export default function SalesOrderEdit() {
                   {...register(`items.${index}.productId` as const, {
                     required: "Product is required",
                     onChange: (event) => {
-                      const selectedProduct = productMap.get(String(event.target.value || ""));
+                      const selectedProduct = productMap.get(String(event.target.value || "")) as any;
                       if (selectedProduct) {
                         setValue(`items.${index}.unitPrice`, Number(selectedProduct.salePrice || 0), { shouldDirty: true });
                       }
@@ -158,16 +159,7 @@ export default function SalesOrderEdit() {
               Add Item
             </Button>
           </Grid>
-          <Grid item xs={12}>
-            <Divider sx={{ my: 1 }} />
-          </Grid>
-          <Grid item xs={12}>
-            <Button type="submit" variant="contained" fullWidth sx={{ py: 1.4, fontWeight: 700 }}>
-              Update Sales Order
-            </Button>
-          </Grid>
         </Grid>
-      </Paper>
       <RelatedEntityDrawer
         open={drawerOpen}
         type="customer"
@@ -176,6 +168,6 @@ export default function SalesOrderEdit() {
           setValue("customerId", String(entity?._id || ""), { shouldDirty: true, shouldValidate: true });
         }}
       />
-    </Box>
+    </SidebarLayout>
   );
 }

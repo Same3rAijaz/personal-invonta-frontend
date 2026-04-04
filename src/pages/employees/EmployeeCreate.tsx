@@ -1,4 +1,6 @@
-import { Box, Button, Paper, Typography, Grid, TextField, Divider, FormControlLabel, Checkbox, Stack, IconButton, InputAdornment } from "@mui/material";
+import { Box, Button, Typography, Grid, Divider, FormControlLabel, Checkbox, Stack, IconButton, InputAdornment } from "@mui/material";
+import TextField from "../../components/CustomTextField";;
+import SidebarLayout from "../../components/SidebarLayout";
 import { useForm } from "react-hook-form";
 import { useCreateEmployee } from "../../hooks/useEmployees";
 import { useToast } from "../../hooks/useToast";
@@ -8,7 +10,7 @@ import { useState } from "react";
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
 
-export default function EmployeeCreate() {
+export default function EmployeeCreate({ onSuccess, onCancel }: { onSuccess?: () => void, onCancel?: () => void } = {}) {
   const createEmployee = useCreateEmployee();
   const { notify } = useToast();
   const navigate = useNavigate();
@@ -37,17 +39,16 @@ export default function EmployeeCreate() {
         loginPassword: values.loginPassword || undefined
       });
       notify("Employee created", "success");
-      navigate("/employees");
+      if (onSuccess) onSuccess(); else navigate("/employees");
     } catch (err: any) {
       notify(err?.response?.data?.error?.message || "Failed", "error");
     }
   };
 
   return (
-    <Box>
-      <Typography variant="h5" gutterBottom>Create Employee</Typography>
-      <Paper sx={{ p: 3, borderRadius: 3, boxShadow: "0 18px 40px rgba(15,23,42,0.08)" }}>
-        <Grid container spacing={2} component="form" onSubmit={handleSubmit(onSubmit)}>
+    <SidebarLayout title="Create Employee" onCancel={onCancel} isSubmitting={createEmployee.isPending} submitLabel="Save Employee">
+
+        <Grid container spacing={2} component="form" id="sidebar-form" onSubmit={handleSubmit(onSubmit)}>
           <Grid item xs={12} md={6}>
             <TextField
               fullWidth
@@ -115,16 +116,8 @@ export default function EmployeeCreate() {
           <Grid item xs={12}>
             <FormControlLabel control={<Checkbox defaultChecked {...register("isActive")} />} label="Active" />
           </Grid>
-          <Grid item xs={12}>
-            <Divider sx={{ my: 1 }} />
-          </Grid>
-          <Grid item xs={12}>
-            <Button type="submit" variant="contained" fullWidth sx={{ py: 1.4, fontWeight: 700 }}>
-              Save Employee
-            </Button>
-          </Grid>
+          
         </Grid>
-      </Paper>
-    </Box>
+    </SidebarLayout>
   );
 }

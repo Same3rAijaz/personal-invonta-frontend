@@ -1,4 +1,5 @@
-import { Box, Button, Paper, Typography, Grid, TextField } from "@mui/material";
+import { Box, Button, Paper, Typography, Grid } from "@mui/material";
+import TextField from "../../components/CustomTextField";;
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { useReferralSettings, useUpdateReferralSettings } from "../../hooks/useReferrals";

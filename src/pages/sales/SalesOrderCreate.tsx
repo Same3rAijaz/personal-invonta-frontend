@@ -1,4 +1,6 @@
-import { Alert, Box, Button, Paper, Typography, Grid, TextField, MenuItem, Divider, IconButton, Stack } from "@mui/material";
+import { Alert, Box, Button, Typography, Grid, MenuItem, Divider, IconButton, Stack } from "@mui/material";
+import TextField from "../../components/CustomTextField";
+import SidebarLayout from "../../components/SidebarLayout";
 import React from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { useCreateSalesOrder } from "../../hooks/useSales";
@@ -10,14 +12,23 @@ import AddCircleOutline from "@mui/icons-material/AddCircleOutline";
 import RemoveCircleOutline from "@mui/icons-material/RemoveCircleOutline";
 import RelatedEntityDrawer from "../../components/RelatedEntityDrawer";
 
-export default function SalesOrderCreate() {
+export default function SalesOrderCreate({ 
+  borrowState: explicitBorrowState,
+  onSuccess, 
+  onCancel 
+}: { 
+  borrowState?: any,
+  onSuccess?: () => void, 
+  onCancel?: () => void 
+} = {}) {
   const createSO = useCreateSalesOrder();
   const { notify } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
-  const borrowState = (location.state as any) || null;
-  const { data: customers } = useCustomers({ page: 1, limit: 1000 });
+  const borrowState = explicitBorrowState || (location.state as any) || null;
+  const { data: customers, refetch: refetchCustomers } = useCustomers({ page: 1, limit: 1000 });
   const { data: products } = useProducts({ page: 1, limit: 1000 });
+  const [customerDrawerOpen, setCustomerDrawerOpen] = React.useState(false);
 
   const defaultItems = borrowState?.items?.length
     ? borrowState.items.map((i: any) => ({ productId: i.productId, qty: i.qty, unitPrice: i.unitPrice || 0 }))
@@ -50,22 +61,20 @@ export default function SalesOrderCreate() {
       });
       await createSO.mutateAsync({ customerId: values.customerId, items, status: values.status });
       notify("SO created", "success");
-      navigate("/sales");
+      if (onSuccess) onSuccess(); else navigate("/sales");
     } catch (err: any) {
       notify(err?.response?.data?.error?.message || "Failed", "error");
     }
   };
 
   return (
-    <Box>
-      <Typography variant="h5" gutterBottom>Create Sales Order</Typography>
+    <SidebarLayout title="Create Sales Order" breadcrumb={["Sales", "Create Order"]} onCancel={onCancel} isSubmitting={createSO.isPending} submitLabel="Save Sales Order">
       {borrowState?.borrowOrderId && (
         <Alert severity="info" sx={{ mb: 2 }}>
           Selling borrowed stock from borrow order. When this order is shipped, the borrow order quantities will update automatically.
         </Alert>
       )}
-      <Paper sx={{ p: 3, borderRadius: 3, boxShadow: "0 18px 40px rgba(15,23,42,0.08)" }}>
-        <Grid container spacing={2} component="form" onSubmit={handleSubmit(onSubmit)}>
+      <Grid container spacing={2} component="form" id="sidebar-form" onSubmit={handleSubmit(onSubmit)}>
           <Grid item xs={12} md={6}>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "flex-start" }}>
               <TextField 
@@ -103,7 +112,7 @@ export default function SalesOrderCreate() {
                   {...register(`items.${index}.productId` as const, {
                     required: "Product is required",
                     onChange: (event) => {
-                      const selectedProduct = productMap.get(String(event.target.value || ""));
+                      const selectedProduct = productMap.get(String(event.target.value || "")) as any;
                       if (selectedProduct) {
                         setValue(`items.${index}.unitPrice`, Number(selectedProduct.salePrice || 0), { shouldDirty: true });
                       }
@@ -157,16 +166,7 @@ export default function SalesOrderCreate() {
               Add Item
             </Button>
           </Grid>
-          <Grid item xs={12}>
-            <Divider sx={{ my: 1 }} />
-          </Grid>
-          <Grid item xs={12}>
-            <Button type="submit" variant="contained" fullWidth sx={{ py: 1.4, fontWeight: 700 }}>
-              Save Sales Order
-            </Button>
-          </Grid>
         </Grid>
-      </Paper>
       <RelatedEntityDrawer
         open={drawerOpen}
         type="customer"
@@ -175,6 +175,6 @@ export default function SalesOrderCreate() {
           setValue("customerId", String(entity?._id || ""), { shouldDirty: true, shouldValidate: true });
         }}
       />
-    </Box>
+    </SidebarLayout>
   );
 }

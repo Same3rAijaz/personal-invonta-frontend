@@ -1,4 +1,6 @@
-import { Box, Button, Paper, Typography, Grid, TextField, Divider, FormControlLabel, Checkbox, MenuItem, Stack, Avatar, IconButton } from "@mui/material";
+import { Box, Button, Typography, Grid, Divider, FormControlLabel, Checkbox, MenuItem, Stack, Avatar, IconButton } from "@mui/material";
+import TextField from "../../components/CustomTextField";;
+import SidebarLayout from "../../components/SidebarLayout";
 import { useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useUpdateProduct, useProduct } from "../../hooks/useProducts";
@@ -16,8 +18,9 @@ function getSuggestedReorderLevel(quantity: number) {
   return Math.max(1, Math.ceil(quantity * 0.2));
 }
 
-export default function ProductEdit() {
-  const { id } = useParams();
+export default function ProductEdit({ explicitId, onSuccess, onCancel }: { explicitId?: string, onSuccess?: () => void, onCancel?: () => void } = {}) {
+  const params = useParams();
+  const id = explicitId || params.id;
   const { data: product, isLoading } = useProduct(id);
   const updateProduct = useUpdateProduct();
   const { notify } = useToast();
@@ -182,7 +185,7 @@ export default function ProductEdit() {
         }
       });
       notify("Product updated", "success");
-      navigate("/products");
+      if (onSuccess) onSuccess(); else navigate("/products");
     } catch (err: any) {
       notify(err?.response?.data?.error?.message || "Failed", "error");
     }
@@ -197,10 +200,8 @@ export default function ProductEdit() {
   }
 
   return (
-    <Box>
-      <Typography variant="h5" gutterBottom>Edit Product</Typography>
-      <Paper sx={{ p: 3, borderRadius: 3, boxShadow: "0 18px 40px rgba(15,23,42,0.08)" }}>
-        <Grid container spacing={2} component="form" onSubmit={handleSubmit(onSubmit)}>
+    <SidebarLayout title="Edit Product" onCancel={onCancel} isSubmitting={updateProduct.isPending} submitLabel="Update Product">
+      <Grid container spacing={2} component="form" id="sidebar-form" onSubmit={handleSubmit(onSubmit)}>
           <Grid item xs={12} md={3}>
             <TextField
               fullWidth
@@ -493,16 +494,7 @@ export default function ProductEdit() {
               />
             </Stack>
           </Grid>
-          <Grid item xs={12}>
-            <Divider sx={{ my: 1 }} />
-          </Grid>
-          <Grid item xs={12}>
-            <Button type="submit" variant="contained" fullWidth sx={{ py: 1.4, fontWeight: 700 }}>
-              Update Product
-            </Button>
-          </Grid>
         </Grid>
-      </Paper>
       <RelatedEntityDrawer
         open={warehouseDrawerOpen}
         type="warehouse"
@@ -511,6 +503,6 @@ export default function ProductEdit() {
           setValue("warehouseId", String(entity?._id || ""), { shouldDirty: true, shouldValidate: true });
         }}
       />
-    </Box>
+    </SidebarLayout>
   );
 }

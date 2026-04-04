@@ -1,4 +1,5 @@
-import { Box, Button, TextField } from "@mui/material";
+import { Box, Button } from "@mui/material";
+import TextField from "../../components/CustomTextField";;
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import DataTable from "../../components/DataTable";
@@ -17,6 +18,7 @@ export default function Categories() {
   const navigate = useNavigate();
   const { notify } = useToast();
   const { confirm, confirmDialog } = useConfirmDialog();
+  const [drawerState, setDrawerState] = React.useState<{ open: boolean; type: "new" | "edit" | null; id: string | null }>({ open: false, type: null, id: null });
   const { data, isLoading } = useSuperAdminCategories({ page: page + 1, limit: rowsPerPage, search: debouncedSearch || undefined });
   const deleteCategory = useDeleteCategory();
 
@@ -36,7 +38,7 @@ export default function Categories() {
 
   return (
     <Box>
-      <PageHeader title="Categories" actionLabel="Create Category" onAction={() => navigate("/superadmin/categories/new")} />
+      <PageHeader title="Categories" actionLabel="Create Category" onAction={() => setDrawerState({ open: true, type: "new", id: null })} />
       <DataTable
         columns={[
           { key: "name", label: "Name" },
@@ -51,7 +53,7 @@ export default function Categories() {
             render: (row: any) => (
               <RowActionMenu
                 actions={[
-                  { label: "Edit", onClick: () => navigate(`/superadmin/categories/${row._id}/edit`) },
+                  { label: "Edit", onClick: () => setDrawerState({ open: true, type: "edit", id: row._id }) },
                   { label: "Delete", danger: true, onClick: () => handleDelete(row._id) }
                 ]}
               />
@@ -78,6 +80,11 @@ export default function Categories() {
           setPage(0);
         }}
       />
+      
+      <Drawer anchor="right" open={drawerState.open} onClose={() => setDrawerState({ open: false, type: null, id: null })} sx={{ zIndex: 1300 }} PaperProps={{ sx: { width: { xs: "100%", sm: 600 }, backdropFilter: "blur(16px)" } }}>
+        {drawerState.type === "new" && <CategoryCreate onSuccess={() => setDrawerState({ open: false, type: null, id: null })} onCancel={() => setDrawerState({ open: false, type: null, id: null })} />}
+        {drawerState.type === "edit" && drawerState.id && <CategoryEdit explicitId={drawerState.id} onSuccess={() => setDrawerState({ open: false, type: null, id: null })} onCancel={() => setDrawerState({ open: false, type: null, id: null })} />}
+      </Drawer>
       {confirmDialog}
     </Box>
   );

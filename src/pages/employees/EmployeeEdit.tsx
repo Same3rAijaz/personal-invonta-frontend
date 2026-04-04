@@ -1,4 +1,5 @@
-import { Alert, Box, Button, Paper, Typography, Grid, TextField, Divider, FormControlLabel, Checkbox, Stack } from "@mui/material";
+import { Alert, Box, Button, Paper, Typography, Grid, Divider, FormControlLabel, Checkbox, Stack } from "@mui/material";
+import TextField from "../../components/CustomTextField";;
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { useEmployees, useUpdateEmployee } from "../../hooks/useEmployees";
@@ -6,8 +7,9 @@ import { useToast } from "../../hooks/useToast";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 
-export default function EmployeeEdit() {
-  const { id } = useParams();
+export default function EmployeeEdit({ explicitId, onSuccess, onCancel }: { explicitId?: string, onSuccess?: () => void, onCancel?: () => void } = {}) {
+  const params = useParams();
+  const id = explicitId || params.id;
   const { data } = useEmployees({ page: 1, limit: 1000 });
   const updateEmployee = useUpdateEmployee();
   const { notify } = useToast();
@@ -56,7 +58,7 @@ export default function EmployeeEdit() {
         payload: { ...payload, allowedModules }
       });
       notify("Employee updated", "success");
-      navigate("/employees");
+      if (onSuccess) onSuccess(); else navigate("/employees");
     } catch (err: any) {
       notify(err?.response?.data?.error?.message || "Failed", "error");
     }
@@ -71,15 +73,14 @@ export default function EmployeeEdit() {
     : ["products", "inventory", "warehouses", "customers", "vendors", "purchasing", "sales", "reports"];
 
   return (
-    <Box>
-      <Typography variant="h5" gutterBottom>Edit Employee</Typography>
-      <Paper sx={{ p: 3, borderRadius: 3, boxShadow: "0 18px 40px rgba(15,23,42,0.08)" }}>
+    <SidebarLayout title="Edit Employee" onCancel={onCancel} isSubmitting={updateEmployee.isPending} submitLabel="Update Employee">
+
         {!canEdit ? (
           <Alert severity="warning" sx={{ mb: 2 }}>
             Editing business admin employees is restricted to super admin only.
           </Alert>
         ) : null}
-        <Grid container spacing={2} component="form" onSubmit={handleSubmit(onSubmit)}>
+        <Grid container spacing={2} component="form" id="sidebar-form" onSubmit={handleSubmit(onSubmit)}>
           <Grid item xs={12} md={6}>
             <TextField
               fullWidth
@@ -120,16 +121,8 @@ export default function EmployeeEdit() {
           <Grid item xs={12}>
             <FormControlLabel control={<Checkbox disabled={!canEdit} defaultChecked {...register("isActive")} />} label="Active" />
           </Grid>
-          <Grid item xs={12}>
-            <Divider sx={{ my: 1 }} />
-          </Grid>
-          <Grid item xs={12}>
-            <Button type="submit" variant="contained" disabled={!canEdit} fullWidth sx={{ py: 1.4, fontWeight: 700 }}>
-              Update Employee
-            </Button>
-          </Grid>
+          
         </Grid>
-      </Paper>
-    </Box>
+    </SidebarLayout>
   );
 }

@@ -1,4 +1,5 @@
-import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, TextField } from "@mui/material";
+import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Drawer } from "@mui/material";
+import TextField from "../../components/CustomTextField";
 import React from "react";
 import { useApprovePurchaseOrder, useDeletePurchaseOrder, usePurchaseOrders, useReceivePurchaseOrder } from "../../hooks/usePurchasing";
 import DataTable from "../../components/DataTable";
@@ -12,6 +13,8 @@ import RowActionMenu from "../../components/RowActionMenu";
 import { useWarehouses } from "../../hooks/useWarehouses";
 import { useProducts } from "../../hooks/useProducts";
 import OrderItemsTable from "../../components/OrderItemsTable";
+import PurchaseOrderCreate from "./PurchaseOrderCreate";
+import PurchaseOrderEdit from "./PurchaseOrderEdit";
 
 export default function PurchaseOrders() {
   const [page, setPage] = React.useState(0);
@@ -26,8 +29,8 @@ export default function PurchaseOrders() {
   const { data: warehouses } = useWarehouses({ page: 1, limit: 1000 });
   const { data: products } = useProducts({ page: 1, limit: 1000 });
   const navigate = useNavigate();
-  const vendorMap = new Map((vendors?.items || []).map((v: any) => [v._id, v.name]));
-  const productMap = new Map((products?.items || []).map((p: any) => [String(p._id), p.name]));
+  const vendorMap = new Map<string, string>((vendors?.items || []).map((v: any) => [String(v._id), String(v.name)]));
+  const productMap = new Map<string, string>((products?.items || []).map((p: any) => [String(p._id), String(p.name)]));
   const rows = (data?.items || []).map((po: any) => ({
     ...po,
     itemsCount: po.items?.length || 0,
@@ -36,6 +39,7 @@ export default function PurchaseOrders() {
   }));
   const { notify } = useToast();
   const { confirm, confirmDialog } = useConfirmDialog();
+  const [drawerState, setDrawerState] = React.useState<{ open: boolean; type: "new" | "edit" | null; id: string | null }>({ open: false, type: null, id: null });
   const [approveDialog, setApproveDialog] = React.useState<{ open: boolean; id: string | null }>({ open: false, id: null });
   const [approveWarehouseId, setApproveWarehouseId] = React.useState("");
   const [receiveDialog, setReceiveDialog] = React.useState<{ open: boolean; id: string | null }>({ open: false, id: null });
@@ -97,7 +101,7 @@ export default function PurchaseOrders() {
 
   return (
     <Box>
-      <PageHeader title="Purchase Orders" actionLabel="Create PO" onAction={() => navigate("/purchasing/new")} />
+      <PageHeader title="Purchase Orders" actionLabel="Create PO" onAction={() => setDrawerState({ open: true, type: "new", id: null })} />
       <DataTable
         columns={[
           { key: "number", label: "Number" },
@@ -116,7 +120,7 @@ export default function PurchaseOrders() {
             render: (row: any) => (
               <RowActionMenu
                 actions={[
-                  { label: "Edit", disabled: row.status !== "DRAFT", onClick: () => navigate(`/purchasing/${row._id}/edit`) },
+                  { label: "Edit", disabled: row.status !== "DRAFT", onClick: () => setDrawerState({ open: true, type: "edit", id: row._id }) },
                   {
                     label: "Approve",
                     disabled: row.status !== "DRAFT",
@@ -146,7 +150,7 @@ export default function PurchaseOrders() {
             size="small"
             placeholder="Search purchase orders"
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
+            onChange={(event: any) => setSearch(event.target.value)}
             sx={{ minWidth: 240 }}
           />
         }
@@ -192,7 +196,7 @@ export default function PurchaseOrders() {
             fullWidth
             label="Warehouse *"
             value={receiveWarehouseId}
-            onChange={(event) => setReceiveWarehouseId(event.target.value)}
+            onChange={(event: any) => setReceiveWarehouseId(event.target.value)}
             helperText={(warehouses?.items || []).length === 0 ? "Create a warehouse first." : undefined}
           >
             {(warehouses?.items || []).map((item: any) => (
@@ -201,6 +205,7 @@ export default function PurchaseOrders() {
               </MenuItem>
             ))}
           </TextField>
+
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setReceiveDialog({ open: false, id: null })}>Cancel</Button>
@@ -209,6 +214,11 @@ export default function PurchaseOrders() {
           </Button>
         </DialogActions>
       </Dialog>
+      
+      <Drawer anchor="right" open={drawerState.open} onClose={() => setDrawerState({ open: false, type: null, id: null })} sx={{ zIndex: 1300 }} PaperProps={{ sx: { width: { xs: "100%", sm: 700, md: 800 }, backdropFilter: "blur(16px)" } }}>
+        {drawerState.type === "new" && <PurchaseOrderCreate onSuccess={() => setDrawerState({ open: false, type: null, id: null })} onCancel={() => setDrawerState({ open: false, type: null, id: null })} />}
+        {drawerState.type === "edit" && drawerState.id && <PurchaseOrderEdit explicitId={drawerState.id} onSuccess={() => setDrawerState({ open: false, type: null, id: null })} onCancel={() => setDrawerState({ open: false, type: null, id: null })} />}
+      </Drawer>
       {confirmDialog}
     </Box>
   );

@@ -1,9 +1,13 @@
 import React from "react";
-import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, InputLabel, MenuItem, Select, TextField } from "@mui/material";
+import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, InputLabel, MenuItem, Select } from "@mui/material";
+import TextField from "../components/CustomTextField";;
 import { useDeleteEmployee, useEmployees, useResetEmployeePassword } from "../hooks/useEmployees";
 import DataTable from "../components/DataTable";
 import { useNavigate } from "react-router-dom";
 import PageHeader from "../components/PageHeader";
+import { Drawer } from "@mui/material";
+import EmployeeCreate from "./employees/EmployeeCreate";
+import EmployeeEdit from "./employees/EmployeeEdit";
 import { useToast } from "../hooks/useToast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
@@ -25,6 +29,7 @@ export default function Employees() {
   const rows = data?.items || [];
   const { notify } = useToast();
   const { confirm, confirmDialog } = useConfirmDialog();
+  const [drawerState, setDrawerState] = React.useState<{ open: boolean; type: "new" | "edit" | null; id: string | null }>({ open: false, type: null, id: null });
   const client = useQueryClient();
   const [blockDialog, setBlockDialog] = React.useState<{ open: boolean; id: string | null }>({ open: false, id: null });
   const [resetDialog, setResetDialog] = React.useState<{ open: boolean; id: string | null }>({ open: false, id: null });
@@ -107,7 +112,7 @@ export default function Employees() {
 
   return (
     <Box>
-      <PageHeader title="Employees" actionLabel="Create Employee" onAction={() => navigate("/employees/new")} />
+      <PageHeader title="Employees" actionLabel="Create Employee" onAction={() => setDrawerState({ open: true, type: "new", id: null })} />
       <DataTable
         columns={[
           { key: "name", label: "Name" },
@@ -123,7 +128,7 @@ export default function Employees() {
                   {
                     label: "Edit",
                     disabled: Boolean(row.isBusinessAdmin) && !canManageBusinessAdmin,
-                    onClick: () => navigate(`/employees/${row._id}/edit`)
+                    onClick: () => setDrawerState({ open: true, type: "edit", id: row._id })
                   },
                   {
                     label: "Delete",
@@ -238,6 +243,11 @@ export default function Employees() {
           </Button>
         </DialogActions>
       </Dialog>
+      
+      <Drawer anchor="right" open={drawerState.open} onClose={() => setDrawerState({ open: false, type: null, id: null })} sx={{ zIndex: 1300 }} PaperProps={{ sx: { width: { xs: "100%", sm: 600 }, backdropFilter: "blur(16px)" } }}>
+        {drawerState.type === "new" && <EmployeeCreate onSuccess={() => setDrawerState({ open: false, type: null, id: null })} onCancel={() => setDrawerState({ open: false, type: null, id: null })} />}
+        {drawerState.type === "edit" && drawerState.id && <EmployeeEdit explicitId={drawerState.id} onSuccess={() => setDrawerState({ open: false, type: null, id: null })} onCancel={() => setDrawerState({ open: false, type: null, id: null })} />}
+      </Drawer>
       {confirmDialog}
     </Box>
   );

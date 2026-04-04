@@ -1,12 +1,15 @@
-import { Box, Button, Paper, Typography, Grid, TextField, Divider, FormControlLabel, Checkbox } from "@mui/material";
+import { Box, Button, Typography, Grid, Divider, FormControlLabel, Checkbox } from "@mui/material";
+import TextField from "../../components/CustomTextField";;
+import SidebarLayout from "../../components/SidebarLayout";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { useVendors, useUpdateVendor } from "../../hooks/useVendors";
 import { useToast } from "../../hooks/useToast";
 import { useNavigate, useParams } from "react-router-dom";
 
-export default function VendorEdit() {
-  const { id } = useParams();
+export default function VendorEdit({ explicitId, onSuccess, onCancel }: { explicitId?: string, onSuccess?: () => void, onCancel?: () => void } = {}) {
+  const params = useParams();
+  const id = explicitId || params.id;
   const { data } = useVendors({ page: 1, limit: 1000 });
   const updateVendor = useUpdateVendor();
   const { notify } = useToast();
@@ -33,7 +36,7 @@ export default function VendorEdit() {
     try {
       await updateVendor.mutateAsync({ id, payload: values });
       notify("Vendor updated", "success");
-      navigate("/vendors");
+      if (onSuccess) onSuccess(); else navigate("/vendors");
     } catch (err: any) {
       notify(err?.response?.data?.error?.message || "Failed", "error");
     }
@@ -44,10 +47,9 @@ export default function VendorEdit() {
   }
 
   return (
-    <Box>
-      <Typography variant="h5" gutterBottom>Edit Vendor</Typography>
-      <Paper sx={{ p: 3, borderRadius: 3, boxShadow: "0 18px 40px rgba(15,23,42,0.08)" }}>
-        <Grid container spacing={2} component="form" onSubmit={handleSubmit(onSubmit)}>
+    <SidebarLayout title="Edit Vendor" onCancel={onCancel} isSubmitting={updateVendor.isPending} submitLabel="Update Vendor">
+
+        <Grid container spacing={2} component="form" id="sidebar-form" onSubmit={handleSubmit(onSubmit)}>
           <Grid item xs={12} md={4}>
             <TextField 
               fullWidth 
@@ -79,16 +81,8 @@ export default function VendorEdit() {
           <Grid item xs={12}>
             <FormControlLabel control={<Checkbox defaultChecked {...register("isActive")} />} label="Active" />
           </Grid>
-          <Grid item xs={12}>
-            <Divider sx={{ my: 1 }} />
-          </Grid>
-          <Grid item xs={12}>
-            <Button type="submit" variant="contained" fullWidth sx={{ py: 1.4, fontWeight: 700 }}>
-              Update Vendor
-            </Button>
-          </Grid>
+          
         </Grid>
-      </Paper>
-    </Box>
+    </SidebarLayout>
   );
 }

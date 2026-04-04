@@ -1,10 +1,14 @@
-import { Autocomplete, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField, Typography } from "@mui/material";
+import { Autocomplete, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Stack, Typography } from "@mui/material";
+import TextField from "../components/CustomTextField";;
 import React from "react";
 import { useDeleteProduct, useProductShareTargets, useProducts, useShareProduct } from "../hooks/useProducts";
 import { useInventoryBalances } from "../hooks/useInventory";
 import DataTable from "../components/DataTable";
 import { useNavigate } from "react-router-dom";
 import PageHeader from "../components/PageHeader";
+import { Drawer } from "@mui/material";
+import ProductCreate from "./products/ProductCreate";
+import ProductEdit from "./products/ProductEdit";
 import { useToast } from "../hooks/useToast";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { useConfirmDialog } from "../hooks/useConfirmDialog";
@@ -32,6 +36,10 @@ export default function Products() {
   const [targetSearch, setTargetSearch] = React.useState("");
   const [selectedTargets, setSelectedTargets] = React.useState<any[]>([]);
   const { data: shareTargets = [] } = useProductShareTargets(targetSearch || undefined, shareDialog.open);
+
+  const [drawerState, setDrawerState] = React.useState<{ open: boolean; type: "new" | "edit" | null; id: string | null }>({
+    open: false, type: null, id: null
+  });
 
   React.useEffect(() => {
     setPage(0);
@@ -99,7 +107,7 @@ export default function Products() {
 
   return (
     <Box>
-      <PageHeader title="Products" actionLabel="Create Product" onAction={() => navigate("/products/new")} />
+      <PageHeader title="Products" actionLabel="Create Product" onAction={() => setDrawerState({ open: true, type: "new", id: null })} />
       <DataTable
         columns={[
           {
@@ -142,7 +150,7 @@ export default function Products() {
               <RowActionMenu
                 actions={[
                   { label: "View", onClick: () => navigate(`/products/${row._id}`) },
-                  { label: "Edit", disabled: row.isSharedWithMe, onClick: () => navigate(`/products/${row._id}/edit`) },
+                  { label: "Edit", disabled: row.isSharedWithMe, onClick: () => setDrawerState({ open: true, type: "edit", id: row._id }) },
                   { label: "Share", disabled: row.isSharedWithMe, onClick: () => openShareDialog(row) },
                   { label: "Delete", disabled: row.isSharedWithMe, danger: true, onClick: () => handleDelete(row._id) }
                 ]}
@@ -238,6 +246,27 @@ export default function Products() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <Drawer
+        anchor="right"
+        open={drawerState.open}
+        onClose={() => setDrawerState({ open: false, type: null, id: null })}
+        sx={{ zIndex: 1300 }}
+        PaperProps={{
+          sx: {
+            width: { xs: "100%", sm: 700, md: 800 },
+            backdropFilter: "blur(16px)"
+          }
+        }}
+      >
+        {drawerState.type === "new" && (
+          <ProductCreate onSuccess={() => setDrawerState({ open: false, type: null, id: null })} onCancel={() => setDrawerState({ open: false, type: null, id: null })} />
+        )}
+        {drawerState.type === "edit" && drawerState.id && (
+          <ProductEdit explicitId={drawerState.id} onSuccess={() => setDrawerState({ open: false, type: null, id: null })} onCancel={() => setDrawerState({ open: false, type: null, id: null })} />
+        )}
+      </Drawer>
+
       {confirmDialog}
     </Box>
   );

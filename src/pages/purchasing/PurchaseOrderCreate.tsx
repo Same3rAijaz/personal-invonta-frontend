@@ -1,4 +1,6 @@
-import { Box, Button, Paper, Typography, Grid, TextField, MenuItem, Divider, IconButton, Stack } from "@mui/material";
+import { Box, Button, Typography, Grid, MenuItem, Divider, IconButton, Stack } from "@mui/material";
+import TextField from "../../components/CustomTextField";
+import SidebarLayout from "../../components/SidebarLayout";
 import React from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { useCreatePurchaseOrder } from "../../hooks/usePurchasing";
@@ -10,7 +12,7 @@ import AddCircleOutline from "@mui/icons-material/AddCircleOutline";
 import RemoveCircleOutline from "@mui/icons-material/RemoveCircleOutline";
 import RelatedEntityDrawer from "../../components/RelatedEntityDrawer";
 
-export default function PurchaseOrderCreate() {
+export default function PurchaseOrderCreate({ onSuccess, onCancel }: { onSuccess?: () => void, onCancel?: () => void } = {}) {
   const createPO = useCreatePurchaseOrder();
   const { notify } = useToast();
   const navigate = useNavigate();
@@ -35,17 +37,15 @@ export default function PurchaseOrderCreate() {
       }));
       await createPO.mutateAsync({ vendorId: values.vendorId, items, status: values.status });
       notify("PO created", "success");
-      navigate("/purchasing");
+      if (onSuccess) onSuccess(); else navigate("/purchasing");
     } catch (err: any) {
       notify(err?.response?.data?.error?.message || "Failed", "error");
     }
   };
 
   return (
-    <Box>
-      <Typography variant="h5" gutterBottom>Create Purchase Order</Typography>
-      <Paper sx={{ p: 3, borderRadius: 3, boxShadow: "0 18px 40px rgba(15,23,42,0.08)" }}>
-        <Grid container spacing={2} component="form" onSubmit={handleSubmit(onSubmit)}>
+    <SidebarLayout title="Create PurchaseOrder" onCancel={onCancel} isSubmitting={createPO.isPending} submitLabel="Save PurchaseOrder">
+        <Grid container spacing={2} component="form" id="sidebar-form" onSubmit={handleSubmit(onSubmit)}>
           <Grid item xs={12} md={6}>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "flex-start" }}>
               <TextField 
@@ -83,7 +83,7 @@ export default function PurchaseOrderCreate() {
                   {...register(`items.${index}.productId` as const, {
                     required: "Product is required",
                     onChange: (event) => {
-                      const selectedProduct = productMap.get(String(event.target.value || ""));
+                      const selectedProduct = productMap.get(String(event.target.value || "")) as any;
                       if (selectedProduct) {
                         setValue(`items.${index}.unitCost`, Number(selectedProduct.costPrice || 0), { shouldDirty: true });
                       }
@@ -131,16 +131,8 @@ export default function PurchaseOrderCreate() {
               Add Item
             </Button>
           </Grid>
-          <Grid item xs={12}>
-            <Divider sx={{ my: 1 }} />
-          </Grid>
-          <Grid item xs={12}>
-            <Button type="submit" variant="contained" fullWidth sx={{ py: 1.4, fontWeight: 700 }}>
-              Save Purchase Order
-            </Button>
-          </Grid>
+          
         </Grid>
-      </Paper>
       <RelatedEntityDrawer
         open={drawerOpen}
         type="vendor"
@@ -149,6 +141,6 @@ export default function PurchaseOrderCreate() {
           setValue("vendorId", String(entity?._id || ""), { shouldDirty: true, shouldValidate: true });
         }}
       />
-    </Box>
+    </SidebarLayout>
   );
 }

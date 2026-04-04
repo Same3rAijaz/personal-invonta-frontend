@@ -70,6 +70,9 @@ import SalesReturns from "./pages/sales/SalesReturns";
 import SalesReturnCreate from "./pages/sales/SalesReturnCreate";
 import ShopFriends from "./pages/friends/ShopFriends";
 import ShopDiscover from "./pages/friends/ShopDiscover";
+import Partners from "./pages/Partners";
+import Network from "./pages/Network";
+import Chat from "./pages/Chat";
 
 export default function App() {
   return (
@@ -121,6 +124,9 @@ export default function App() {
             <Route path="/borrows" element={<BorrowOrders />} />
             <Route path="/borrows/new" element={<BorrowOrderCreate />} />
             <Route path="/borrows/:id" element={<BorrowOrderDetail />} />
+            <Route path="/partners" element={<Partners />} />
+            <Route path="/network" element={<Network />} />
+            <Route path="/chat" element={<Chat />} />
             <Route path="/borrows/profit-report" element={<BorrowProfitReport />} />
             <Route path="/shop-friends" element={<ShopFriends />} />
             <Route path="/shop-discover" element={<ShopDiscover />} />

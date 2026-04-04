@@ -1,4 +1,5 @@
-import { Box, Button, Paper, Typography, Grid, TextField, MenuItem, Divider, FormControlLabel, Checkbox, Stack } from "@mui/material";
+import { Box, Button, Paper, Typography, Grid, MenuItem, Divider, FormControlLabel, Checkbox, Stack } from "@mui/material";
+import TextField from "../../components/CustomTextField";;
 import { useForm } from "react-hook-form";
 import { useToast } from "../../hooks/useToast";
 import { useNavigate } from "react-router-dom";
@@ -9,7 +10,7 @@ import { useCities, useCountries, useStates } from "../../hooks/useGeo";
 import { DEFAULT_CITY, DEFAULT_COUNTRY, DEFAULT_STATE } from "../../constants/locationDefaults";
 import { PublicCategoryNode } from "../../api/public";
 
-export default function BusinessCreate() {
+export default function BusinessCreate({ onSuccess, onCancel }: { onSuccess?: () => void, onCancel?: () => void } = {}) {
   const { notify } = useToast();
   const navigate = useNavigate();
   const client = useQueryClient();
@@ -107,17 +108,16 @@ export default function BusinessCreate() {
       });
       await mutation.mutateAsync({ ...payload, enabledModules });
       notify("Business created", "success");
-      navigate("/superadmin/businesses");
+      if (onSuccess) onSuccess(); else navigate("/superadmin/businesses");
     } catch (err: any) {
       notify(err?.response?.data?.error?.message || "Failed", "error");
     }
   };
 
   return (
-    <Box>
-      <Typography variant="h5" gutterBottom>Create Business</Typography>
-      <Paper sx={{ p: 3, borderRadius: 3, boxShadow: "0 18px 40px rgba(15,23,42,0.08)" }}>
-        <Grid container spacing={2} component="form" onSubmit={handleSubmit(onSubmit)}>
+    <SidebarLayout title="Create Business" onCancel={onCancel} isSubmitting={createBusiness.isPending} submitLabel="Save Business">
+
+        <Grid container spacing={2} component="form" id="sidebar-form" onSubmit={handleSubmit(onSubmit)}>
           <Grid item xs={12} md={6}>
             <TextField 
               fullWidth 
@@ -254,16 +254,8 @@ export default function BusinessCreate() {
           <Grid item xs={12}>
             <FormControlLabel control={<Checkbox defaultChecked {...register("isActive")} />} label="Active" />
           </Grid>
-          <Grid item xs={12}>
-            <Divider sx={{ my: 1 }} />
-          </Grid>
-          <Grid item xs={12}>
-            <Button type="submit" variant="contained" fullWidth sx={{ py: 1.4, fontWeight: 700 }}>
-              Save Business
-            </Button>
-          </Grid>
+          
         </Grid>
-      </Paper>
-    </Box>
+    </SidebarLayout>
   );
 }

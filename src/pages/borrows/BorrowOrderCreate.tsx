@@ -1,21 +1,23 @@
-import {
-  Box, Button, Divider, Grid, IconButton,
-  MenuItem, Paper, TextField, Typography, Alert
-} from "@mui/material";
+import { Box, Button, Divider, Grid, IconButton, MenuItem, Paper, Typography, Alert } from "@mui/material";
+import TextField from "../../components/CustomTextField";;
 import React from "react";
 import { useForm, useFieldArray } from "react-hook-form";
-import { useNavigate } from "react-router-dom";
 import AddCircleOutline from "@mui/icons-material/AddCircleOutline";
 import RemoveCircleOutline from "@mui/icons-material/RemoveCircleOutline";
 import { useCreateBorrowOrder } from "../../hooks/useBorrows";
 import { useShopFriends, useFriendProducts } from "../../hooks/useShopFriends";
 import { useToast } from "../../hooks/useToast";
 import { useWarehouses } from "../../hooks/useWarehouses";
+import SidebarLayout from "../../components/SidebarLayout";
 
-export default function BorrowOrderCreate() {
+interface BorrowOrderCreateProps {
+  onSuccess: () => void;
+  onCancel: () => void;
+}
+
+export default function BorrowOrderCreate({ onSuccess, onCancel }: BorrowOrderCreateProps) {
   const createBO = useCreateBorrowOrder();
   const { notify } = useToast();
-  const navigate = useNavigate();
   const { data: warehouses } = useWarehouses({ page: 1, limit: 1000 });
   const { data: friendsData, isLoading: friendsLoading } = useShopFriends();
   const [selectedShopId, setSelectedShopId] = React.useState<string>("");
@@ -59,17 +61,21 @@ export default function BorrowOrderCreate() {
         notes: values.notes || undefined
       });
       notify("Stock loan request sent — waiting for the lender shop to accept", "success");
-      navigate("/borrows");
+      onSuccess();
     } catch (err: any) {
       notify(err?.response?.data?.error?.message || "Failed", "error");
     }
   };
 
   return (
-    <Box>
-      <Typography variant="h5" gutterBottom>Request Stock Loan</Typography>
-      <Paper sx={{ p: 3, borderRadius: 3, boxShadow: "0 18px 40px rgba(15,23,42,0.08)" }}>
-        <Grid container spacing={2} component="form" onSubmit={handleSubmit(onSubmit)}>
+    <SidebarLayout 
+      title="Request Stock Loan" 
+      onCancel={onCancel}
+      isSubmitting={createBO.isPending}
+      submitLabel="Send Loan Request"
+    >
+      <Box component="form" id="sidebar-form" onSubmit={handleSubmit(onSubmit)}>
+        <Grid container spacing={2}>
 
           <Grid item xs={12} md={6}>
             {friendsLoading ? (
@@ -211,20 +217,8 @@ export default function BorrowOrderCreate() {
             </Button>
           </Grid>
 
-          <Grid item xs={12}><Divider sx={{ my: 1 }} /></Grid>
-          <Grid item xs={12}>
-            <Button
-              type="submit"
-              variant="contained"
-              fullWidth
-              sx={{ py: 1.4, fontWeight: 700 }}
-              disabled={createBO.isPending || !lenderBusinessId}
-            >
-              Send Loan Request
-            </Button>
-          </Grid>
         </Grid>
-      </Paper>
-    </Box>
+      </Box>
+    </SidebarLayout>
   );
 }

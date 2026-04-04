@@ -1,24 +1,6 @@
 import React from "react";
-import {
-  Avatar,
-  Box,
-  Button,
-  Card,
-  Chip,
-  Container,
-  Divider,
-  FormControl,
-  Grid,
-  IconButton,
-  InputLabel,
-  MenuItem,
-  Pagination,
-  Paper,
-  Select,
-  Stack,
-  TextField,
-  Typography
-} from "@mui/material";
+import { Avatar, Box, Button, Card, Chip, Container, Divider, FormControl, Grid, IconButton, InputLabel, MenuItem, Pagination, Paper, Select, Stack, Typography } from "@mui/material";
+import TextField from "../../components/CustomTextField";;
 import { alpha, keyframes } from "@mui/material/styles";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import ViewListIcon from "@mui/icons-material/ViewList";

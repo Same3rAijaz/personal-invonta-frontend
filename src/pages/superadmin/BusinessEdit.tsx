@@ -1,4 +1,5 @@
-import { Box, Button, Paper, Typography, Grid, TextField, MenuItem, Divider, FormControlLabel, Checkbox, Stack } from "@mui/material";
+import { Box, Button, Paper, Typography, Grid, MenuItem, Divider, FormControlLabel, Checkbox, Stack } from "@mui/material";
+import TextField from "../../components/CustomTextField";;
 import { useEffect, useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useToast } from "../../hooks/useToast";
@@ -12,8 +13,9 @@ import { PublicCategoryNode } from "../../api/public";
 const AVAILABLE_MODULES = ["products", "inventory", "warehouses", "customers", "vendors", "purchasing", "sales", "reports", "udhaar"];
 const labelize = (value: string) => (value === "hr" ? "HR" : value.charAt(0).toUpperCase() + value.slice(1));
 
-export default function BusinessEdit() {
-  const { id } = useParams();
+export default function BusinessEdit({ explicitId, onSuccess, onCancel }: { explicitId?: string, onSuccess?: () => void, onCancel?: () => void } = {}) {
+  const params = useParams();
+  const id = explicitId || params.id;
   const { notify } = useToast();
   const navigate = useNavigate();
   const client = useQueryClient();
@@ -149,7 +151,7 @@ export default function BusinessEdit() {
       });
       await mutation.mutateAsync({ ...payload, enabledModules });
       notify("Business updated", "success");
-      navigate("/superadmin/businesses");
+      if (onSuccess) onSuccess(); else navigate("/superadmin/businesses");
     } catch (err: any) {
       notify(err?.response?.data?.error?.message || "Failed", "error");
     }
@@ -160,10 +162,9 @@ export default function BusinessEdit() {
   }
 
   return (
-    <Box>
-      <Typography variant="h5" gutterBottom>Edit Business</Typography>
-      <Paper sx={{ p: 3, borderRadius: 3, boxShadow: "0 18px 40px rgba(15,23,42,0.08)" }}>
-        <Grid container spacing={2} component="form" onSubmit={handleSubmit(onSubmit)}>
+    <SidebarLayout title="Edit Business" onCancel={onCancel} isSubmitting={updateBusiness.isPending} submitLabel="Update Business">
+
+        <Grid container spacing={2} component="form" id="sidebar-form" onSubmit={handleSubmit(onSubmit)}>
           <Grid item xs={12} md={6}>
             <TextField 
               fullWidth 
@@ -286,17 +287,9 @@ export default function BusinessEdit() {
           <Grid item xs={12}>
             <FormControlLabel control={<Checkbox defaultChecked {...register("isActive")} />} label="Active" />
           </Grid>
-          <Grid item xs={12}>
-            <Divider sx={{ my: 1 }} />
-          </Grid>
-          <Grid item xs={12}>
-            <Button type="submit" variant="contained" fullWidth sx={{ py: 1.4, fontWeight: 700 }}>
-              Update Business
-            </Button>
-          </Grid>
+          
         </Grid>
-      </Paper>
-    </Box>
+    </SidebarLayout>
   );
 }
 

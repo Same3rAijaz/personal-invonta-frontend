@@ -1,10 +1,12 @@
-import { Box, Button, Paper, Typography, Grid, TextField, Divider, FormControlLabel, Checkbox } from "@mui/material";
+import { Box, Button, Typography, Grid, Divider, FormControlLabel, Checkbox } from "@mui/material";
+import TextField from "../../components/CustomTextField";;
+import SidebarLayout from "../../components/SidebarLayout";
 import { useForm } from "react-hook-form";
 import { useCreateVendor } from "../../hooks/useVendors";
 import { useToast } from "../../hooks/useToast";
 import { useNavigate } from "react-router-dom";
 
-export default function VendorCreate() {
+export default function VendorCreate({ onSuccess, onCancel }: { onSuccess?: () => void, onCancel?: () => void } = {}) {
   const createVendor = useCreateVendor();
   const { notify } = useToast();
   const navigate = useNavigate();
@@ -14,17 +16,16 @@ export default function VendorCreate() {
     try {
       await createVendor.mutateAsync(values);
       notify("Vendor created", "success");
-      navigate("/vendors");
+      if (onSuccess) onSuccess(); else navigate("/vendors");
     } catch (err: any) {
       notify(err?.response?.data?.error?.message || "Failed", "error");
     }
   };
 
   return (
-    <Box>
-      <Typography variant="h5" gutterBottom>Create Vendor</Typography>
-      <Paper sx={{ p: 3, borderRadius: 3, boxShadow: "0 18px 40px rgba(15,23,42,0.08)" }}>
-        <Grid container spacing={2} component="form" onSubmit={handleSubmit(onSubmit)}>
+    <SidebarLayout title="Create Vendor" onCancel={onCancel} isSubmitting={createVendor.isPending} submitLabel="Save Vendor">
+
+        <Grid container spacing={2} component="form" id="sidebar-form" onSubmit={handleSubmit(onSubmit)}>
           <Grid item xs={12} md={4}>
             <TextField 
               fullWidth 
@@ -56,16 +57,8 @@ export default function VendorCreate() {
           <Grid item xs={12}>
             <FormControlLabel control={<Checkbox defaultChecked {...register("isActive")} />} label="Active" />
           </Grid>
-          <Grid item xs={12}>
-            <Divider sx={{ my: 1 }} />
-          </Grid>
-          <Grid item xs={12}>
-            <Button type="submit" variant="contained" fullWidth sx={{ py: 1.4, fontWeight: 700 }}>
-              Save Vendor
-            </Button>
-          </Grid>
+          
         </Grid>
-      </Paper>
-    </Box>
+    </SidebarLayout>
   );
 }

@@ -1,9 +1,7 @@
-import {
-  Box, Button, Chip, Divider, Grid, MenuItem,
-  Paper, Stack, TextField, Typography, Alert
-} from "@mui/material";
+import { Box, Button, Chip, Divider, Grid, MenuItem, Paper, Stack, Typography, Alert } from "@mui/material";
+import TextField from "../../components/CustomTextField";
 import React from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import SidebarLayout from "../../components/SidebarLayout";
 import { useCreateSalesReturn } from "../../hooks/useSalesReturns";
 import { useToast } from "../../hooks/useToast";
 import { useWarehouses } from "../../hooks/useWarehouses";
@@ -26,12 +24,15 @@ type ReturnItem = {
   lenderWarehouseId?: string;
 };
 
-export default function SalesReturnCreate() {
+interface SalesReturnCreateProps {
+  onSuccess?: () => void;
+  onCancel?: () => void;
+  defaultSoId?: string;
+}
+
+export default function SalesReturnCreate({ onSuccess, onCancel, defaultSoId = "" }: SalesReturnCreateProps) {
   const createReturn = useCreateSalesReturn();
   const { notify } = useToast();
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const defaultSoId = searchParams.get("soId") || "";
 
   const { data: warehouses } = useWarehouses({ page: 1, limit: 1000 });
   const { data: products } = useProducts({ page: 1, limit: 1000 });
@@ -93,7 +94,8 @@ export default function SalesReturnCreate() {
 
     for (const item of validItems) {
       if (item.disposition === "RETURN_TO_LENDER" && !item.lenderWarehouseId) {
-        notify(`Enter lender warehouse ID for ${productMap.get(item.productId)?.name || item.productId}`, "error");
+        const product = productMap.get(item.productId) as any;
+        notify(`Enter lender warehouse ID for ${product?.name || item.productId}`, "error");
         return;
       }
     }
@@ -106,17 +108,15 @@ export default function SalesReturnCreate() {
         items: validItems
       });
       notify("Sales return processed", "success");
-      navigate("/sales/returns");
+      if (onSuccess) onSuccess();
     } catch (err: any) {
       notify(err?.response?.data?.error?.message || "Failed", "error");
     }
   };
 
   return (
-    <Box>
-      <Typography variant="h5" gutterBottom>Create Sales Return</Typography>
-      <Paper sx={{ p: 3, borderRadius: 3, boxShadow: "0 18px 40px rgba(15,23,42,0.08)" }}>
-        <Grid container spacing={2}>
+    <SidebarLayout title="Create Sales Return" onCancel={onCancel} isSubmitting={createReturn.isPending} submitLabel="Process Return" onSubmit={handleSubmit}>
+      <Grid container spacing={2}>
 
           <Grid item xs={12} md={6}>
             <TextField
@@ -159,7 +159,7 @@ export default function SalesReturnCreate() {
               </Grid>
 
               {items.map((item, idx) => {
-                const product = productMap.get(item.productId);
+                const product = productMap.get(item.productId) as any;
                 const soItem = soData?.items?.[idx];
                 return (
                   <Grid item xs={12} key={idx}>
@@ -222,20 +222,7 @@ export default function SalesReturnCreate() {
             </>
           )}
 
-          <Grid item xs={12}><Divider sx={{ my: 1 }} /></Grid>
-          <Grid item xs={12}>
-            <Button
-              variant="contained"
-              fullWidth
-              sx={{ py: 1.4, fontWeight: 700 }}
-              onClick={handleSubmit}
-              disabled={createReturn.isPending || !soData}
-            >
-              Process Return
-            </Button>
-          </Grid>
         </Grid>
-      </Paper>
-    </Box>
+    </SidebarLayout>
   );
 }

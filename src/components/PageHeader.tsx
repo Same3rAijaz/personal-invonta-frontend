@@ -1,4 +1,6 @@
-import { Box, Button, Typography } from "@mui/material";
+import { Box, Button, Typography, Breadcrumbs, Link as MuiLink } from "@mui/material";
+import { Link, useLocation } from "react-router-dom";
+import NavigateNextIcon from "@mui/icons-material/NavigateNext";
 
 export default function PageHeader({
   title,
@@ -11,8 +13,35 @@ export default function PageHeader({
   actionLabel?: string;
   onAction?: () => void;
 }) {
+  const location = useLocation();
+  const pathnames = location.pathname.split("/").filter((x) => x);
+
   return (
-    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3, gap: 2 }}>
+    <Box sx={{ mb: 3 }}>
+      <Breadcrumbs 
+        separator={<NavigateNextIcon fontSize="small" />} 
+        aria-label="breadcrumb"
+        sx={{ mb: 1, "& .MuiBreadcrumbs-li": { fontSize: "0.85rem", fontWeight: 600 } }}
+      >
+        <MuiLink component={Link} to="/" color="inherit" underline="hover">
+          Home
+        </MuiLink>
+        {pathnames.map((value, index) => {
+          const last = index === pathnames.length - 1;
+          const to = `/${pathnames.slice(0, index + 1).join("/")}`;
+          const title = value.charAt(0).toUpperCase() + value.slice(1);
+          return last ? (
+            <Typography color="text.primary" key={to} sx={{ fontSize: "0.85rem", fontWeight: 700 }}>
+              {title}
+            </Typography>
+          ) : (
+            <MuiLink component={Link} to={to} color="inherit" underline="hover" key={to}>
+              {title}
+            </MuiLink>
+          );
+        })}
+      </Breadcrumbs>
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }}>
       <Box>
         <Typography variant="h4" sx={{ fontWeight: 700 }}>{title}</Typography>
         {subtitle ? (
@@ -26,6 +55,7 @@ export default function PageHeader({
           {actionLabel}
         </Button>
       ) : null}
+      </Box>
     </Box>
   );
 }

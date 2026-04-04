@@ -1,5 +1,6 @@
 import React from "react";
-import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, InputLabel, MenuItem, Select, TextField } from "@mui/material";
+import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, InputLabel, MenuItem, Select } from "@mui/material";
+import TextField from "../../components/CustomTextField";;
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import DataTable from "../../components/DataTable";
@@ -29,6 +30,7 @@ export default function Businesses() {
   const client = useQueryClient();
   const { notify } = useToast();
   const { confirm, confirmDialog } = useConfirmDialog();
+  const [drawerState, setDrawerState] = React.useState<{ open: boolean; type: "new" | "edit" | null; id: string | null }>({ open: false, type: null, id: null });
   const [blockDialog, setBlockDialog] = React.useState<{ open: boolean; id: string | null }>({ open: false, id: null });
   const [blockReason, setBlockReason] = React.useState("");
   const [blockReasonOther, setBlockReasonOther] = React.useState("");
@@ -133,7 +135,7 @@ export default function Businesses() {
 
   return (
     <Box>
-      <PageHeader title="Businesses" actionLabel="Create Business" onAction={() => navigate("/superadmin/businesses/new")} />
+      <PageHeader title="Businesses" actionLabel="Create Business" onAction={() => setDrawerState({ open: true, type: "new", id: null })} />
       <DataTable
         columns={[
           { key: "name", label: "Name" },
@@ -164,7 +166,7 @@ export default function Businesses() {
             render: (row: any) => (
               <RowActionMenu
                 actions={[
-                  { label: "Edit", onClick: () => navigate(`/superadmin/businesses/${row._id}/edit`) },
+                  { label: "Edit", onClick: () => setDrawerState({ open: true, type: "edit", id: row._id }) },
                   { label: "Block", onClick: () => handleOpenBlock(row._id) },
                   { label: "Unblock", onClick: () => handleUnblock(row._id) },
                   { label: "Delete", danger: true, onClick: () => handleDelete(row._id) }
@@ -285,6 +287,11 @@ export default function Businesses() {
           <Button variant="contained" onClick={handleConfirmBlock}>Block</Button>
         </DialogActions>
       </Dialog>
+      
+      <Drawer anchor="right" open={drawerState.open} onClose={() => setDrawerState({ open: false, type: null, id: null })} sx={{ zIndex: 1300 }} PaperProps={{ sx: { width: { xs: "100%", sm: 600 }, backdropFilter: "blur(16px)" } }}>
+        {drawerState.type === "new" && <BusinessCreate onSuccess={() => setDrawerState({ open: false, type: null, id: null })} onCancel={() => setDrawerState({ open: false, type: null, id: null })} />}
+        {drawerState.type === "edit" && drawerState.id && <BusinessEdit explicitId={drawerState.id} onSuccess={() => setDrawerState({ open: false, type: null, id: null })} onCancel={() => setDrawerState({ open: false, type: null, id: null })} />}
+      </Drawer>
       {confirmDialog}
     </Box>
   );

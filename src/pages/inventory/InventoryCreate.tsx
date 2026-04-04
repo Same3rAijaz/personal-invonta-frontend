@@ -1,4 +1,6 @@
-import { Box, Button, Paper, Typography, Grid, MenuItem, Divider, TextField, Stack } from "@mui/material";
+import { Box, Button, Typography, Grid, MenuItem, Divider, Stack } from "@mui/material";
+import SidebarLayout from "../../components/SidebarLayout";
+import TextField from "../../components/CustomTextField";
 import React from "react";
 import { useForm } from "react-hook-form";
 import { api } from "../../api/client";
@@ -9,7 +11,7 @@ import { useWarehouses } from "../../hooks/useWarehouses";
 import { useQueryClient } from "@tanstack/react-query";
 import RelatedEntityDrawer from "../../components/RelatedEntityDrawer";
 
-export default function InventoryCreate() {
+export default function InventoryCreate({ onSuccess, onCancel }: { onSuccess?: () => void, onCancel?: () => void } = {}) {
   const { notify } = useToast();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -79,17 +81,15 @@ export default function InventoryCreate() {
         client.invalidateQueries({ queryKey: ["products"] })
       ]);
       notify("Inventory updated", "success");
-      navigate("/inventory");
+      if (onSuccess) onSuccess(); else navigate("/inventory");
     } catch (err: any) {
       notify(err?.response?.data?.error?.message || "Failed", "error");
     }
   };
 
   return (
-    <Box>
-      <Typography variant="h5" gutterBottom>Create Inventory</Typography>
-      <Paper sx={{ p: 3, borderRadius: 3, boxShadow: "0 18px 40px rgba(15,23,42,0.08)" }}>
-        <Grid container spacing={2} component="form" onSubmit={handleSubmit(onSubmit)}>
+    <SidebarLayout title="Create Inventory" onCancel={onCancel} isSubmitting={false} submitLabel="Save Inventory">
+        <Grid container spacing={2} component="form" id="sidebar-form" onSubmit={handleSubmit(onSubmit)}>
           <Grid item xs={12} md={3}>
             <TextField
               select
@@ -190,16 +190,7 @@ export default function InventoryCreate() {
               </Grid>
             </>
           ) : null}
-          <Grid item xs={12}>
-            <Divider sx={{ my: 1 }} />
-          </Grid>
-          <Grid item xs={12}>
-            <Button type="submit" variant="contained" fullWidth sx={{ py: 1.4, fontWeight: 700 }}>
-              Create Inventory
-            </Button>
-          </Grid>
         </Grid>
-      </Paper>
       <RelatedEntityDrawer
         open={warehouseDrawerOpen}
         type="warehouse"
@@ -212,6 +203,6 @@ export default function InventoryCreate() {
           }
         }}
       />
-    </Box>
+    </SidebarLayout>
   );
 }

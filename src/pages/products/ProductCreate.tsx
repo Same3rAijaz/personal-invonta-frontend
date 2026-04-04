@@ -1,4 +1,6 @@
-import { Box, Button, Paper, Typography, Grid, TextField, Divider, FormControlLabel, Checkbox, MenuItem, Stack, Avatar, IconButton } from "@mui/material";
+import { Box, Button, Typography, Grid, Divider, FormControlLabel, Checkbox, MenuItem, Stack, Avatar, IconButton } from "@mui/material";
+import TextField from "../../components/CustomTextField";
+import SidebarLayout from "../../components/SidebarLayout";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useCreateProduct } from "../../hooks/useProducts";
@@ -15,7 +17,7 @@ function getSuggestedReorderLevel(quantity: number) {
   return Math.max(1, Math.ceil(quantity * 0.2));
 }
 
-export default function ProductCreate() {
+export default function ProductCreate({ onSuccess, onCancel }: { onSuccess?: () => void, onCancel?: () => void } = {}) {
   const createProduct = useCreateProduct();
   const { notify } = useToast();
   const navigate = useNavigate();
@@ -100,7 +102,7 @@ export default function ProductCreate() {
         : [];
       const selectedIndex = selectedKey ? files.findIndex((item) => item.id === selectedKey) : -1;
       const thumbnailUrl = selectedIndex >= 0 && uploadedUrls[selectedIndex] ? uploadedUrls[selectedIndex] : uploadedUrls[0];
-      await createProduct.mutateAsync({
+      const payload = {
         ...values,
         categoryId: values.categoryId || undefined,
         subcategory: undefined,
@@ -112,19 +114,18 @@ export default function ProductCreate() {
         reorderLevel: Number(values.reorderLevel || 0),
         images: uploadedUrls,
         thumbnailUrl
-      });
+      };
+      await createProduct.mutateAsync(payload);
       notify("Product created", "success");
-      navigate("/products");
+      if (onSuccess) onSuccess(); else navigate("/products");
     } catch (err: any) {
       notify(err?.response?.data?.error?.message || "Failed", "error");
     }
   };
 
   return (
-    <Box>
-      <Typography variant="h5" gutterBottom>Create Product</Typography>
-      <Paper sx={{ p: 3, borderRadius: 3, boxShadow: "0 18px 40px rgba(15,23,42,0.08)" }}>
-        <Grid container spacing={2} component="form" onSubmit={handleSubmit(onSubmit)}>
+    <SidebarLayout title="Create Product" onCancel={onCancel} isSubmitting={createProduct.isPending} submitLabel="Save Product">
+      <Grid container spacing={2} component="form" id="sidebar-form" onSubmit={handleSubmit(onSubmit)}>
           <Grid item xs={12} md={3}>
             <TextField
               fullWidth
@@ -418,16 +419,7 @@ export default function ProductCreate() {
               />
             </Stack>
           </Grid>
-          <Grid item xs={12}>
-            <Divider sx={{ my: 1 }} />
-          </Grid>
-          <Grid item xs={12}>
-            <Button type="submit" variant="contained" fullWidth sx={{ py: 1.4, fontWeight: 700 }}>
-              Save Product
-            </Button>
-          </Grid>
         </Grid>
-      </Paper>
       <RelatedEntityDrawer
         open={warehouseDrawerOpen}
         type="warehouse"
@@ -436,6 +428,6 @@ export default function ProductCreate() {
           setValue("warehouseId", String(entity?._id || ""), { shouldDirty: true, shouldValidate: true });
         }}
       />
-    </Box>
+    </SidebarLayout>
   );
 }

@@ -1,4 +1,5 @@
-import { Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, TextField } from "@mui/material";
+import { Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Drawer } from "@mui/material";
+import TextField from "../../components/CustomTextField";
 import React from "react";
 import { api } from "../../api/client";
 import { useConfirmSalesOrder, useDeleteSalesOrder, useSalesOrders, useShipSalesOrder } from "../../hooks/useSales";
@@ -14,6 +15,9 @@ import RowActionMenu from "../../components/RowActionMenu";
 import { useWarehouses } from "../../hooks/useWarehouses";
 import { useProducts } from "../../hooks/useProducts";
 import OrderItemsTable from "../../components/OrderItemsTable";
+import SalesOrderCreate from "./SalesOrderCreate";
+import SalesOrderEdit from "./SalesOrderEdit";
+import SalesReturnCreate from "./SalesReturnCreate";
 
 export default function SalesOrders() {
   const [page, setPage] = React.useState(0);
@@ -29,11 +33,12 @@ export default function SalesOrders() {
   const { data: warehouses } = useWarehouses({ page: 1, limit: 1000 });
   const { data: products } = useProducts({ page: 1, limit: 1000 });
   const navigate = useNavigate();
-  const customerMap = new Map((customers?.items || []).map((c: any) => [c._id, c.name]));
-  const productMap = new Map((products?.items || []).map((p: any) => [String(p._id), p.name]));
+  const customerMap = new Map<string, string>((customers?.items || []).map((c: any) => [String(c._id), String(c.name)]));
+  const productMap = new Map<string, string>((products?.items || []).map((p: any) => [String(p._id), String(p.name)]));
   const baseUrl = api.defaults.baseURL || "/api";
   const { notify } = useToast();
   const { confirm, confirmDialog } = useConfirmDialog();
+  const [drawerState, setDrawerState] = React.useState<{ open: boolean; type: "new" | "edit" | "return" | null; id: string | null }>({ open: false, type: null, id: null });
   const { business } = useAuth();
   const [shipDialog, setShipDialog] = React.useState<{ open: boolean; id: string | null }>({ open: false, id: null });
   const [shipWarehouseId, setShipWarehouseId] = React.useState("");
@@ -133,7 +138,7 @@ export default function SalesOrders() {
 
   return (
     <Box>
-      <PageHeader title="Sales Orders" actionLabel="Create SO" onAction={() => navigate("/sales/new")} />
+      <PageHeader title="Sales Orders" actionLabel="Create SO" onAction={() => setDrawerState({ open: true, type: "new", id: null })} />
       <DataTable
         columns={[
           { key: "number", label: "Number" },
@@ -158,7 +163,7 @@ export default function SalesOrders() {
               return (
                 <RowActionMenu
                   actions={[
-                    { label: "Edit", disabled: !canEdit, onClick: () => navigate(`/sales/${row._id}/edit`) },
+                    { label: "Edit", disabled: !canEdit, onClick: () => setDrawerState({ open: true, type: "edit", id: row._id }) },
                     { label: "Confirm", disabled: !canConfirm, onClick: () => handleConfirmSalesOrder(row._id) },
                     {
                       label: "Complete",
@@ -181,7 +186,7 @@ export default function SalesOrders() {
                     {
                       label: "Create Return",
                       disabled: row.status !== "SHIPPED" && row.status !== "INVOICED",
-                      onClick: () => navigate(`/sales/returns/new?soId=${row._id}`)
+                      onClick: () => setDrawerState({ open: true, type: "return", id: row._id })
                     },
                     { label: "Delete", danger: true, disabled: !canEdit, onClick: () => handleDelete(row._id) }
                   ]}
@@ -197,7 +202,7 @@ export default function SalesOrders() {
             size="small"
             placeholder="Search sales orders"
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
+            onChange={(event: any) => setSearch(event.target.value)}
             sx={{ minWidth: 240 }}
           />
         }
@@ -227,6 +232,7 @@ export default function SalesOrders() {
               </MenuItem>
             ))}
           </TextField>
+
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setShipDialog({ open: false, id: null })}>Cancel</Button>
@@ -235,6 +241,12 @@ export default function SalesOrders() {
           </Button>
         </DialogActions>
       </Dialog>
+      
+      <Drawer anchor="right" open={drawerState.open} onClose={() => setDrawerState({ open: false, type: null, id: null })} sx={{ zIndex: 1300 }} PaperProps={{ sx: { width: { xs: "100%", sm: 700, md: 800 }, backdropFilter: "blur(16px)" } }}>
+        {drawerState.type === "new" && <SalesOrderCreate onSuccess={() => setDrawerState({ open: false, type: null, id: null })} onCancel={() => setDrawerState({ open: false, type: null, id: null })} />}
+        {drawerState.type === "edit" && drawerState.id && <SalesOrderEdit explicitId={drawerState.id} onSuccess={() => setDrawerState({ open: false, type: null, id: null })} onCancel={() => setDrawerState({ open: false, type: null, id: null })} />}
+        {drawerState.type === "return" && drawerState.id && <SalesReturnCreate defaultSoId={drawerState.id} onSuccess={() => setDrawerState({ open: false, type: null, id: null })} onCancel={() => setDrawerState({ open: false, type: null, id: null })} />}
+      </Drawer>
       {confirmDialog}
     </Box>
   );
