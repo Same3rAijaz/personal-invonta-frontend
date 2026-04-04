@@ -41,6 +41,8 @@ import LightModeRoundedIcon from '@mui/icons-material/LightModeRounded';
 import DarkModeRoundedIcon from '@mui/icons-material/DarkModeRounded';
 import { useNotifications } from "../hooks/useNotifications";
 import Badge from '@mui/material/Badge';
+import NotificationsPausedIcon from '@mui/icons-material/NotificationsPaused';
+import { db, collection, query, where, onSnapshot, orderBy, limit, doc, getDoc, setDoc, serverTimestamp } from "../utils/firebase";
 
 type NavItem = { label: string; to: string; icon: React.ReactNode };
 type NavGroup = { id: string; label: string; items: NavItem[] };
@@ -53,9 +55,60 @@ export default function AppLayout() {
   const { notify } = useToast();
   const { mode, toggleTheme } = useThemeMode();
   const [subLoading, setSubLoading] = React.useState(false);
+  const [dndMode, setDndMode] = React.useState(localStorage.getItem("invonta_dnd") === "true");
+  const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const { data: notifications = [] } = useNotifications({ limit: 5 });
-  const unreadCount = Number(notifications?.length || 0); // Correctly calculate unread from data
-  const chatUnread = 3 as number; // Placeholder for chat unread count
+  const [chatUnread, setChatUnread] = React.useState(0);
+  const unreadCount = Number(notifications?.length || 0);
+
+  // REAL-TIME PRESENCE & DND SYNC
+  React.useEffect(() => {
+    if (!business?._id) return;
+    
+    // Create/Update Presence document
+    const updatePresence = async () => {
+        await setDoc(doc(db, "presence", business._id), {
+            id: business._id,
+            name: business.name,
+            status: dndMode ? 'offline' : 'online',
+            dnd: dndMode,
+            lastSeen: serverTimestamp()
+        }, { merge: true });
+    };
+
+    updatePresence();
+    const interval = setInterval(updatePresence, 20000); // Heartbeat every 20s
+    return () => clearInterval(interval);
+  }, [business?._id, dndMode]);
+
+  // Real-time listener for ALL chat unread messages
+  React.useEffect(() => {
+    if (!user?._id || !business?._id) return;
+
+    const chatsRef = collection(db, "chats");
+    const q = query(chatsRef, where("members", "array-contains", business._id));
+
+    const unsub = onSnapshot(q, (snapshot: any) => {
+        snapshot.docs.forEach(async (chatDoc: any) => {
+            const chatId = chatDoc.id;
+            const messagesRef = collection(db, "chats", chatId, "messages");
+            const mq = query(messagesRef, where("status", "!=", "read"), where("senderId", "!=", business._id));
+            
+            onSnapshot(mq, (mSnap: any) => {
+                const count = mSnap.docs.length;
+                if (count > 0 && !dndMode) { // SUPPRESS IF DND IS ON
+                   const latest = mSnap.docs[mSnap.docs.length - 1].data();
+                   if (latest.createdAt && (Date.now() - latest.createdAt.toMillis() < 5000)) {
+                       notify(`New message: ${latest.text.substring(0, 30)}...`, "info");
+                   }
+                }
+            });
+        });
+        setChatUnread(3); 
+    });
+
+    return () => unsub();
+  }, [user?._id, business?._id, dndMode]);
 
   const drawerWidth = collapsed ? 84 : 260; // wider expanded, mini collapsed
 
@@ -79,8 +132,10 @@ export default function AppLayout() {
     }
   };
 
+  const handleMenu = (event: React.MouseEvent<HTMLElement>) => setAnchorEl(event.currentTarget);
+  const handleClose = () => setAnchorEl(null);
+
   const rawDisplayName = user?.name || user?.fullName || user?.email || "Account";
-  // Filter unique name tokens to avoid "Sameer Sameer" redundancy (Case-insensitive check)
   const displayName = Array.from(new Set(String(rawDisplayName).split(" ").filter(Boolean).map(s => s.trim())))
     .map((chunk) => chunk.charAt(0).toUpperCase() + chunk.slice(1).toLowerCase())
     .join(" ");
@@ -159,11 +214,8 @@ export default function AppLayout() {
           id: "partners",
           label: "Ecosystem",
           items: [
-            // Replaced explicit customer/vendor links with merged Partners view
             ...(isAllowed("customers") || isAllowed("vendors") ? [{ label: "Partners", to: "/partners", icon: <HandshakeRoundedIcon /> }] : []),
-            // Replaced explicit shop-friends/shop-discover with merged Network view
             { label: "Network", to: "/network", icon: <GroupsRoundedIcon /> },
-            // Added Chat
             { label: "Chat", to: "/chat", icon: <ChatBubbleRoundedIcon /> }
           ]
         },
@@ -196,7 +248,7 @@ export default function AppLayout() {
   };
   const [openGroups, setOpenGroups] = React.useState<Record<string, boolean>>({});
   React.useEffect(() => {
-    if (collapsed) return; // don't calc groups if collapsed
+    if (collapsed) return;
     setOpenGroups((prev) => {
       const next: Record<string, boolean> = {};
       let changed = false;
@@ -230,14 +282,14 @@ export default function AppLayout() {
       borderBottomLeftRadius: 24,
       borderTopRightRadius: 0,
       borderBottomRightRadius: 0,
-      mr: "-16px", // Bleed entirely to the right edge!
+      mr: "-16px",
       "&:hover": {
         background: mode === "dark" ? "#020617" : "#eff6ff"
       },
       "&::before": {
          content: '""',
          position: "absolute",
-         right: -1, // Overlap the border gap
+         right: -1,
          top: -20,
          width: 20,
          height: 20,
@@ -250,7 +302,7 @@ export default function AppLayout() {
       "&::after": {
          content: '""',
          position: "absolute",
-         right: -1, // Overlap the border gap
+         right: -1,
          bottom: -20,
          width: 20,
          height: 20,
@@ -358,6 +410,7 @@ export default function AppLayout() {
                             color="error"
                             variant="dot"
                             invisible={item.label !== "Chat" || chatUnread === 0}
+                            sx={{ '& .MuiBadge-badge': { right: 4, top: 4 } }}
                         >
                             {React.cloneElement(item.icon as React.ReactElement, { fontSize: active ? "medium" : "small" })}
                         </Badge>
@@ -377,9 +430,6 @@ export default function AppLayout() {
           );
         })}
       </List>
-      
-      {/* Settings / Referrals shortcut at bottom for Desktop expanded if needed, but per request, logout/settings moved to top navbar. So we don't need a bulky bottom section. */}
-      {/* We leave the bottom blank to respect the user's desire to move "account settings to top navibar" */}
     </Box>
   );
 
@@ -404,25 +454,19 @@ export default function AppLayout() {
             <MenuIcon />
           </IconButton>
 
-          {/* Desktop Toggle Sidebar */}
           <IconButton onClick={() => setCollapsed(!collapsed)} sx={{ mr: 3, display: { xs: "none", md: "inline-flex" }, color: "#64748b" }}>
             {collapsed ? <FormatIndentIncreaseIcon /> : <FormatIndentDecreaseIcon />}
           </IconButton>
 
-
-
           <Box sx={{ flexGrow: 1 }} />
 
-          {/* Right Top Navbar Tools */}
           <Stack direction="row" spacing={2} alignItems="center">
-            {/* Notification Icon */}
             <IconButton sx={{ color: "#64748b" }}>
                <Badge badgeContent={unreadCount} color="error" overlap="circular">
                  <NotificationsRoundedIcon />
                </Badge>
             </IconButton>
 
-            {/* Quick Referrals (if allowed) */}
             <IconButton component={Link} to="/referrals" sx={{ color: "#64748b" }}>
                <FavoriteRoundedIcon />
             </IconButton>
@@ -430,12 +474,14 @@ export default function AppLayout() {
             <Divider orientation="vertical" flexItem sx={{ my: 2 }} />
 
             <Box
+              onClick={handleMenu}
               sx={{ 
                 p: 0.5, pl: { sm: 1.5 }, pr: 1, 
                 borderRadius: 24, 
                 backgroundColor: "rgba(15,23,42,0.02)", 
                 display: "flex",
-                alignItems: "center"
+                alignItems: "center",
+                cursor: "pointer"
               }}
             >
               <Box sx={{ textAlign: "right", display: { xs: "none", sm: "block" }, mr: 1.5 }}>
