@@ -78,24 +78,39 @@ export default function SalesOrderEdit({ explicitId, onSuccess, onCancel }: { ex
     <SidebarLayout title="Edit Sales Order" onCancel={onCancel} isSubmitting={updateSO.isPending} submitLabel="Update Sales Order">
       <Grid container spacing={2} component="form" id="sidebar-form" onSubmit={handleSubmit(onSubmit)}>
           <Grid item xs={12} md={6}>
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "flex-start" }}>
-              <TextField 
-                select 
-                fullWidth 
-                label="Customer *" 
-                {...register("customerId", { required: "Customer is required" })}
-                value={watch("customerId") || ""}
-                error={!!errors.customerId}
-                helperText={errors.customerId?.message as string}
+            <TextField 
+              select 
+              fullWidth 
+              label="Customer *" 
+              {...register("customerId", { required: "Customer is required" })}
+              value={watch("customerId") || ""}
+              error={!!errors.customerId}
+              helperText={errors.customerId?.message as string}
+            >
+              <MenuItem 
+                value="CREATE_NEW" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDrawerOpen(true);
+                }}
+                sx={{ 
+                  fontWeight: 700, 
+                  color: "primary.main",
+                  borderBottom: "1px solid", 
+                  borderColor: "divider",
+                  py: 1.5,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1
+                }}
               >
-                {(customers?.items || []).map((c: any) => (
-                  <MenuItem key={c._id} value={c._id}>{c.name}</MenuItem>
-                ))}
-              </TextField>
-              <Button variant="outlined" onClick={() => setDrawerOpen(true)} sx={{ minWidth: 110 }}>
-                Create
-              </Button>
-            </Stack>
+                <AddCircleOutline fontSize="small" />
+                Create New Customer
+              </MenuItem>
+              {(customers?.items || []).map((c: any) => (
+                <MenuItem key={c._id} value={c._id}>{c.name}</MenuItem>
+              ))}
+            </TextField>
           </Grid>
           <Grid item xs={12} md={6}>
             <TextField fullWidth label="Status" value={order.status} disabled />
@@ -163,7 +178,12 @@ export default function SalesOrderEdit({ explicitId, onSuccess, onCancel }: { ex
       <RelatedEntityDrawer
         open={drawerOpen}
         type="customer"
-        onClose={() => setDrawerOpen(false)}
+        onClose={() => {
+          setDrawerOpen(false);
+          if (watch("customerId") === "CREATE_NEW") {
+            setValue("customerId", order.customerId || "", { shouldValidate: true });
+          }
+        }}
         onCreated={(entity) => {
           setValue("customerId", String(entity?._id || ""), { shouldDirty: true, shouldValidate: true });
         }}

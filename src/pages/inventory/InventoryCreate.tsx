@@ -1,4 +1,5 @@
 import { Box, Button, Typography, Grid, MenuItem, Divider, Stack } from "@mui/material";
+import AddCircleOutline from "@mui/icons-material/AddCircleOutline";
 import SidebarLayout from "../../components/SidebarLayout";
 import TextField from "../../components/CustomTextField";
 import React from "react";
@@ -125,26 +126,41 @@ export default function InventoryCreate({ onSuccess, onCancel }: { onSuccess?: (
             </TextField>
           </Grid>
           <Grid item xs={12} md={3}>
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "flex-start" }}>
-              <TextField
-                select
-                fullWidth
-                label="Warehouse *"
-                {...register("warehouseId", { required: "Warehouse is required" })}
-                value={watch("warehouseId") || ""}
-                error={!!errors.warehouseId}
-                helperText={errors.warehouseId?.message as string}
+            <TextField
+              select
+              fullWidth
+              label="Warehouse *"
+              {...register("warehouseId", { required: "Warehouse is required" })}
+              value={watch("warehouseId") || ""}
+              error={!!errors.warehouseId}
+              helperText={errors.warehouseId?.message as string}
+            >
+              <MenuItem 
+                value="CREATE_NEW" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setWarehouseDrawerOpen(true);
+                }}
+                sx={{ 
+                  fontWeight: 700, 
+                  color: "primary.main",
+                  borderBottom: "1px solid", 
+                  borderColor: "divider",
+                  py: 1.5,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1
+                }}
               >
-                {(warehouses?.items || []).map((item: any) => (
-                  <MenuItem key={item._id} value={item._id}>
-                    {item.name}
-                  </MenuItem>
-                ))}
-              </TextField>
-              <Button variant="outlined" onClick={() => setWarehouseDrawerOpen(true)} sx={{ minWidth: 110 }}>
-                Create
-              </Button>
-            </Stack>
+                <AddCircleOutline fontSize="small" />
+                Create New Warehouse
+              </MenuItem>
+              {(warehouses?.items || []).map((item: any) => (
+                <MenuItem key={item._id} value={item._id}>
+                  {item.name}
+                </MenuItem>
+              ))}
+            </TextField>
           </Grid>
           <Grid item xs={12} md={3}>
             <TextField
@@ -167,26 +183,41 @@ export default function InventoryCreate({ onSuccess, onCancel }: { onSuccess?: (
           {action === "transfer" ? (
             <>
               <Grid item xs={12} md={12}>
-                <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "flex-start" }}>
-                  <TextField 
-                    select
-                    fullWidth 
-                    label="To Warehouse *" 
-                    {...register("toWarehouseId", { required: action === "transfer" ? "Destination warehouse is required" : false })} 
-                    value={watch("toWarehouseId") || ""}
-                    error={action === "transfer" && !!errors.toWarehouseId}
-                    helperText={action === "transfer" ? errors.toWarehouseId?.message as string : undefined}
+                <TextField 
+                  select
+                  fullWidth 
+                  label="To Warehouse *" 
+                  {...register("toWarehouseId", { required: action === "transfer" ? "Destination warehouse is required" : false })} 
+                  value={watch("toWarehouseId") || ""}
+                  error={action === "transfer" && !!errors.toWarehouseId}
+                  helperText={action === "transfer" ? errors.toWarehouseId?.message as string : undefined}
+                >
+                  <MenuItem 
+                    value="CREATE_NEW" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setWarehouseDrawerOpen(true);
+                    }}
+                    sx={{ 
+                      fontWeight: 700, 
+                      color: "primary.main",
+                      borderBottom: "1px solid", 
+                      borderColor: "divider",
+                      py: 1.5,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1
+                    }}
                   >
-                    {(warehouses?.items || []).map((item: any) => (
-                      <MenuItem key={item._id} value={item._id}>
-                        {item.name}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                  <Button variant="outlined" onClick={() => setWarehouseDrawerOpen(true)} sx={{ minWidth: 110 }}>
-                    Create
-                  </Button>
-                </Stack>
+                    <AddCircleOutline fontSize="small" />
+                    Create New Warehouse
+                  </MenuItem>
+                  {(warehouses?.items || []).map((item: any) => (
+                    <MenuItem key={item._id} value={item._id}>
+                      {item.name}
+                    </MenuItem>
+                  ))}
+                </TextField>
               </Grid>
             </>
           ) : null}
@@ -194,11 +225,15 @@ export default function InventoryCreate({ onSuccess, onCancel }: { onSuccess?: (
       <RelatedEntityDrawer
         open={warehouseDrawerOpen}
         type="warehouse"
-        onClose={() => setWarehouseDrawerOpen(false)}
+        onClose={() => {
+          setWarehouseDrawerOpen(false);
+          if (watch("warehouseId") === "CREATE_NEW") setValue("warehouseId", "", { shouldValidate: true });
+          if (watch("toWarehouseId") === "CREATE_NEW") setValue("toWarehouseId", "", { shouldValidate: true });
+        }}
         onCreated={(entity) => {
           const nextId = String(entity?._id || "");
           setValue("warehouseId", nextId, { shouldDirty: true, shouldValidate: true });
-          if (action === "transfer" && !watch("toWarehouseId")) {
+          if (action === "transfer") {
             setValue("toWarehouseId", nextId, { shouldDirty: true, shouldValidate: true });
           }
         }}

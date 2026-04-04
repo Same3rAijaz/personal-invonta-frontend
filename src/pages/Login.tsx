@@ -9,6 +9,8 @@ import { useToast } from "../hooks/useToast";
 import { Link, useNavigate } from "react-router-dom";
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
+import { useThemeMode } from "../contexts/ThemeContext";
+import ThemeToggle from "../components/ThemeToggle";
 
 const schema = z.object({
   email: z.string().email(),
@@ -21,6 +23,8 @@ export default function Login() {
   const { login } = useAuth();
   const { notify } = useToast();
   const navigate = useNavigate();
+  const { mode } = useThemeMode();
+  const isDark = mode === "dark";
   const [showPassword, setShowPassword] = useState(false);
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema)
@@ -37,22 +41,39 @@ export default function Login() {
   };
 
   return (
-    <Box sx={{ minHeight: "100vh", display: "flex", background: "radial-gradient(circle at top left, rgba(14,165,233,0.18) 0%, #0b1220 40%, #0f172a 100%)" }}>
+    <Box sx={{ 
+      minHeight: "100vh", 
+      position: "relative",
+      background: isDark 
+        ? "radial-gradient(circle at top left, rgba(14,165,233,0.15) 0%, #020617 40%, #0f172a 100%)" 
+        : "radial-gradient(circle at top left, rgba(14,165,233,0.08) 0%, #f1f5f9 40%, #e2e8f0 100%)",
+      transition: "background 0.3s ease" 
+    }}>
+      <Box sx={{ position: "absolute", top: 24, right: 24, zIndex: 10 }}>
+        <ThemeToggle />
+      </Box>
       <Grid container sx={{ minHeight: "100vh" }}>
-        <Grid item xs={12} md={6} sx={{ display: "flex", alignItems: "center", justifyContent: "center", px: { xs: 3, md: 8 }, py: { xs: 6, md: 0 } }}>
+        <Grid item xs={12} md={6} sx={{ 
+          display: "flex", 
+          alignItems: "center", 
+          justifyContent: "center", 
+          px: { xs: 3, md: 8 }, 
+          py: { xs: 6, md: 0 },
+          background: isDark ? "rgba(15, 23, 42, 0.3)" : "rgba(255, 255, 255, 0.05)"
+        }}>
           <Box sx={{ maxWidth: 460, textAlign: { xs: "center", md: "left" } }}>
             <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2, justifyContent: { xs: "center", md: "flex-start" } }}>
               <img src="/Invonta.png" alt="Invonta" style={{ width: 52, height: 52 }} />
-              <Typography variant="h3" sx={{ color: "#fff", fontWeight: 800 }}>
+              <Typography variant="h3" sx={{ color: isDark ? "#fff" : "#0f172a", fontWeight: 800 }}>
                 Invonta
               </Typography>
             </Box>
-            <Typography variant="h6" sx={{ color: "#e2e8f0", mb: 3 }}>
+            <Typography variant="h6" sx={{ color: isDark ? "#e2e8f0" : "#475569", mb: 3 }}>
               Inventory, attendance, and sales in one modern workspace.
             </Typography>
-            <Box sx={{ display: "grid", gap: 1.5, color: "rgba(226,232,240,0.9)", animation: "fadeInUp 700ms ease" }}>
+            <Box sx={{ display: "grid", gap: 1.5, color: isDark ? "rgba(226,232,240,0.9)" : "rgba(15,23,42,0.8)", animation: "fadeInUp 700ms ease" }}>
               <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>Work smarter, not harder</Typography>
-              <Typography variant="body2" sx={{ color: "rgba(226,232,240,0.75)" }}>
+              <Typography variant="body2" sx={{ color: isDark ? "rgba(226,232,240,0.75)" : "#64748b" }}>
                 Track inventory, manage teams, and close sales with a single, unified dashboard.
               </Typography>
               <Box sx={{ display: "grid", gap: 1, mt: 1, textAlign: { xs: "center", md: "left" } }}>
@@ -68,16 +89,16 @@ export default function Login() {
           xs={12}
           md={6}
           sx={{
-            background: "linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%)",
+            background: isDark ? "#020617" : "linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%)",
             display: "flex",
             alignItems: "center",
             px: { xs: 3, md: 8 },
             py: { xs: 6, md: 0 }
           }}
         >
-          <Paper sx={{ p: { xs: 3, md: 5 }, borderRadius: 2, boxShadow: "0 18px 40px rgba(15,23,42,0.12)", width: "100%", maxWidth: 520, mx: "auto", backgroundColor: "#ffffff" }}>
-            <Typography variant="h4" gutterBottom>Sign in</Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          <Paper sx={{ p: { xs: 3, md: 5 }, borderRadius: 2, width: "100%", maxWidth: 520, mx: "auto" }}>
+            <Typography variant="h4" gutterBottom sx={{ color: "text.primary" }}>Sign in</Typography>
+            <Typography variant="body2" sx={{ color: "text.secondary", mb: 2 }}>
               Welcome back. Enter your credentials to continue.
             </Typography>
             <Box component="form" onSubmit={handleSubmit(onSubmit)}>
@@ -109,36 +130,36 @@ export default function Login() {
                   )
                 }}
               />
-              <Button type="submit" variant="contained" fullWidth disabled={isSubmitting} sx={{ mt: 2, borderRadius: 1, py: 1.3 }}>
+              <Button type="submit" variant="contained" fullWidth disabled={isSubmitting} sx={{ mt: 2, borderRadius: 1, py: 1.3, fontWeight: 700 }}>
                 Sign in
               </Button>
             </Box>
             <Box sx={{ mt: 3 }}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#0f172a", mb: 1 }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "text.primary", mb: 1 }}>
                 Quick actions
               </Typography>
-              <Typography sx={{ color: "#475569" }}>
+              <Typography sx={{ color: "text.secondary" }}>
                 Need an account?{" "}
-                <Link to="/signup" style={{ color: "#0ea5e9", textDecoration: "none" }}>
+                <Link to="/signup" style={{ color: "#0ea5e9", textDecoration: "none", fontWeight: 600 }}>
                   Sign up
                 </Link>
               </Typography>
-              <Typography sx={{ color: "#475569", mt: 1 }}>
+              <Typography sx={{ color: "text.secondary", mt: 1 }}>
                 Trouble signing in?{" "}
-                <Link to="/forgot-password" style={{ color: "#0ea5e9", textDecoration: "none" }}>
+                <Link to="/forgot-password" style={{ color: "#0ea5e9", textDecoration: "none", fontWeight: 600 }}>
                   Reset password
                 </Link>
               </Typography>
-              <Typography sx={{ color: "#475569", mt: 1 }}>
+              <Typography sx={{ color: "text.secondary", mt: 1 }}>
                 Looking for nearby products?{" "}
-                <Link to="/marketplace" style={{ color: "#0ea5e9", textDecoration: "none" }}>
+                <Link to="/marketplace" style={{ color: "#0ea5e9", textDecoration: "none", fontWeight: 600 }}>
                   Open marketplace
                 </Link>
               </Typography>
-              <Box sx={{ mt: 2, display: "flex", gap: 2, flexWrap: "wrap" }}>
-                <Link to="/privacy" style={{ color: "#64748b", textDecoration: "none" }}>Privacy Policy</Link>
-                <Link to="/terms" style={{ color: "#64748b", textDecoration: "none" }}>Terms of Service</Link>
-                <Link to="/tutorial" style={{ color: "#64748b", textDecoration: "none" }}>User Guide</Link>
+              <Box sx={{ mt: 2, display: "flex", gap: 2, flexWrap: "wrap", borderTop: "1px solid", borderColor: "divider", pt: 2 }}>
+                <Link to="/privacy" style={{ color: "#64748b", textDecoration: "none", fontSize: "0.85rem" }}>Privacy Policy</Link>
+                <Link to="/terms" style={{ color: "#64748b", textDecoration: "none", fontSize: "0.85rem" }}>Terms of Service</Link>
+                <Link to="/tutorial" style={{ color: "#64748b", textDecoration: "none", fontSize: "0.85rem" }}>User Guide</Link>
               </Box>
             </Box>
           </Paper>

@@ -1,11 +1,13 @@
 import React from "react";
-import { Box, Button, Checkbox, Divider, Drawer, FormControlLabel, Grid, IconButton, Paper, TextField, Typography } from "@mui/material";
+import { Box, Button, Checkbox, Drawer, FormControlLabel, Grid, IconButton, Paper, Typography } from "@mui/material";
+import TextField from "./CustomTextField";
 import CloseIcon from "@mui/icons-material/Close";
 import { useForm } from "react-hook-form";
 import { useToast } from "../hooks/useToast";
 import { useCreateCustomer } from "../hooks/useCustomers";
 import { useCreateVendor } from "../hooks/useVendors";
 import { useCreateWarehouse } from "../hooks/useWarehouses";
+import AddCircleIcon from "@mui/icons-material/AddCircle";
 
 type RelatedEntityType = "customer" | "vendor" | "warehouse";
 
@@ -19,19 +21,19 @@ type RelatedEntityDrawerProps = {
 function getConfig(type: RelatedEntityType) {
   if (type === "customer") {
     return {
-      title: "Create Customer",
-      successMessage: "Customer created"
+      title: "Create New Customer",
+      successMessage: "Customer created successfully"
     };
   }
   if (type === "vendor") {
     return {
-      title: "Create Vendor",
-      successMessage: "Vendor created"
+      title: "Create New Vendor",
+      successMessage: "Vendor created successfully"
     };
   }
   return {
-    title: "Create Warehouse",
-    successMessage: "Warehouse created"
+    title: "Create New Warehouse",
+    successMessage: "Warehouse created successfully"
   };
 }
 
@@ -61,11 +63,11 @@ export default function RelatedEntityDrawer(props: RelatedEntityDrawerProps) {
             ? await createVendor.mutateAsync(values)
             : await createWarehouse.mutateAsync(values);
       notify(successMessage, "success");
-      onCreated?.(created);
+      onCreated?.(created?.data || created);
       onClose();
       reset({ isActive: true });
     } catch (err: any) {
-      notify(err?.response?.data?.error?.message || "Failed", "error");
+      notify(err?.response?.data?.error?.message || "Failed to create entity", "error");
     }
   };
 
@@ -77,20 +79,36 @@ export default function RelatedEntityDrawer(props: RelatedEntityDrawerProps) {
         : createWarehouse.isPending;
 
   return (
-    <Drawer anchor="right" open={open} onClose={onClose} PaperProps={{ sx: { width: { xs: "100%", sm: 480 } } }}>
-      <Box sx={{ p: 2.5, display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid rgba(148,163,184,0.2)" }}>
-        <Typography variant="h6" sx={{ fontWeight: 700 }}>{title}</Typography>
-        <IconButton onClick={onClose}>
-          <CloseIcon />
+    <Drawer 
+      anchor="right" 
+      open={open} 
+      onClose={onClose} 
+      sx={{ zIndex: 1400 }}
+      PaperProps={{ 
+        sx: { 
+          width: { xs: "100%", sm: 500 }, 
+          bgcolor: "background.paper", 
+          backgroundImage: "none",
+          backdropFilter: "blur(20px)"
+        } 
+      }}
+    >
+      <Box sx={{ p: 3, display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid", borderColor: "divider" }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+          <AddCircleIcon color="primary" />
+          <Typography variant="h6" sx={{ fontWeight: 800, letterSpacing: -0.5 }}>{title}</Typography>
+        </Box>
+        <IconButton onClick={onClose} size="small" sx={{ bgcolor: "action.hover" }}>
+          <CloseIcon fontSize="small" />
         </IconButton>
       </Box>
-      <Box sx={{ p: 2.5 }}>
-        <Paper elevation={0} sx={{ p: 0, boxShadow: "none" }}>
-          <Grid container spacing={2} component="form" onSubmit={handleSubmit(onSubmit)}>
+      <Box sx={{ p: 3, height: "100%", overflowY: "auto" }}>
+          <Grid container spacing={2.5} component="form" onSubmit={handleSubmit(onSubmit)}>
             <Grid item xs={12} md={type === "warehouse" ? 12 : 6}>
               <TextField
                 fullWidth
                 label="Name *"
+                placeholder="Enter display name"
                 {...register("name", { required: "Name is required" })}
                 error={!!errors.name}
                 helperText={errors.name?.message as string}
@@ -102,6 +120,7 @@ export default function RelatedEntityDrawer(props: RelatedEntityDrawerProps) {
                   fullWidth
                   label="Email *"
                   type="email"
+                  placeholder="name@example.com"
                   {...register("email", {
                     required: "Email is required",
                     pattern: { value: /^\S+@\S+$/i, message: "Invalid email address" }
@@ -113,30 +132,31 @@ export default function RelatedEntityDrawer(props: RelatedEntityDrawerProps) {
             ) : null}
             {type !== "warehouse" ? (
               <Grid item xs={12} md={6}>
-                <TextField fullWidth label="Phone" {...register("phone")} />
+                <TextField fullWidth label="Phone" placeholder="+1234567890" {...register("phone")} />
               </Grid>
             ) : null}
             <Grid item xs={12} md={type === "warehouse" ? 12 : 6}>
-              <TextField fullWidth label="Address" {...register("address")} />
+              <TextField fullWidth label="Address" placeholder="Street layout" {...register("address")} />
             </Grid>
             {type !== "warehouse" ? (
               <Grid item xs={12} md={6}>
-                <TextField fullWidth label="Payment Terms" {...register("paymentTerms")} />
+                <TextField fullWidth label="Payment Terms" placeholder="e.g. Net 30" {...register("paymentTerms")} />
               </Grid>
             ) : null}
             <Grid item xs={12}>
-              <FormControlLabel control={<Checkbox defaultChecked {...register("isActive")} />} label="Active" />
+              <Paper sx={{ p: 1.5, borderRadius: 2, bgcolor: "background.default", border: "1px solid", borderColor: "divider" }}>
+                <FormControlLabel control={<Checkbox defaultChecked {...register("isActive")} />} label={<Typography variant="body2" sx={{ fontWeight: 600 }}>Active and available for orders</Typography>} />
+              </Paper>
             </Grid>
-            <Grid item xs={12}>
-              <Divider sx={{ my: 1 }} />
-            </Grid>
-            <Grid item xs={12}>
-              <Button type="submit" variant="contained" fullWidth sx={{ py: 1.3, fontWeight: 700 }} disabled={isPending}>
-                {title}
+            <Grid item xs={12} sx={{ mt: 2 }}>
+              <Button type="submit" variant="contained" fullWidth sx={{ py: 1.5, fontWeight: 800, borderRadius: 2 }} disabled={isPending}>
+                {isPending ? "Creating..." : title}
+              </Button>
+              <Button variant="text" fullWidth onClick={onClose} sx={{ mt: 1, py: 1.2, color: "text.secondary" }}>
+                Cancel
               </Button>
             </Grid>
           </Grid>
-        </Paper>
       </Box>
     </Drawer>
   );

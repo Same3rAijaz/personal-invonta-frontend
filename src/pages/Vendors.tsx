@@ -1,4 +1,5 @@
-import { Box, Button } from "@mui/material";
+import { Box, Button, Stack } from "@mui/material";
+import AddCircleOutline from "@mui/icons-material/AddCircleOutline";
 import TextField from "../components/CustomTextField";
 import React from "react";
 import { useDeleteVendor, useVendors } from "../hooks/useVendors";
@@ -66,13 +67,25 @@ export default function Vendors({ showHeader = true }: { showHeader?: boolean } 
         rows={data?.items || []}
         loading={isLoading}
         actions={
-          <TextField
-            size="small"
-            placeholder="Search vendors"
-            value={search}
-            onChange={(event: any) => setSearch(event.target.value)}
-            sx={{ minWidth: 240 }}
-          />
+          <Stack direction="row" spacing={2} alignItems="center">
+            <TextField
+              size="small"
+              placeholder="Search vendors"
+              value={search}
+              onChange={(event: any) => setSearch(event.target.value)}
+              sx={{ minWidth: 240 }}
+            />
+            {!showHeader && (
+              <Button 
+                variant="contained" 
+                startIcon={<AddCircleOutline />} 
+                onClick={() => setDrawerState({ open: true, type: "new", id: null })}
+                sx={{ borderRadius: 2, fontWeight: 700 }}
+              >
+                Create Vendor
+              </Button>
+            )}
+          </Stack>
         }
         page={page}
         rowsPerPage={rowsPerPage}

@@ -5,9 +5,13 @@ import { api } from "../api/client";
 import { useState } from "react";
 import { useToast } from "../hooks/useToast";
 
+import { useThemeMode } from "../contexts/ThemeContext";
+
 export default function SubscriptionPaywall() {
   const { logout, business } = useAuth();
   const { notify } = useToast();
+  const { mode } = useThemeMode();
+  const isDark = mode === "dark";
   const [loading, setLoading] = useState(false);
 
   const handleSubscribe = async () => {
@@ -34,7 +38,10 @@ export default function SubscriptionPaywall() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "radial-gradient(circle at top left, rgba(14,165,233,0.18) 0%, #0b1220 40%, #0f172a 100%)",
+        background: isDark 
+          ? "radial-gradient(circle at top left, rgba(14,165,233,0.15) 0%, #020617 40%, #0f172a 100%)" 
+          : "radial-gradient(circle at top left, rgba(14,165,233,0.08) 0%, #f1f5f9 40%, #e2e8f0 100%)",
+        transition: "background 0.3s ease",
         p: 3
       }}
     >
@@ -46,8 +53,6 @@ export default function SubscriptionPaywall() {
           p: { xs: 4, md: 6 },
           borderRadius: 3,
           textAlign: "center",
-          background: "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)",
-          boxShadow: "0 24px 64px rgba(0,0,0,0.18)"
         }}
       >
         <Box
@@ -67,11 +72,11 @@ export default function SubscriptionPaywall() {
           <LockOutlinedIcon sx={{ color: "#fff", fontSize: 36 }} />
         </Box>
 
-        <Typography variant="h4" sx={{ fontWeight: 800, color: "#0f172a", mb: 1 }}>
+        <Typography variant="h4" sx={{ fontWeight: 800, color: "text.primary", mb: 1 }}>
           Subscription Required
         </Typography>
 
-        <Typography variant="body1" sx={{ color: "#64748b", mb: 3 }}>
+        <Typography variant="body1" sx={{ color: "text.secondary", mb: 3 }}>
           {business?.name ? `${business.name} needs` : "Your business needs"} an active subscription to access the dashboard.
         </Typography>
 
@@ -80,8 +85,9 @@ export default function SubscriptionPaywall() {
           sx={{
             p: 3,
             borderRadius: 2,
-            border: "2px solid rgba(14,165,233,0.2)",
-            background: "linear-gradient(135deg, rgba(14,165,233,0.05) 0%, rgba(99,102,241,0.05) 100%)",
+            border: "2px solid",
+            borderColor: "divider",
+            background: isDark ? "rgba(255,255,255,0.03)" : "rgba(14,165,233,0.05)",
             mb: 4
           }}
         >
@@ -89,19 +95,19 @@ export default function SubscriptionPaywall() {
             Monthly Plan
           </Typography>
           <Box sx={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: 0.5, mt: 1 }}>
-            <Typography variant="h3" sx={{ fontWeight: 800, color: "#0f172a" }}>
+            <Typography variant="h3" sx={{ fontWeight: 800, color: "text.primary" }}>
               ₨5,000
             </Typography>
-            <Typography variant="body2" sx={{ color: "#94a3b8" }}>
+            <Typography variant="body2" sx={{ color: "text.secondary" }}>
               /month
             </Typography>
           </Box>
           <Box sx={{ mt: 2, textAlign: "left" }}>
-            <Typography variant="body2" sx={{ color: "#475569", py: 0.5 }}>✓ Full dashboard access</Typography>
-            <Typography variant="body2" sx={{ color: "#475569", py: 0.5 }}>✓ Inventory & stock management</Typography>
-            <Typography variant="body2" sx={{ color: "#475569", py: 0.5 }}>✓ Sales & purchasing</Typography>
-            <Typography variant="body2" sx={{ color: "#475569", py: 0.5 }}>✓ Reports & analytics</Typography>
-            <Typography variant="body2" sx={{ color: "#475569", py: 0.5 }}>✓ Team & employee management</Typography>
+            <Typography variant="body2" sx={{ color: "text.secondary", py: 0.5 }}>✓ Full dashboard access</Typography>
+            <Typography variant="body2" sx={{ color: "text.secondary", py: 0.5 }}>✓ Inventory & stock management</Typography>
+            <Typography variant="body2" sx={{ color: "text.secondary", py: 0.5 }}>✓ Sales & purchasing</Typography>
+            <Typography variant="body2" sx={{ color: "text.secondary", py: 0.5 }}>✓ Reports & analytics</Typography>
+            <Typography variant="body2" sx={{ color: "text.secondary", py: 0.5 }}>✓ Team & employee management</Typography>
           </Box>
         </Paper>
 
@@ -130,7 +136,7 @@ export default function SubscriptionPaywall() {
           variant="text"
           fullWidth
           onClick={logout}
-          sx={{ mt: 2, color: "#94a3b8", fontWeight: 600 }}
+          sx={{ mt: 2, color: "text.secondary", fontWeight: 600 }}
         >
           Logout
         </Button>

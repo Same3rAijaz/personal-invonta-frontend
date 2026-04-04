@@ -1,4 +1,4 @@
-﻿import { useForm } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { Box, Button, Grid, IconButton, InputAdornment, Paper, Typography, MenuItem } from "@mui/material";
 import TextField from "../components/CustomTextField";;
 import Visibility from "@mui/icons-material/Visibility";
@@ -11,12 +11,16 @@ import React from "react";
 import { PublicCategoryNode } from "../api/public";
 import { useCities, useCountries, useStates } from "../hooks/useGeo";
 import { DEFAULT_CITY, DEFAULT_COUNTRY, DEFAULT_STATE } from "../constants/locationDefaults";
+import { useThemeMode } from "../contexts/ThemeContext";
+import ThemeToggle from "../components/ThemeToggle";
 
 const REQUEST_MARKET_VALUE = "__REQUEST_MARKET__";
 
 export default function Signup() {
   const { notify } = useToast();
   const navigate = useNavigate();
+  const { mode } = useThemeMode();
+  const isDark = mode === "dark";
   const [showPassword, setShowPassword] = React.useState(false);
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<any>({
     defaultValues: {
@@ -26,6 +30,7 @@ export default function Signup() {
       city: DEFAULT_CITY
     }
   });
+
   const { data: markets } = useQuery({
     queryKey: ["public-markets-signup"],
     queryFn: async () => (await api.get("/public/markets")).data.data
@@ -140,22 +145,42 @@ export default function Signup() {
   };
 
   return (
-    <Box sx={{ height: "100vh", display: "flex", overflow: "hidden", background: "radial-gradient(circle at top left, rgba(14,165,233,0.18) 0%, #0b1220 40%, #0f172a 100%)" }}>
-      <Grid container sx={{ height: "100vh" }}>
-        <Grid item xs={12} md={6} sx={{ display: { xs: "none", md: "flex" }, alignItems: "center", justifyContent: "center", px: { xs: 3, md: 8 }, py: { xs: 6, md: 0 }, height: "100vh", overflow: "hidden" }}>
+    <Box sx={{ 
+      minHeight: "100vh", 
+      position: "relative",
+      background: isDark 
+        ? "radial-gradient(circle at top left, rgba(14,165,233,0.15) 0%, #020617 40%, #0f172a 100%)" 
+        : "radial-gradient(circle at top left, rgba(14,165,233,0.08) 0%, #f1f5f9 40%, #e2e8f0 100%)",
+      transition: "background 0.3s ease",
+      overflowX: "hidden"
+    }}>
+      <Box sx={{ position: "absolute", top: 24, right: 24, zIndex: 10 }}>
+        <ThemeToggle />
+      </Box>
+      <Grid container sx={{ minHeight: "100vh" }}>
+        <Grid item xs={12} md={6} sx={{ 
+          display: { xs: "none", md: "flex" }, 
+          alignItems: "center", 
+          justifyContent: "center", 
+          px: { xs: 3, md: 8 }, 
+          py: { xs: 6, md: 0 }, 
+          height: "100vh", 
+          overflow: "hidden",
+          background: isDark ? "rgba(15, 23, 42, 0.3)" : "rgba(255, 255, 255, 0.05)"
+        }}>
           <Box sx={{ maxWidth: 460, textAlign: { xs: "center", md: "left" } }}>
             <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2, justifyContent: { xs: "center", md: "flex-start" } }}>
               <img src="/Invonta.png" alt="Invonta" style={{ width: 52, height: 52 }} />
-              <Typography variant="h3" sx={{ color: "#fff", fontWeight: 800 }}>
+              <Typography variant="h3" sx={{ color: isDark ? "#fff" : "#0f172a", fontWeight: 800 }}>
                 Invonta
               </Typography>
             </Box>
-            <Typography variant="h6" sx={{ color: "#e2e8f0", mb: 3 }}>
+            <Typography variant="h6" sx={{ color: isDark ? "#e2e8f0" : "#475569", mb: 3 }}>
               Launch your inventory system with approvals, access control, and invoices in minutes.
             </Typography>
-            <Box sx={{ display: "grid", gap: 1.5, color: "rgba(226,232,240,0.9)", animation: "fadeInUp 700ms ease" }}>
+            <Box sx={{ display: "grid", gap: 1.5, color: isDark ? "rgba(226,232,240,0.9)" : "rgba(15,23,42,0.8)", animation: "fadeInUp 700ms ease" }}>
               <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>Built for growing teams</Typography>
-              <Typography variant="body2" sx={{ color: "rgba(226,232,240,0.75)" }}>
+              <Typography variant="body2" sx={{ color: isDark ? "rgba(226,232,240,0.75)" : "#64748b" }}>
                 Set up your business profile and activate only the modules you need today.
               </Typography>
               <Box sx={{ display: "grid", gap: 1, mt: 1, textAlign: { xs: "center", md: "left" } }}>
@@ -171,7 +196,7 @@ export default function Signup() {
           xs={12}
           md={6}
           sx={{
-            background: "linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%)",
+            background: isDark ? "#020617" : "linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%)",
             display: "flex",
             alignItems: "flex-start",
             px: { xs: 3, md: 8 },
@@ -180,9 +205,9 @@ export default function Signup() {
             overflowY: "auto"
           }}
         >
-          <Paper sx={{ p: { xs: 3, md: 5 }, borderRadius: 2, boxShadow: "0 18px 40px rgba(15,23,42,0.12)", width: "100%", maxWidth: 640, mx: "auto", backgroundColor: "#ffffff" }}>
-            <Typography variant="h4" gutterBottom>Create your shop account</Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          <Paper sx={{ p: { xs: 3, md: 5 }, borderRadius: 2, width: "100%", maxWidth: 640, mx: "auto" }}>
+            <Typography variant="h4" gutterBottom sx={{ color: "text.primary" }}>Create your shop account</Typography>
+            <Typography variant="body2" sx={{ color: "text.secondary", mb: 2 }}>
               Fill in your business details and get instant access — no approval needed.
             </Typography>
             <Box component="form" onSubmit={handleSubmit(onSubmit)}>
@@ -225,17 +250,18 @@ export default function Signup() {
                       px: 1.5,
                       py: 1,
                       borderRadius: 1,
-                      border: "1px solid rgba(148,163,184,0.35)",
-                      backgroundColor: "rgba(248,250,252,0.9)",
+                      border: "1px solid",
+                      borderColor: "divider",
+                      backgroundColor: "background.default",
                       display: "flex",
                       alignItems: "center",
                       gap: 1
                     }}
                   >
-                    <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 600, mr: 0.5 }}>
+                    <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 600, mr: 0.5 }}>
                       Selected Category:
                     </Typography>
-                    <Typography variant="body2" sx={{ color: "#0f172a", fontWeight: 600 }}>
+                    <Typography variant="body2" sx={{ color: "text.primary", fontWeight: 600 }}>
                       {selectedCategory?.path || (selectedCategory?.pathNames || []).join(" > ") || "None selected"}
                     </Typography>
                   </Box>
@@ -366,19 +392,19 @@ export default function Signup() {
               </Grid>
             </Box>
             <Box sx={{ mt: 3 }}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#0f172a", mb: 1 }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "text.primary", mb: 1 }}>
                 Quick actions
               </Typography>
-              <Typography sx={{ color: "#475569" }}>
+              <Typography sx={{ color: "text.secondary" }}>
                 Already have an account?{" "}
-                <Link to="/login" style={{ color: "#0ea5e9", textDecoration: "none" }}>
+                <Link to="/login" style={{ color: "#0ea5e9", textDecoration: "none", fontWeight: 600 }}>
                   Sign in
                 </Link>
               </Typography>
-              <Box sx={{ mt: 2, display: "flex", gap: 2, flexWrap: "wrap" }}>
-                <Link to="/privacy" style={{ color: "#64748b", textDecoration: "none" }}>Privacy Policy</Link>
-                <Link to="/terms" style={{ color: "#64748b", textDecoration: "none" }}>Terms of Service</Link>
-                <Link to="/tutorial" style={{ color: "#64748b", textDecoration: "none" }}>User Guide</Link>
+              <Box sx={{ mt: 2, display: "flex", gap: 2, flexWrap: "wrap", borderTop: "1px solid", borderColor: "divider", pt: 2 }}>
+                <Link to="/privacy" style={{ color: "#64748b", textDecoration: "none", fontSize: "0.85rem" }}>Privacy Policy</Link>
+                <Link to="/terms" style={{ color: "#64748b", textDecoration: "none", fontSize: "0.85rem" }}>Terms of Service</Link>
+                <Link to="/tutorial" style={{ color: "#64748b", textDecoration: "none", fontSize: "0.85rem" }}>User Guide</Link>
               </Box>
             </Box>
           </Paper>

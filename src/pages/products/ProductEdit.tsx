@@ -1,4 +1,5 @@
 import { Box, Button, Typography, Grid, Divider, FormControlLabel, Checkbox, MenuItem, Stack, Avatar, IconButton } from "@mui/material";
+import AddCircleOutline from "@mui/icons-material/AddCircleOutline";
 import TextField from "../../components/CustomTextField";;
 import SidebarLayout from "../../components/SidebarLayout";
 import { useEffect, useMemo, useState } from "react";
@@ -238,17 +239,19 @@ export default function ProductEdit({ explicitId, onSuccess, onCancel }: { expli
                 px: 2,
                 py: 1,
                 borderRadius: 1,
-                border: "1px solid rgba(148,163,184,0.35)",
-                backgroundColor: "rgba(248,250,252,0.9)",
+                border: "1px solid",
+                borderColor: "divider",
+                backgroundColor: "background.paper",
                 display: "flex",
                 alignItems: "center",
-                gap: 1
+                gap: 1,
+                opacity: 0.95
               }}
             >
-              <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 600, mr: 0.5, fontSize: "0.85rem" }}>
+              <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 600, mr: 0.5, fontSize: "0.85rem" }}>
                 Selected Category:
               </Typography>
-              <Typography variant="body2" sx={{ color: "#0f172a", fontWeight: 600, fontSize: "0.95rem" }}>
+              <Typography variant="body2" sx={{ color: "text.primary", fontWeight: 600, fontSize: "0.95rem" }}>
                 {selectedPathIds.length > 0
                   ? ((categoriesById.get(selectedPathIds[selectedPathIds.length - 1])?.pathNames || []).join(" > ") || "None selected")
                   : "None selected"}
@@ -341,27 +344,41 @@ export default function ProductEdit({ explicitId, onSuccess, onCancel }: { expli
               control={control}
               rules={{ required: "Warehouse is required" }}
               render={({ field }) => (
-                <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "flex-start" }}>
-                  <TextField
-                    select
-                    fullWidth
-                    label="Warehouse *"
-                    value={field.value || ""}
-                    onChange={(event) => field.onChange(event.target.value)}
-                    error={!!errors.warehouseId}
-                    helperText={(errors.warehouseId?.message as string) || ((warehouses?.items || []).length === 0 ? "Create a warehouse first." : "Quantity is updated for the selected warehouse.")}
+                <TextField
+                  select
+                  fullWidth
+                  label="Warehouse *"
+                  value={field.value || ""}
+                  onChange={(event) => field.onChange(event.target.value)}
+                  error={!!errors.warehouseId}
+                  helperText={(errors.warehouseId?.message as string) || ((warehouses?.items || []).length === 0 ? "Create a warehouse first." : "Quantity is updated for the selected warehouse.")}
+                >
+                  <MenuItem 
+                    value="CREATE_NEW" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setWarehouseDrawerOpen(true);
+                    }}
+                    sx={{ 
+                      fontWeight: 700, 
+                      color: "primary.main",
+                      borderBottom: "1px solid", 
+                      borderColor: "divider",
+                      py: 1.5,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1
+                    }}
                   >
-                    <MenuItem value="">Select Warehouse</MenuItem>
-                    {(warehouses?.items || []).map((item: any) => (
-                      <MenuItem key={item._id} value={item._id}>
-                        {item.name}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                  <Button variant="outlined" onClick={() => setWarehouseDrawerOpen(true)} sx={{ minWidth: 110 }}>
-                    Create
-                  </Button>
-                </Stack>
+                    <AddCircleOutline fontSize="small" />
+                    Create New Warehouse
+                  </MenuItem>
+                  {(warehouses?.items || []).map((item: any) => (
+                    <MenuItem key={item._id} value={item._id}>
+                      {item.name}
+                    </MenuItem>
+                  ))}
+                </TextField>
               )}
             />
           </Grid>
@@ -498,7 +515,12 @@ export default function ProductEdit({ explicitId, onSuccess, onCancel }: { expli
       <RelatedEntityDrawer
         open={warehouseDrawerOpen}
         type="warehouse"
-        onClose={() => setWarehouseDrawerOpen(false)}
+        onClose={() => {
+          setWarehouseDrawerOpen(false);
+          if (watch("warehouseId") === "CREATE_NEW") {
+            setValue("warehouseId", "", { shouldValidate: true });
+          }
+        }}
         onCreated={(entity) => {
           setValue("warehouseId", String(entity?._id || ""), { shouldDirty: true, shouldValidate: true });
         }}

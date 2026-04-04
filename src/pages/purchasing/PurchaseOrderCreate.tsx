@@ -47,24 +47,39 @@ export default function PurchaseOrderCreate({ onSuccess, onCancel }: { onSuccess
     <SidebarLayout title="Create PurchaseOrder" onCancel={onCancel} isSubmitting={createPO.isPending} submitLabel="Save PurchaseOrder">
         <Grid container spacing={2} component="form" id="sidebar-form" onSubmit={handleSubmit(onSubmit)}>
           <Grid item xs={12} md={6}>
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "flex-start" }}>
-              <TextField 
-                select 
-                fullWidth 
-                label="Vendor *" 
-                {...register("vendorId", { required: "Vendor is required" })}
-                value={watch("vendorId") || ""}
-                error={!!errors.vendorId}
-                helperText={errors.vendorId?.message as string}
+            <TextField 
+              select 
+              fullWidth 
+              label="Vendor *" 
+              {...register("vendorId", { required: "Vendor is required" })}
+              value={watch("vendorId") || ""}
+              error={!!errors.vendorId}
+              helperText={errors.vendorId?.message as string}
+            >
+              <MenuItem 
+                value="CREATE_NEW" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDrawerOpen(true);
+                }}
+                sx={{ 
+                  fontWeight: 700, 
+                  color: "primary.main",
+                  borderBottom: "1px solid", 
+                  borderColor: "divider",
+                  py: 1.5,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1
+                }}
               >
-                {(vendors?.items || []).map((v: any) => (
-                  <MenuItem key={v._id} value={v._id}>{v.name}</MenuItem>
-                ))}
-              </TextField>
-              <Button variant="outlined" onClick={() => setDrawerOpen(true)} sx={{ minWidth: 110 }}>
-                Create
-              </Button>
-            </Stack>
+                <AddCircleOutline fontSize="small" />
+                Create New Vendor
+              </MenuItem>
+              {(vendors?.items || []).map((v: any) => (
+                <MenuItem key={v._id} value={v._id}>{v.name}</MenuItem>
+              ))}
+            </TextField>
           </Grid>
           <Grid item xs={12} md={6}>
             <TextField select fullWidth label="Status" {...register("status")} value={watch("status") || "DRAFT"}>
@@ -136,7 +151,12 @@ export default function PurchaseOrderCreate({ onSuccess, onCancel }: { onSuccess
       <RelatedEntityDrawer
         open={drawerOpen}
         type="vendor"
-        onClose={() => setDrawerOpen(false)}
+        onClose={() => {
+          setDrawerOpen(false);
+          if (watch("vendorId") === "CREATE_NEW") {
+            setValue("vendorId", "", { shouldValidate: true });
+          }
+        }}
         onCreated={(entity) => {
           setValue("vendorId", String(entity?._id || ""), { shouldDirty: true, shouldValidate: true });
         }}
