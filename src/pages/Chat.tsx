@@ -1,28 +1,40 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Box, Typography, Avatar, IconButton, Stack, Paper, CircularProgress } from "@mui/material";
 import SendRoundedIcon from '@mui/icons-material/SendRounded';
+import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
+import CircleIcon from '@mui/icons-material/Circle';
+import Badge from '@mui/material/Badge';
+import InputBase from '@mui/material/InputBase';
+import DoneIcon from '@mui/icons-material/Done';
+import DoneAllIcon from '@mui/icons-material/DoneAll';
 import TextField from "../components/CustomTextField";
 import { useShopFriends } from "../hooks/useShopFriends";
 import { useAuth } from "../hooks/useAuth";
 import { db, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from "../utils/firebase";
+import { useThemeMode } from "../contexts/ThemeContext";
 
 export default function Chat() {
   const { business } = useAuth();
+  const { mode } = useThemeMode();
+  const isDark = mode === "dark";
   const { data: friendsData, isLoading: friendsLoading } = useShopFriends();
   
   const [activeFriend, setActiveFriend] = useState<any>(null);
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const friendsList = Array.isArray(friendsData) ? friendsData : (friendsData?.friends || friendsData?.items || []);
+  const filteredFriends = friendsList.filter((f: any) => 
+    (f?.business?.name || f?.name || "").toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   useEffect(() => {
-    // Determine the active friend
-    if (!activeFriend && friendsList.length > 0) {
-      setActiveFriend(friendsList[0]);
+    if (!activeFriend && filteredFriends.length > 0) {
+      setActiveFriend(filteredFriends[0]);
     }
-  }, [friendsList, activeFriend]);
+  }, [filteredFriends, activeFriend]);
 
   useEffect(() => {
     if (!business?._id || !activeFriend) return;
@@ -83,61 +95,134 @@ export default function Chat() {
     }
   };
 
+  const isOnline = (id: string) => {
+    // Mock status: odd IDs are online, even are offline (for visual testing)
+    return id.charCodeAt(id.length - 1) % 2 !== 0;
+  };
+
   const getFriendName = (f: any) => f?.business?.name || f?.name || "Unknown Shop";
 
   return (
-    <Box sx={{ height: "calc(100vh - 120px)", display: "flex", gap: 3, animation: "fadeInUp 420ms ease" }}>
-      {/* Left Sidebar - Friends List */}
+    <Box sx={{ 
+      height: "calc(100vh - 120px)", 
+      display: "flex", 
+      gap: 3, 
+      animation: "fadeInUp 420ms ease" 
+    }}>
       <Paper
         elevation={0}
         sx={{
-          width: 320,
-          background: "rgba(255,255,255,0.7)",
+          width: 340,
+          background: isDark ? "rgba(15, 23, 42, 0.4)" : "rgba(255,255,255,0.7)",
           backdropFilter: "blur(24px)",
           borderRadius: 4,
-          border: "1px solid rgba(255,255,255,0.8)",
+          border: "1px solid",
+          borderColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.8)",
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
-          boxShadow: "0 10px 40px rgba(0,0,0,0.03)"
+          boxShadow: isDark ? "0 10px 40px rgba(0,0,0,0.2)" : "0 10px 40px rgba(0,0,0,0.03)"
         }}
       >
-        <Box sx={{ p: 3, borderBottom: "1px solid rgba(0,0,0,0.05)" }}>
-          <Typography variant="h6" sx={{ fontWeight: 800, color: "#0f172a" }}>Messages</Typography>
+        <Box sx={{ p: 3, borderBottom: "1px solid", borderColor: "divider" }}>
+          <Typography variant="h5" sx={{ fontWeight: 800, color: "text.primary", mb: 2 }}>Messages</Typography>
+          <Box sx={{ 
+            display: "flex", 
+            alignItems: "center", 
+            gap: 1.5, 
+            px: 2, 
+            py: 1, 
+            background: isDark ? "rgba(255,255,255,0.05)" : "rgba(15,23,42,0.03)", 
+            borderRadius: 3 
+          }}>
+            <SearchRoundedIcon sx={{ color: "text.secondary", fontSize: 20 }} />
+            <InputBase 
+              fullWidth 
+              placeholder="Search conversations..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              sx={{ fontSize: "0.85rem", color: "text.primary" }}
+            />
+          </Box>
         </Box>
-        <Box sx={{ flexGrow: 1, overflowY: "auto", p: 2 }}>
+        <Box 
+          sx={{ 
+            flexGrow: 1, 
+            overflowY: "auto", 
+            p: 1.5,
+            "&::-webkit-scrollbar": { width: 4 },
+            "&::-webkit-scrollbar-thumb": { background: "rgba(0,0,0,0.1)", borderRadius: 10 }
+          }}
+        >
           {friendsLoading ? (
             <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}><CircularProgress size={24} /></Box>
-          ) : friendsList.length === 0 ? (
-            <Typography variant="body2" sx={{ textAlign: "center", mt: 4, color: "#94a3b8" }}>No shops connected yet.</Typography>
+          ) : filteredFriends.length === 0 ? (
+            <Box sx={{ textAlign: "center", mt: 6, px: 2 }}>
+                <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 600 }}>No results found</Typography>
+                <Typography variant="caption" sx={{ color: "text.secondary", opacity: 0.7 }}>Try adjusting your search</Typography>
+            </Box>
           ) : (
-            friendsList.map((friend: any, index: number) => {
+            filteredFriends.map((friend: any, index: number) => {
+              const fid = friend._id || index;
               const isActive = activeFriend && (activeFriend._id === friend._id);
+              const online = isOnline(String(fid));
               return (
                 <Box
-                  key={friend._id || index}
+                  key={fid}
                   onClick={() => setActiveFriend(friend)}
                   sx={{
                     display: "flex",
                     alignItems: "center",
-                    gap: 2,
+                    gap: 2.5,
                     p: 2,
-                    mb: 1,
+                    mb: 0.8,
                     borderRadius: 3,
                     cursor: "pointer",
-                    transition: "all 0.2s",
-                    background: isActive ? "#eff6ff" : "transparent",
-                    "&:hover": { background: isActive ? "#eff6ff" : "rgba(0,0,0,0.02)" }
+                    transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                    background: isActive ? (isDark ? "rgba(56,189,248,0.12)" : "#eff6ff") : "transparent",
+                    border: isActive ? (isDark ? "1px solid rgba(56,189,248,0.2)" : "1px solid rgba(14,165,233,0.1)") : "1px solid transparent",
+                    "&:hover": { 
+                        background: isActive ? (isDark ? "rgba(56,189,248,0.18)" : "#eff6ff") : "rgba(15,23,42,0.03)",
+                        transform: "translateX(4px)"
+                    }
                   }}
                 >
-                  <Avatar sx={{ background: "linear-gradient(135deg, #0ea5e9, #6366f1)", width: 44, height: 44 }}>
-                    {getFriendName(friend).substring(0, 2).toUpperCase()}
-                  </Avatar>
-                  <Box>
-                    <Typography variant="subtitle2" sx={{ fontWeight: isActive ? 800 : 600, color: "#0f172a" }}>
-                      {getFriendName(friend)}
+                  <Badge
+                    overlap="circular"
+                    anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                    variant="dot"
+                    sx={{
+                        "& .MuiBadge-badge": {
+                          backgroundColor: online ? '#10b981' : '#94a3b8',
+                          color: online ? '#10b981' : '#94a3b8',
+                          boxShadow: `0 0 0 2px ${isDark ? "#1e293b" : "#fff"}`,
+                          width: 12,
+                          height: 12,
+                          borderRadius: "50%"
+                        }
+                    }}
+                  >
+                    <Avatar sx={{ 
+                        background: online 
+                            ? "linear-gradient(135deg, #0ea5e9, #6366f1)" 
+                            : "linear-gradient(135deg, #64748b, #475569)", 
+                        width: 48, 
+                        height: 48,
+                        boxShadow: online ? "0 4px 12px rgba(14,165,233,0.3)" : "none"
+                    }}>
+                      {getFriendName(friend).substring(0, 2).toUpperCase()}
+                    </Avatar>
+                  </Badge>
+                  <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                    <Stack direction="row" justifyContent="space-between" alignItems="center">
+                        <Typography variant="subtitle2" noWrap sx={{ fontWeight: isActive ? 800 : 700, color: "text.primary", fontSize: "0.925rem" }}>
+                          {getFriendName(friend)}
+                        </Typography>
+                        {index === 0 && !isActive && <CircleIcon sx={{ fontSize: 10, color: "#0ea5e9" }} />}
+                    </Stack>
+                    <Typography variant="caption" noWrap sx={{ color: "text.secondary", opacity: 0.8, display: "block", mt: 0.2 }}>
+                        {online ? "Online now" : "Offline"}
                     </Typography>
-                    <Typography variant="caption" sx={{ color: "#64748b" }}>Connected Shop</Typography>
                   </Box>
                 </Box>
               )
@@ -146,55 +231,111 @@ export default function Chat() {
         </Box>
       </Paper>
 
-      {/* Right Area - Chat Window */}
       <Paper
         elevation={0}
         sx={{
           flexGrow: 1,
-          background: "rgba(255,255,255,0.7)",
+          background: isDark ? "rgba(15, 23, 42, 0.4)" : "rgba(255,255,255,0.7)",
           backdropFilter: "blur(24px)",
           borderRadius: 4,
-          border: "1px solid rgba(255,255,255,0.8)",
+          border: "1px solid",
+          borderColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.8)",
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
-          boxShadow: "0 10px 40px rgba(0,0,0,0.03)"
+          boxShadow: isDark ? "0 10px 40px rgba(0,0,0,0.2)" : "0 10px 40px rgba(0,0,0,0.03)"
         }}
       >
         {activeFriend ? (
           <>
-            <Box sx={{ p: 2, borderBottom: "1px solid rgba(0,0,0,0.05)", display: "flex", alignItems: "center", gap: 2, background: "rgba(255,255,255,0.5)" }}>
-              <Avatar sx={{ background: "linear-gradient(135deg, #0ea5e9, #6366f1)" }}>
-                {getFriendName(activeFriend).substring(0, 2).toUpperCase()}
-              </Avatar>
-              <Typography variant="subtitle1" sx={{ fontWeight: 700, color: "#0f172a" }}>
-                {getFriendName(activeFriend)}
-              </Typography>
+            <Box sx={{ 
+                p: 2, 
+                px: 3,
+                height: 80,
+                borderBottom: "1px solid", 
+                borderColor: "divider",
+                display: "flex", 
+                alignItems: "center", 
+                justifyContent: "space-between",
+                background: isDark ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.5)" 
+            }}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                  <Avatar sx={{ 
+                      background: "linear-gradient(135deg, #0ea5e9, #6366f1)",
+                      width: 44,
+                      height: 44,
+                      boxShadow: "0 4px 12px rgba(14,165,233,0.2)"
+                  }}>
+                    {getFriendName(activeFriend).substring(0, 2).toUpperCase()}
+                  </Avatar>
+                  <Box>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 800, color: "text.primary", lineHeight: 1.2 }}>
+                      {getFriendName(activeFriend)}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: isOnline(String(activeFriend._id)) ? "#10b981" : "text.secondary", fontWeight: 700, fontSize: "0.75rem" }}>
+                        {isOnline(String(activeFriend._id)) ? "Online" : "Offline"}
+                    </Typography>
+                  </Box>
+              </Box>
             </Box>
 
-            <Box sx={{ flexGrow: 1, overflowY: "auto", p: 3, display: "flex", flexDirection: "column", gap: 2 }}>
-              {messages.map((msg) => {
+            <Box sx={{ 
+                flexGrow: 1, 
+                overflowY: "auto", 
+                p: 3, 
+                display: "flex", 
+                flexDirection: "column", 
+                gap: 1.5,
+                background: isDark ? "rgba(0,0,0,0.1)" : "rgba(248,250,252,0.4)",
+                "&::-webkit-scrollbar": { width: 5 },
+                "&::-webkit-scrollbar-thumb": { background: "rgba(0,0,0,0.05)", borderRadius: 10 }
+            }}>
+              {messages.map((msg, idx) => {
                 const isMe = msg.senderId === business?._id;
+                const status = msg.status || 'sent';
                 return (
-                  <Box key={msg.id} sx={{ display: "flex", justifyContent: isMe ? "flex-end" : "flex-start" }}>
+                  <Box key={msg.id || idx} sx={{ display: "flex", justifyContent: isMe ? "flex-end" : "flex-start", width: "100%" }}>
                     <Box
                       sx={{
-                        maxWidth: "70%",
-                        p: 2,
-                        borderRadius: 4,
-                        borderBottomRightRadius: isMe ? 4 : 24,
-                        borderBottomLeftRadius: !isMe ? 4 : 24,
-                        background: isMe ? "linear-gradient(135deg, #0ea5e9, #6366f1)" : "#f1f5f9",
-                        color: isMe ? "#ffffff" : "#0f172a",
-                        boxShadow: isMe ? "0 4px 12px rgba(99,102,241,0.2)" : "none",
+                        maxWidth: "75%",
+                        width: "fit-content",
+                        p: 1.5,
+                        px: 2.2,
+                        borderRadius: "22px",
+                        borderBottomRightRadius: isMe ? 2 : 22,
+                        borderBottomLeftRadius: !isMe ? 2 : 22,
+                        background: isMe 
+                            ? "linear-gradient(135deg, #0ea5e9, #6366f1)" 
+                            : (isDark ? "#334155" : "#ffffff"),
+                        color: isMe ? "#ffffff" : "text.primary",
+                        boxShadow: isMe 
+                            ? "0 4px 15px rgba(99,102,241,0.2)" 
+                            : "0 2px 8px rgba(0,0,0,0.03)",
+                        border: isMe ? "none" : "1px solid",
+                        borderColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)",
+                        animation: "fadeInUp 300ms ease-out",
+                        position: "relative"
                       }}
                     >
-                      <Typography variant="body2" sx={{ lineHeight: 1.5 }}>{msg.text}</Typography>
-                      {msg.createdAt && msg.createdAt.toDate && (
-                         <Typography variant="caption" sx={{ display: "block", mt: 0.5, opacity: 0.7, textAlign: "right", fontSize: "0.65rem" }}>
-                           {msg.createdAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                         </Typography>
-                      )}
+                      <Typography variant="body2" sx={{ lineHeight: 1.55, fontSize: "0.95rem", fontWeight: isMe ? 500 : 400 }}>
+                        {msg.text}
+                      </Typography>
+                      
+                      <Stack direction="row" alignItems="center" justifyContent="flex-end" spacing={0.5} sx={{ mt: 0.5 }}>
+                        <Typography variant="caption" sx={{ 
+                             opacity: 0.7, 
+                             fontSize: "0.68rem",
+                             fontWeight: 600,
+                             color: isMe ? "inherit" : "text.secondary"
+                        }}>
+                           {msg.createdAt && msg.createdAt.toDate ? msg.createdAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}
+                        </Typography>
+                        {isMe && (
+                           <Box sx={{ display: "flex", alignItems: "center", opacity: 0.8 }}>
+                             {status === 'read' ? <DoneAllIcon sx={{ fontSize: 13, color: "#fff" }} /> : <DoneIcon sx={{ fontSize: 13, color: "#fff" }} />}
+                           </Box>
+                        )}
+                      </Stack>
                     </Box>
                   </Box>
                 );
@@ -202,27 +343,41 @@ export default function Chat() {
               <div ref={messagesEndRef} />
             </Box>
 
-            <Box component="form" onSubmit={handleSend} sx={{ p: 2, borderTop: "1px solid rgba(0,0,0,0.05)", background: "rgba(255,255,255,0.5)" }}>
-              <TextField
-                fullWidth
-                placeholder="Type your message..."
-                value={newMessage}
-                onChange={(e: any) => setNewMessage(e.target.value)}
-                autoComplete="off"
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    borderRadius: 8,
-                    background: "#ffffff"
-                  }
-                }}
-                InputProps={{
-                  endAdornment: (
-                    <IconButton type="submit" disabled={!newMessage.trim()} sx={{ color: newMessage.trim() ? "#6366f1" : "inherit" }}>
-                      <SendRoundedIcon />
-                    </IconButton>
-                  )
-                }}
-              />
+            <Box component="form" onSubmit={handleSend} sx={{ 
+                p: 2.5, 
+                borderTop: "1px solid", 
+                borderColor: "divider",
+                background: isDark ? "rgba(15, 23, 42, 0.4)" : "rgba(255,255,255,0.6)" 
+            }}>
+              <Box sx={{ 
+                  display: "flex", 
+                  alignItems: "center", 
+                  background: isDark ? "#1e293b" : "#ffffff", 
+                  borderRadius: 4, 
+                  px: 2,
+                  py: 0.5,
+                  border: "1px solid",
+                  borderColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"
+              }}>
+                <InputBase
+                  fullWidth
+                  placeholder="Type your message..."
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  autoComplete="off"
+                  sx={{ fontSize: "0.95rem", py: 1.2, color: "text.primary" }}
+                />
+                <IconButton 
+                    type="submit" 
+                    disabled={!newMessage.trim()} 
+                    sx={{ 
+                        color: "#6366f1",
+                        "&.Mui-disabled": { color: "rgba(99,102,241,0.2)" }
+                    }}
+                >
+                  <SendRoundedIcon />
+                </IconButton>
+              </Box>
             </Box>
           </>
         ) : (

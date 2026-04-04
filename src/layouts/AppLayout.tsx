@@ -39,6 +39,8 @@ import { useToast } from "../hooks/useToast";
 import { useThemeMode } from "../contexts/ThemeContext";
 import LightModeRoundedIcon from '@mui/icons-material/LightModeRounded';
 import DarkModeRoundedIcon from '@mui/icons-material/DarkModeRounded';
+import { useNotifications } from "../hooks/useNotifications";
+import Badge from '@mui/material/Badge';
 
 type NavItem = { label: string; to: string; icon: React.ReactNode };
 type NavGroup = { id: string; label: string; items: NavItem[] };
@@ -51,6 +53,9 @@ export default function AppLayout() {
   const { notify } = useToast();
   const { mode, toggleTheme } = useThemeMode();
   const [subLoading, setSubLoading] = React.useState(false);
+  const { data: notifications = [] } = useNotifications({ limit: 5 });
+  const unreadCount = Number(notifications?.length || 0); // Correctly calculate unread from data
+  const chatUnread = 3 as number; // Placeholder for chat unread count
 
   const drawerWidth = collapsed ? 84 : 260; // wider expanded, mini collapsed
 
@@ -75,14 +80,12 @@ export default function AppLayout() {
   };
 
   const rawDisplayName = user?.name || user?.fullName || user?.email || "Account";
-  const displayName = String(rawDisplayName)
-    .split(" ")
-    .filter(Boolean)
-    .map((chunk) => chunk.charAt(0).toUpperCase() + chunk.slice(1))
+  // Filter unique name tokens to avoid "Sameer Sameer" redundancy (Case-insensitive check)
+  const displayName = Array.from(new Set(String(rawDisplayName).split(" ").filter(Boolean).map(s => s.trim())))
+    .map((chunk) => chunk.charAt(0).toUpperCase() + chunk.slice(1).toLowerCase())
     .join(" ");
-  const initials = String(displayName)
-    .split(" ")
-    .filter(Boolean)
+
+  const initials = Array.from(new Set(String(displayName).split(" ").filter(Boolean)))
     .slice(0, 2)
     .map((chunk) => chunk[0])
     .join("")
@@ -234,26 +237,28 @@ export default function AppLayout() {
       "&::before": {
          content: '""',
          position: "absolute",
-         right: 0,
+         right: -1, // Overlap the border gap
          top: -20,
          width: 20,
          height: 20,
          background: "transparent",
          borderBottomRightRadius: 20,
          boxShadow: `10px 10px 0 10px ${mode === "dark" ? "#020617" : "#eff6ff"}`,
-         zIndex: 1
+         zIndex: 1,
+         pointerEvents: "none"
       },
       "&::after": {
          content: '""',
          position: "absolute",
-         right: 0,
+         right: -1, // Overlap the border gap
          bottom: -20,
          width: 20,
          height: 20,
          background: "transparent",
          borderTopRightRadius: 20,
          boxShadow: `10px -10px 0 10px ${mode === "dark" ? "#020617" : "#eff6ff"}`,
-         zIndex: 1
+         zIndex: 1,
+         pointerEvents: "none"
       }
     };
   };
@@ -348,7 +353,14 @@ export default function AppLayout() {
                       }}
                     >
                       <ListItemIcon sx={{ minWidth: 0, mr: collapsed ? 0 : 2, color: "inherit", zIndex: 2 }}>
-                        {React.cloneElement(item.icon as React.ReactElement, { fontSize: active ? "medium" : "small" })}
+                        <Badge 
+                            badgeContent={item.label === "Chat" ? chatUnread : 0} 
+                            color="error"
+                            variant="dot"
+                            invisible={item.label !== "Chat" || chatUnread === 0}
+                        >
+                            {React.cloneElement(item.icon as React.ReactElement, { fontSize: active ? "medium" : "small" })}
+                        </Badge>
                       </ListItemIcon>
                       {!collapsed && (
                         <ListItemText 
@@ -405,7 +417,9 @@ export default function AppLayout() {
           <Stack direction="row" spacing={2} alignItems="center">
             {/* Notification Icon */}
             <IconButton sx={{ color: "#64748b" }}>
-               <NotificationsRoundedIcon />
+               <Badge badgeContent={unreadCount} color="error" overlap="circular">
+                 <NotificationsRoundedIcon />
+               </Badge>
             </IconButton>
 
             {/* Quick Referrals (if allowed) */}
@@ -425,11 +439,11 @@ export default function AppLayout() {
               }}
             >
               <Box sx={{ textAlign: "right", display: { xs: "none", sm: "block" }, mr: 1.5 }}>
-                <Typography variant="body2" sx={{ fontWeight: 700, color: "#0f172a", lineHeight: 1.2 }}>
+                <Typography variant="body2" sx={{ fontWeight: 700, color: "text.primary", lineHeight: 1.2 }}>
                   {displayName}
                 </Typography>
-                <Typography variant="caption" sx={{ color: "#64748b", display: "block", mt: 0.2 }}>
-                  {isSuperAdmin ? "Super Admin" : (business?.name || "Member")}
+                <Typography variant="caption" sx={{ color: "text.secondary", display: "block", mt: 0.2 }}>
+                  {isSuperAdmin ? "Super Admin" : (business?.name === displayName ? "Business Account" : (business?.name || "Member"))}
                 </Typography>
               </Box>
               <Avatar
@@ -496,9 +510,10 @@ export default function AppLayout() {
               width: drawerWidth,
               background: "#0c1220",
               color: "#e2e8f0",
-              borderRight: "none",
+              borderRight: "0 !important", // Remove border explicitly
+              boxShadow: "none !important", // Remove shadow explicitly
               transition: "width 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-              overflow: "visible" // Critical to allow the white pseudo-elements to break outside the drawer boundary flawlessly!
+              overflow: "visible" 
             }
           }}
           open
