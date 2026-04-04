@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { Box, Typography, Avatar, IconButton, Stack, Paper, CircularProgress } from "@mui/material";
 import SendRoundedIcon from '@mui/icons-material/SendRounded';
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
@@ -9,7 +10,13 @@ import DoneIcon from '@mui/icons-material/Done';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import InventoryIcon from '@mui/icons-material/Inventory';
-import GroupAddIcon from '@mui/icons-material/GroupAdd';
+import GroupsRoundedIcon from '@mui/icons-material/GroupsRounded';
+import SettingsIcon from '@mui/icons-material/Settings';
+import LogoutIcon from '@mui/icons-material/Logout';
+import DeleteIcon from '@mui/icons-material/Delete';
+import NotificationsOffIcon from '@mui/icons-material/NotificationsOff';
+import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
+import PersonRemoveIcon from '@mui/icons-material/PersonRemove';
 import { 
   Dialog, 
   DialogTitle, 
@@ -18,7 +25,12 @@ import {
   Button as MuiButton, 
   Checkbox, 
   FormControlLabel,
-  Grid as MuiGrid
+  Grid as MuiGrid,
+  List,
+  ListItem,
+  ListItemAvatar,
+  ListItemText,
+  ListItemSecondaryAction
 } from "@mui/material";
 import TextField from "../components/CustomTextField";
 import { useShopFriends } from "../hooks/useShopFriends";
@@ -29,6 +41,7 @@ import { useProducts } from "../hooks/useProducts";
 import { uploadImage } from "../utils/upload";
 
 export default function Chat() {
+  const navigate = useNavigate();
   const { business } = useAuth();
   const { mode } = useThemeMode();
   const isDark = mode === "dark";
@@ -44,6 +57,9 @@ export default function Chat() {
   const [selectedFriendsForGroup, setSelectedFriendsForGroup] = useState<string[]>([]);
   const [groupName, setGroupName] = useState("");
   const [presenceMap, setPresenceMap] = useState<Record<string, any>>({});
+  const [groupsData, setGroupsData] = useState<any[]>([]);
+  const [groupSettingsOpen, setGroupSettingsOpen] = useState(false);
+  const [editingGroupName, setEditingGroupName] = useState("");
   
   const { data: productsData } = useProducts({ limit: 100 });
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -63,8 +79,24 @@ export default function Chat() {
     return () => unsub();
   }, []);
 
+  // Sync groups in real-time
+  useEffect(() => {
+    if (!business?._id) return;
+    const groupsRef = collection(db, "chats");
+    const q = query(groupsRef, where("type", "==", "group"), where("members", "array-contains", business._id));
+    const unsub = onSnapshot(q, (snapshot: any) => {
+        setGroupsData(snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() })));
+    });
+    return () => unsub();
+  }, [business?._id]);
+
   const friendsList = Array.isArray(friendsData) ? friendsData : (friendsData?.friends || friendsData?.items || []);
-  const filteredFriends = friendsList.filter((f: any) => 
+  const allConversations = [
+      ...friendsList,
+      ...groupsData
+  ];
+
+  const filteredFriends = allConversations.filter((f: any) => 
     (f?.business?.name || f?.name || f?.groupName || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -114,8 +146,11 @@ export default function Chat() {
         ? activeFriend._id 
         : [business._id, (activeFriend.business?._id || activeFriend._id)].sort().join("_");
 
+    // Firebase does not allow 'undefined' values. We must sanitize the content.
+    const sanitizedContent = JSON.parse(JSON.stringify(content, (_, value) => (value === undefined ? null : value)));
+
     await addDoc(collection(db, "chats", chatId, "messages"), {
-      ...content,
+      ...sanitizedContent,
       senderId: business._id,
       senderName: business.name,
       createdAt: serverTimestamp(),
@@ -151,34 +186,78 @@ export default function Chat() {
     setProductDialogOpen(false);
     await sendMessage({ 
       type: 'product', 
-      productId: product._id, 
-      productName: product.name, 
-      productPrice: product.salePrice,
-      productImage: product.thumbnailUrl || product.images?.[0],
-      productDescription: product.description,
-      productCategory: product.category?.name || product.category,
-      text: `Check out this product: ${product.name}`
+      productId: product._id || "", 
+      productName: product.name || "Product", 
+      productPrice: product.salePrice || 0,
+      productImage: product.thumbnailUrl || product.images?.[0] || "",
+      productDescription: product.description || "",
+      productCategory: (typeof product.category === 'object' ? product.category?.name : product.category) || "General",
+      text: `Check out this product: ${product.name || "Product"}`
     });
   };
 
+  const handleLeaveGroup = async () => {
+    if (!activeFriend || !business?._id) return;
+    const newMembers = (activeFriend.members || []).filter((m: string) => m !== business._id);
+    if (newMembers.length === 0) {
+        await updateDoc(doc(db, "chats", activeFriend.id), { members: [], status: 'deleted' });
+    } else {
+        await updateDoc(doc(db, "chats", activeFriend.id), { members: newMembers });
+    }
+    setGroupSettingsOpen(false);
+    setActiveFriend(null);
+  };
+
+  const handleRemoveMember = async (memberId: string) => {
+    if (!activeFriend) return;
+    const newMembers = activeFriend.members.filter((m: string) => m !== memberId);
+    await updateDoc(doc(db, "chats", activeFriend.id), { members: newMembers });
+  };
+
+  const handleUpdateGroupName = async () => {
+    if (!activeFriend || !editingGroupName.trim()) return;
+    await updateDoc(doc(db, "chats", activeFriend.id), { groupName: editingGroupName });
+    setGroupSettingsOpen(false);
+  };
+
+  const handleDeleteGroup = async () => {
+    if (!activeFriend) return;
+    await updateDoc(doc(db, "chats", activeFriend.id), { status: 'deleted', members: [] });
+    setGroupSettingsOpen(false);
+    setActiveFriend(null);
+  };
+
+  const handleMuteToggle = async () => {
+    if (!activeFriend || !business?._id) return;
+    const mutedBy = activeFriend.mutedBy || [];
+    const isMuted = mutedBy.includes(business._id);
+    const newMutedBy = isMuted ? mutedBy.filter((i: string) => i !== business._id) : [...mutedBy, business._id];
+    await updateDoc(doc(db, "chats", activeFriend.id), { mutedBy: newMutedBy });
+  };
+
+  const isMuted = activeFriend?.mutedBy?.includes(business?._id);
+  const isAdmin = activeFriend?.createdBy === business?._id;
+
   const handleCreateGroup = async () => {
-    if (!groupName.trim() || selectedFriendsForGroup.length === 0 || !business?._id) return;
-    const groupId = `group_${Date.now()}`;
-    const members = [business._id, ...selectedFriendsForGroup];
+    if (!groupName.trim() || selectedFriendsForGroup.length === 0) return;
     
-    await setDoc(doc(db, "chats", groupId), {
-      _id: groupId,
-      groupName: groupName.trim(),
-      type: 'group',
+    // Auto include self
+    const members = [...selectedFriendsForGroup, business._id];
+    
+    await addDoc(collection(db, "chats"), {
+      groupName,
       members,
+      type: 'group',
+      createdAt: serverTimestamp(),
       createdBy: business._id,
-      createdAt: serverTimestamp()
+      lastMessage: "Group created",
+      lastMessageAt: serverTimestamp(),
+      mutedBy: []
     });
 
     setGroupDialogOpen(false);
     setGroupName("");
     setSelectedFriendsForGroup([]);
-    alert("Group created! Note: Production needs a group fetch sync.");
   };
 
   const isOnline = (id: string) => {
@@ -217,7 +296,7 @@ export default function Chat() {
           <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
             <Typography variant="h5" sx={{ fontWeight: 800, color: "text.primary" }}>Messages</Typography>
             <IconButton onClick={() => setGroupDialogOpen(true)} color="primary" sx={{ bgcolor: "primary.light", color: "primary.main", "&:hover": { bgcolor: "primary.light", opacity: 0.8 } }}>
-                <GroupAddIcon />
+                <GroupsRoundedIcon />
             </IconButton>
           </Stack>
           <Box sx={{ 
@@ -290,8 +369,8 @@ export default function Chat() {
                         }
                     }}
                   >
-                    <Avatar sx={{ background: "linear-gradient(135deg, #0ea5e9, #6366f1)" }}>
-                        {getFriendName(friend).substring(0, 2).toUpperCase()}
+                    <Avatar sx={{ background: friend.type === 'group' ? "linear-gradient(135deg, #f59e0b, #ef4444)" : "linear-gradient(135deg, #0ea5e9, #6366f1)" }}>
+                        {friend.type === 'group' ? <GroupsRoundedIcon /> : getFriendName(friend).substring(0, 2).toUpperCase()}
                     </Avatar>
                   </Badge>
                   <Box>
@@ -335,15 +414,30 @@ export default function Chat() {
                         }
                     }}
                 >
-                    <Avatar sx={{ background: "linear-gradient(135deg, #0ea5e9, #6366f1)" }}>
-                        {getFriendName(activeFriend).substring(0, 2).toUpperCase()}
+                    <Avatar sx={{ background: activeFriend.type === 'group' ? "linear-gradient(135deg, #f59e0b, #ef4444)" : "linear-gradient(135deg, #0ea5e9, #6366f1)" }}>
+                        {activeFriend.type === 'group' ? <GroupsRoundedIcon /> : getFriendName(activeFriend).substring(0, 2).toUpperCase()}
                     </Avatar>
                 </Badge>
                 <Box>
                     <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>{getFriendName(activeFriend)}</Typography>
                     <Typography variant="caption" sx={{ color: isOnline(String(activeFriend.business?._id || activeFriend._id)) ? "#10b981" : "text.secondary", fontWeight: 700 }}>
-                        {isOnline(String(activeFriend.business?._id || activeFriend._id)) ? "Online" : "Offline"}
+                        {activeFriend.type === 'group' ? `${activeFriend.members?.length || 0} Members` : (isOnline(String(activeFriend.business?._id || activeFriend._id)) ? "Online" : "Offline")}
                     </Typography>
+                </Box>
+                <Box sx={{ ml: "auto", display: "flex", gap: 1 }}>
+                    {activeFriend.type === 'group' && (
+                        <>
+                            <IconButton size="small" onClick={handleMuteToggle} sx={{ opacity: 0.7 }}>
+                                {isMuted ? <NotificationsOffIcon fontSize="small" /> : <NotificationsActiveIcon fontSize="small" />}
+                            </IconButton>
+                            <IconButton size="small" onClick={() => {
+                                setEditingGroupName(activeFriend.groupName);
+                                setGroupSettingsOpen(true);
+                            }} color="primary" sx={{ opacity: 0.7 }}>
+                                <SettingsIcon fontSize="small" />
+                            </IconButton>
+                        </>
+                    )}
                 </Box>
             </Box>
 
@@ -407,6 +501,7 @@ export default function Chat() {
                             )}
                             <MuiButton 
                                 fullWidth size="small" variant="contained" 
+                                onClick={() => navigate(`/products/${msg.productId}`)}
                                 sx={{ color: isMe ? "primary.main" : "#fff", bgcolor: isMe ? "#fff" : "primary.main", fontSize: "0.7rem", py: 0.5 }}
                             >
                                 View Details
@@ -438,7 +533,7 @@ export default function Chat() {
             </Box>
 
             <Box component="form" onSubmit={handleSendText} sx={{ p: 2.5, borderTop: "1px solid", borderColor: "divider" }}>
-              <Box sx={{ display: "flex", alignItems: "center", background: isDark ? "#1e293b" : "#ffffff", borderRadius: 4, px: 1, py: 0.5, border: "1px solid", borderColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)" }}>
+              <Box sx={{ display: "flex", alignItems: "center", background: isDark ? "#1e293b" : "#ffffff", borderRadius: 4, px: 0.5, py: 0.5, border: "1px solid", borderColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)" }}>
                 <IconButton onClick={() => fileInputRef.current?.click()} color="primary" sx={{ opacity: 0.7 }}>
                   <AttachFileIcon />
                 </IconButton>
@@ -504,36 +599,149 @@ export default function Chat() {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={groupDialogOpen} onClose={() => setGroupDialogOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ fontWeight: 800 }}>Create Group</DialogTitle>
-        <DialogContent dividers>
-            <TextField fullWidth label="Group Name" value={groupName} onChange={(e: any) => setGroupName(e.target.value)} sx={{ mb: 3 }} />
-            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 700 }}>Select Members</Typography>
-            <Box sx={{ maxHeight: 300, overflowY: "auto" }}>
-                {friendsList.map((f: any) => (
-                    <FormControlLabel
-                        key={f._id}
-                        control={
-                            <Checkbox 
-                                checked={selectedFriendsForGroup.includes(f.business?._id || f._id)} 
-                                onChange={(e) => {
-                                    const id = f.business?._id || f._id;
-                                    if (e.target.checked) setSelectedFriendsForGroup(p => [...p, id]);
-                                    else setSelectedFriendsForGroup(p => p.filter(x => x !== id));
-                                }}
-                            />
-                        }
-                        label={getFriendName(f)}
-                        sx={{ width: "100%", m: 0, p: 0.5 }}
+      <Dialog open={groupDialogOpen} onClose={() => setGroupDialogOpen(false)} maxWidth="xs" fullWidth
+        PaperProps={{ sx: { borderRadius: 4, p: 1 } }}
+      >
+        <DialogTitle sx={{ fontWeight: 800, textAlign: "center", pb: 1 }}>New Group Chat</DialogTitle>
+        <DialogContent>
+            <Stack spacing={3} sx={{ mt: 1 }}>
+                <Box>
+                    <Typography variant="caption" sx={{ ml: 1, fontWeight: 700, opacity: 0.6 }}>GROUP NAME</Typography>
+                    <TextField 
+                        fullWidth 
+                        placeholder="e.g. Sales Team" 
+                        value={groupName} 
+                        onChange={(e: any) => setGroupName(e.target.value)} 
+                        autoFocus
                     />
-                ))}
-            </Box>
+                </Box>
+                
+                <Box>
+                    <Typography variant="caption" sx={{ ml: 1, fontWeight: 700, opacity: 0.6 }}>SELECT MEMBERS</Typography>
+                    <Paper variant="outlined" sx={{ maxHeight: 240, overflow: "auto", borderRadius: 3, mt: 1 }}>
+                        <List sx={{ py: 0 }}>
+                            {friendsList.map((f: any) => (
+                                <ListItem key={f._id} sx={{ py: 0.5 }}>
+                                    <FormControlLabel
+                                        sx={{ width: "100%", m: 0 }}
+                                        control={
+                                            <Checkbox 
+                                                size="small"
+                                                checked={selectedFriendsForGroup.includes(f.business?._id || f._id)}
+                                                onChange={(e) => {
+                                                    const id = f.business?._id || f._id;
+                                                    setSelectedFriendsForGroup(prev => 
+                                                        e.target.checked ? [...prev, id] : prev.filter(i => i !== id)
+                                                    );
+                                                }}
+                                            />
+                                        }
+                                        label={
+                                            <Stack direction="row" spacing={1.5} alignItems="center">
+                                                <Avatar sx={{ width: 28, height: 28, fontSize: "0.8rem" }}>{getFriendName(f).charAt(0)}</Avatar>
+                                                <Typography variant="body2" sx={{ fontWeight: 600 }}>{getFriendName(f)}</Typography>
+                                            </Stack>
+                                        }
+                                    />
+                                </ListItem>
+                            ))}
+                        </List>
+                    </Paper>
+                </Box>
+            </Stack>
         </DialogContent>
-        <DialogActions>
-            <MuiButton onClick={() => setGroupDialogOpen(false)}>Cancel</MuiButton>
-            <MuiButton variant="contained" onClick={handleCreateGroup} disabled={!groupName.trim() || selectedFriendsForGroup.length === 0}>
+        <DialogActions sx={{ p: 2, pt: 0 }}>
+            <MuiButton fullWidth onClick={() => setGroupDialogOpen(false)} sx={{ fontWeight: 700 }}>Cancel</MuiButton>
+            <MuiButton 
+                fullWidth variant="contained" 
+                onClick={handleCreateGroup} 
+                disabled={!groupName.trim() || selectedFriendsForGroup.length === 0}
+                sx={{ fontWeight: 700, borderRadius: 2 }}
+            >
                 Create Group
             </MuiButton>
+        </DialogActions>
+      </Dialog>
+
+      {/* Group Settings Dialog */}
+      <Dialog 
+        open={groupSettingsOpen} 
+        onClose={() => setGroupSettingsOpen(false)} 
+        maxWidth="xs" 
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 4 } }}
+      >
+        <DialogTitle sx={{ fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            Group Settings
+            {isAdmin && (
+                <IconButton color="error" size="small" onClick={handleDeleteGroup}>
+                    <DeleteIcon />
+                </IconButton>
+            )}
+        </DialogTitle>
+        <DialogContent dividers>
+            <Stack spacing={3}>
+                {isAdmin ? (
+                    <Box>
+                        <Typography variant="caption" sx={{ fontWeight: 700, opacity: 0.6, ml: 1 }}>GROUP NAME</Typography>
+                        <TextField 
+                            fullWidth 
+                            value={editingGroupName} 
+                            onChange={(e: any) => setEditingGroupName(e.target.value)} 
+                            sx={{ mt: 1 }}
+                        />
+                    </Box>
+                ) : (
+                    <Typography variant="h6" sx={{ fontWeight: 700 }}>{activeFriend?.groupName}</Typography>
+                )}
+
+                <Box>
+                    <Typography variant="caption" sx={{ fontWeight: 700, opacity: 0.6, ml: 1 }}>MEMBERS ({activeFriend?.members?.length || 0})</Typography>
+                    <List sx={{ mt: 1 }}>
+                        {(activeFriend?.members || []).map((mId: string) => {
+                            const friendObj = friendsList.find((f: any) => (f.business?._id || f._id) === mId);
+                            const name = mId === business?._id ? "You" : (friendObj ? getFriendName(friendObj) : "Member");
+                            const isUserAdmin = mId === activeFriend?.createdBy;
+                            
+                            return (
+                                <ListItem key={mId} sx={{ px: 1 }}>
+                                    <ListItemAvatar>
+                                        <Avatar sx={{ width: 32, height: 32, fontSize: "0.8rem" }}>{name.charAt(0)}</Avatar>
+                                    </ListItemAvatar>
+                                    <ListItemText 
+                                        primary={name} 
+                                        secondary={isUserAdmin ? "Admin" : ""} 
+                                        primaryTypographyProps={{ fontWeight: 600, fontSize: "0.9rem" }}
+                                    />
+                                    {isAdmin && mId !== business?._id && (
+                                        <ListItemSecondaryAction>
+                                            <IconButton size="small" edge="end" onClick={() => handleRemoveMember(mId)}>
+                                                <PersonRemoveIcon fontSize="small" />
+                                            </IconButton>
+                                        </ListItemSecondaryAction>
+                                    )}
+                                </ListItem>
+                            )
+                        })}
+                    </List>
+                </Box>
+            </Stack>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+            <MuiButton 
+                startIcon={<LogoutIcon />} 
+                color="error" 
+                onClick={handleLeaveGroup}
+                sx={{ mr: "auto", fontWeight: 700 }}
+            >
+                Leave Group
+            </MuiButton>
+            {isAdmin && (
+                <MuiButton variant="contained" onClick={handleUpdateGroupName} sx={{ fontWeight: 700, borderRadius: 2 }}>
+                    Save Changes
+                </MuiButton>
+            )}
+            <MuiButton onClick={() => setGroupSettingsOpen(false)} sx={{ fontWeight: 700 }}>Close</MuiButton>
         </DialogActions>
       </Dialog>
     </Box>

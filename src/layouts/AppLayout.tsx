@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { AppBar, Toolbar, Typography, Box, Drawer, List, ListItemButton, ListItemText, IconButton, Divider, Avatar, Stack, Menu, MenuItem, ListItemIcon, ListSubheader, Collapse, Paper, Button, CircularProgress, Tooltip } from "@mui/material";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import LogoutIcon from "@mui/icons-material/Logout";
@@ -32,7 +32,8 @@ import SwitchAccountIcon from '@mui/icons-material/SwitchAccount';
 import ChatBubbleRoundedIcon from '@mui/icons-material/ChatBubbleRounded';
 import SettingsSuggestRoundedIcon from '@mui/icons-material/SettingsSuggestRounded';
 
-import { Link, Outlet, useLocation } from "react-router-dom";
+import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
+import toast, { Toaster } from 'react-hot-toast';
 import { useAuth } from "../hooks/useAuth";
 import { api } from "../api/client";
 import { useToast } from "../hooks/useToast";
@@ -42,7 +43,7 @@ import DarkModeRoundedIcon from '@mui/icons-material/DarkModeRounded';
 import { useNotifications } from "../hooks/useNotifications";
 import Badge from '@mui/material/Badge';
 import NotificationsPausedIcon from '@mui/icons-material/NotificationsPaused';
-import { db, collection, query, where, onSnapshot, orderBy, limit, doc, getDoc, setDoc, serverTimestamp } from "../utils/firebase";
+import { auth, db, collection, query, where, onSnapshot, orderBy, limit, doc, getDoc, setDoc, updateDoc, addDoc, serverTimestamp, getMessaging, getToken } from "../utils/firebase";
 
 type NavItem = { label: string; to: string; icon: React.ReactNode };
 type NavGroup = { id: string; label: string; items: NavItem[] };
@@ -51,6 +52,7 @@ export default function AppLayout() {
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [collapsed, setCollapsed] = React.useState(false); // Collapsed Sidebar State
   const location = useLocation();
+  const navigate = useNavigate();
   const { logout, user, business } = useAuth();
   const { notify } = useToast();
   const { mode, toggleTheme } = useThemeMode();
@@ -65,7 +67,6 @@ export default function AppLayout() {
   React.useEffect(() => {
     if (!business?._id) return;
     
-    // Create/Update Presence document
     const updatePresence = async () => {
         await setDoc(doc(db, "presence", business._id), {
             id: business._id,
@@ -77,7 +78,7 @@ export default function AppLayout() {
     };
 
     updatePresence();
-    const interval = setInterval(updatePresence, 20000); // Heartbeat every 20s
+    const interval = setInterval(updatePresence, 20000);
     return () => clearInterval(interval);
   }, [business?._id, dndMode]);
 
@@ -88,18 +89,19 @@ export default function AppLayout() {
     const chatsRef = collection(db, "chats");
     const q = query(chatsRef, where("members", "array-contains", business._id));
 
-    const unsub = onSnapshot(q, (snapshot: any) => {
+    const unsubChat = onSnapshot(q, (snapshot: any) => {
         snapshot.docs.forEach(async (chatDoc: any) => {
             const chatId = chatDoc.id;
             const messagesRef = collection(db, "chats", chatId, "messages");
-            const mq = query(messagesRef, where("status", "!=", "read"), where("senderId", "!=", business._id));
+            const mq = query(messagesRef); // Fetching all messages for memory filtering to avoid FCM single '!=' constraint
             
             onSnapshot(mq, (mSnap: any) => {
-                const count = mSnap.docs.length;
-                if (count > 0 && !dndMode) { // SUPPRESS IF DND IS ON
-                   const latest = mSnap.docs[mSnap.docs.length - 1].data();
+                const unreadMsgs = mSnap.docs.filter((d: any) => d.data().status !== 'read' && d.data().senderId !== business._id);
+                const count = unreadMsgs.length;
+                if (count > 0 && !dndMode) { 
+                   const latest = unreadMsgs[unreadMsgs.length - 1].data();
                    if (latest.createdAt && (Date.now() - latest.createdAt.toMillis() < 5000)) {
-                       notify(`New message: ${latest.text.substring(0, 30)}...`, "info");
+                       toast(`New message: ${latest.text.substring(0, 30)}${latest.text.length > 30 ? '...' : ''}`, { icon: '💬' });
                    }
                 }
             });
@@ -107,10 +109,84 @@ export default function AppLayout() {
         setChatUnread(3); 
     });
 
-    return () => unsub();
+    // General Notifications (Friend Requests, Orders, etc)
+    const notifRef = collection(db, "notifications");
+    const nq = query(notifRef, where("targetId", "==", business._id), where("read", "==", false));
+    
+    const unsubNotif = onSnapshot(nq, (nSnap: any) => {
+        nSnap.docs.forEach((d: any) => {
+            const data = d.data();
+            if (data.createdAt && (Date.now() - data.createdAt.toMillis() < 5000)) {
+                toast(data.message, { icon: '🔔', duration: 4000 });
+            }
+        });
+    });
+
+    return () => {
+        unsubChat();
+        unsubNotif();
+    };
   }, [user?._id, business?._id, dndMode]);
 
-  const drawerWidth = collapsed ? 84 : 260; // wider expanded, mini collapsed
+  // Handle FCM Registration
+  useEffect(() => {
+      if (!business?._id) return;
+
+      const setupFCM = async () => {
+          try {
+              const token = await getToken();
+              if (token) {
+                  try {
+                      await setDoc(doc(db, "users", business._id), {
+                          fcmToken: token,
+                          updatedAt: serverTimestamp()
+                      }, { merge: true });
+                  } catch (e) {
+                      console.warn("Failed to save FCM token (user doc potentially missing):", e);
+                  }
+              }
+          } catch (err) {
+              console.error("FCM Registration Failed:", err);
+          }
+      };
+
+      setupFCM();
+  }, [business?._id]);
+
+  const handleLogout = async () => {
+      try {
+          if (business?._id) {
+              try {
+                  await setDoc(doc(db, "users", business._id), {
+                      fcmToken: null,
+                      logoutAt: serverTimestamp()
+                  }, { merge: true });
+              } catch (e) {
+                  console.warn("FCM clear failed or user doc missing:", e);
+              }
+              
+              try {
+                  await setDoc(doc(db, "presence", business._id), {
+                      status: 'offline',
+                      lastSeen: serverTimestamp(),
+                      updatedAt: serverTimestamp()
+                  }, { merge: true });
+              } catch (e) {
+                  console.warn("Presence clear failed:", e);
+              }
+          }
+          logout();
+          toast.success("Successfully logged out");
+          navigate("/login");
+      } catch (error) {
+          console.error("Logout failed:", error);
+          toast.error("Failed to logout safely");
+          logout();
+          navigate("/login");
+      }
+  };
+
+  const drawerWidth = collapsed ? 84 : 260;
 
   const isSuperAdmin = user?.role === "SUPER_ADMIN";
   const showPaywall = !isSuperAdmin && business && business.subscriptionStatus !== "active" && business.subscriptionStatus !== "pending";
@@ -522,7 +598,7 @@ export default function AppLayout() {
             )}
 
             <Tooltip title="Logout">
-              <IconButton onClick={logout} sx={{ color: "#e11d48", bgcolor: "rgba(225,29,72,0.05)", "&:hover": { bgcolor: "rgba(225,29,72,0.12)" } }}>
+              <IconButton onClick={handleLogout} sx={{ color: "#e11d48", bgcolor: "rgba(225,29,72,0.05)", "&:hover": { bgcolor: "rgba(225,29,72,0.12)" } }}>
                 <LogoutIcon />
               </IconButton>
             </Tooltip>
@@ -556,8 +632,8 @@ export default function AppLayout() {
               width: drawerWidth,
               background: "#0c1220",
               color: "#e2e8f0",
-              borderRight: "0 !important", // Remove border explicitly
-              boxShadow: "none !important", // Remove shadow explicitly
+              borderRight: "0 !important",
+              boxShadow: "none !important",
               transition: "width 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
               overflow: "visible" 
             }
@@ -589,7 +665,6 @@ export default function AppLayout() {
         <Outlet />
       </Box>
 
-      {/* Paywall code unchanged */}
       {showPaywall && (
         <Box
           sx={{
@@ -652,6 +727,7 @@ export default function AppLayout() {
           </Paper>
         </Box>
       )}
+      <Toaster position="top-right" reverseOrder={false} />
     </Box>
   );
 }

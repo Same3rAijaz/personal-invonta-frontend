@@ -30,7 +30,6 @@ if (apiKey) {
 // SAFE MOCK IMPLEMENTATION (Used if Firebase is not configured in .env)
 // ============================================================================
 
-// Memory storage for mock data to make it feel real
 const mockMessages: Record<string, any[]> = {};
 const mockSubscribers: Record<string, ((snapshot: any) => void)[]> = {};
 
@@ -68,12 +67,14 @@ const mockQuery = (...args: any[]) => args;
 const mockOrderBy = (field: string, direction: string) => ({ field, direction });
 
 const mockOnSnapshot = (queryRef: any, onNext: (snapshot: any) => void) => {
-  const chatId = Array.isArray(queryRef) ? queryRef[1] : (typeof queryRef === 'string' ? queryRef.split("/")[1] : "unknown");
+  let path = Array.isArray(queryRef) ? queryRef[0] : queryRef;
+  const chatId = typeof path === 'string' ? path.split("/")[1] : "unknown";
+  
   if (!mockSubscribers[chatId]) mockSubscribers[chatId] = [];
   mockSubscribers[chatId].push(onNext);
 
   const msgs = mockMessages[chatId] || [
-    { id: "mock_1", text: "Welcome to Invonta Chat Demo!", senderId: "server", createdAt: { toDate: () => new Date(), toMillis: () => Date.now() }, status: 'read' },
+    { id: "mock_1", text: "Connected to Chat!", senderId: "server", createdAt: { toDate: () => new Date(), toMillis: () => Date.now() }, status: 'read' },
   ];
   setTimeout(() => onNext({
     docs: msgs.map(m => ({ id: m.id, data: () => m }))
@@ -90,10 +91,16 @@ const mockLimit = (n: number) => ({ n });
 const mockUpdateDoc = async (r: any, d: any) => console.log("MOCK UPDATE DOC:", r, d);
 const mockGetDoc = async (r: any) => ({ exists: () => false, data: () => ({}) });
 
-// ============================================================================
-// EXPORTS: Route to real SDK or Mock SDK based on configuration
-// ============================================================================
+const mockAuth = { currentUser: null };
+const mockMessaging = {
+  onMessage: (onNext: any) => () => {},
+  getToken: async () => "mock_fcm_token_" + Date.now()
+};
 
+const mockGetMessaging = () => mockMessaging;
+const mockGetToken = async () => "mock_fcm_token_123";
+
+// EXPORTS
 const exportDb = apiKey ? db : mockDb;
 const exportCollection = apiKey ? collection : mockCollection as any;
 const exportAddDoc = apiKey ? addDoc : mockAddDoc as any;
@@ -121,5 +128,8 @@ export {
   exportDoc as doc,
   exportWhere as where,
   exportLimit as limit,
-  exportGetDoc as getDoc
+  exportGetDoc as getDoc,
+  mockAuth as auth,
+  mockGetMessaging as getMessaging,
+  mockGetToken as getToken
 };
