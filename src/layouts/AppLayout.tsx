@@ -31,8 +31,10 @@ import FavoriteRoundedIcon from '@mui/icons-material/FavoriteRounded';
 import SwitchAccountIcon from '@mui/icons-material/SwitchAccount';
 import ChatBubbleRoundedIcon from '@mui/icons-material/ChatBubbleRounded';
 import SettingsSuggestRoundedIcon from '@mui/icons-material/SettingsSuggestRounded';
+import SmartToyRoundedIcon from '@mui/icons-material/SmartToyRounded';
 
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
+import AssistantPanel from "../components/Assistant/AssistantPanel";
 import toast, { Toaster } from 'react-hot-toast';
 import { useAuth } from "../hooks/useAuth";
 import { api } from "../api/client";
@@ -50,6 +52,8 @@ type NavGroup = { id: string; label: string; items: NavItem[] };
 
 export default function AppLayout() {
   const [mobileOpen, setMobileOpen] = React.useState(false);
+  const [assistantOpen, setAssistantOpen] = React.useState(false);
+  const [voiceMode, setVoiceMode] = React.useState(false);
   const [collapsed, setCollapsed] = React.useState(false); // Collapsed Sidebar State
   const location = useLocation();
   const navigate = useNavigate();
@@ -750,6 +754,52 @@ export default function AppLayout() {
           </Paper>
         </Box>
       )}
+      {/* Floating Assistant Button */}
+      {!isSuperAdmin && !assistantOpen && (
+        <Tooltip title={voiceMode ? "Voice mode active — click to open" : "Invonta Assistant"} placement="left">
+          <Box
+            onClick={() => setAssistantOpen(true)}
+            sx={{
+              position: "fixed",
+              bottom: 28,
+              right: 28,
+              zIndex: 1300,
+              width: 56,
+              height: 56,
+              borderRadius: "50%",
+              background: voiceMode
+                ? "linear-gradient(135deg, #e11d48 0%, #6366f1 100%)"
+                : "linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%)",
+              boxShadow: voiceMode
+                ? "0 0 0 0 rgba(225,29,72,0.7)"
+                : "0 4px 20px rgba(99,102,241,0.45)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              animation: voiceMode ? "voiceGlow 1.6s ease-in-out infinite" : "none",
+              "@keyframes voiceGlow": {
+                "0%": { boxShadow: "0 0 0 0 rgba(225,29,72,0.7)" },
+                "70%": { boxShadow: "0 0 0 16px rgba(225,29,72,0)" },
+                "100%": { boxShadow: "0 0 0 0 rgba(225,29,72,0)" },
+              },
+              transition: "background 0.3s ease",
+              "&:hover": { transform: "scale(1.08)" },
+              "&:active": { transform: "scale(0.95)" },
+            }}
+          >
+            <SmartToyRoundedIcon sx={{ color: "#fff", fontSize: 28 }} />
+          </Box>
+        </Tooltip>
+      )}
+
+      <AssistantPanel
+        open={assistantOpen}
+        onClose={() => setAssistantOpen(false)}
+        voiceMode={voiceMode}
+        setVoiceMode={setVoiceMode}
+      />
+
       <Toaster position="top-right" reverseOrder={false} />
     </Box>
   );
