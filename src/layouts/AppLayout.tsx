@@ -62,6 +62,8 @@ export default function AppLayout() {
   const { data: notifications = [] } = useNotifications({ limit: 5 });
   const [chatUnread, setChatUnread] = React.useState(0);
   const unreadCount = Number(notifications?.length || 0);
+  const isChatFirstRun = React.useRef(true);
+  const isFCMRequesting = React.useRef(false);
 
   // REAL-TIME PRESENCE & DND SYNC
   React.useEffect(() => {
@@ -90,8 +92,14 @@ export default function AppLayout() {
     const q = query(chatsRef, where("members", "array-contains", business._id));
 
     const unsubChat = onSnapshot(q, (snapshot: any) => {
+        if (isChatFirstRun.current) {
+            isChatFirstRun.current = false;
+            return;
+        }
+
         snapshot.docs.forEach(async (chatDoc: any) => {
             const chatId = chatDoc.id;
+            const chatData = chatDoc.data();
             const messagesRef = collection(db, "chats", chatId, "messages");
             const mq = query(messagesRef); // Fetching all messages for memory filtering to avoid FCM single '!=' constraint
             
@@ -100,8 +108,13 @@ export default function AppLayout() {
                 const count = unreadMsgs.length;
                 if (count > 0 && !dndMode) { 
                    const latest = unreadMsgs[unreadMsgs.length - 1].data();
-                   if (latest.createdAt && (Date.now() - latest.createdAt.toMillis() < 5000)) {
-                       toast(`New message: ${latest.text.substring(0, 30)}${latest.text.length > 30 ? '...' : ''}`, { icon: '💬' });
+                   // Ensure it's a very fresh message to avoid duplicated toasts on re-renders
+                   const msgTime = latest.createdAt?.toMillis ? latest.createdAt.toMillis() : (latest.createdAt instanceof Date ? latest.createdAt.getTime() : Date.now());
+                   if (Date.now() - msgTime < 4000) {
+                       toast(`New message from ${chatData.groupName || chatData.senderName || 'Chat'}: ${latest.text.substring(0, 30)}${latest.text.length > 30 ? '...' : ''}`, { 
+                          icon: '💬',
+                          duration: 4000
+                       });
                    }
                 }
             });
@@ -128,12 +141,22 @@ export default function AppLayout() {
     };
   }, [user?._id, business?._id, dndMode]);
 
-  // Handle FCM Registration
+  // Handle FCM Registration + Permission
   useEffect(() => {
-      if (!business?._id) return;
+      if (!business?._id || isFCMRequesting.current) return;
+      isFCMRequesting.current = true;
 
       const setupFCM = async () => {
           try {
+              // Ask for permission explicitly
+              if (typeof window !== "undefined" && "Notification" in window) {
+                  console.log("Requesting notification permission...");
+                  const permission = await Notification.requestPermission();
+                  if (permission !== "granted") {
+                      console.warn("Notification permission denied");
+                  }
+              }
+
               const token = await getToken();
               if (token) {
                   try {

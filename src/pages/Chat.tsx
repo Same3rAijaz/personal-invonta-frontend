@@ -17,6 +17,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import NotificationsOffIcon from '@mui/icons-material/NotificationsOff';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import PersonRemoveIcon from '@mui/icons-material/PersonRemove';
+import CloseIcon from '@mui/icons-material/Close';
 import { 
   Dialog, 
   DialogTitle, 
@@ -60,12 +61,16 @@ export default function Chat() {
   const [groupsData, setGroupsData] = useState<any[]>([]);
   const [groupSettingsOpen, setGroupSettingsOpen] = useState(false);
   const [editingGroupName, setEditingGroupName] = useState("");
+  const [selectedProductPreview, setSelectedProductPreview] = useState<any>(null);
   
   const { data: productsData } = useProducts({ limit: 100 });
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Real-time Presence Listener for all friends
+  // Stats/Metadata for sorting
+  const [chatMeta, setChatMeta] = useState<Record<string, any>>({});
+
+  // Real-time Presence Listener
   useEffect(() => {
     const presenceRef = collection(db, "presence");
     const unsub = onSnapshot(presenceRef, (snapshot: any) => {
@@ -79,22 +84,45 @@ export default function Chat() {
     return () => unsub();
   }, []);
 
-  // Sync groups in real-time
+  // Sync groups + metadata in real-time
   useEffect(() => {
     if (!business?._id) return;
     const groupsRef = collection(db, "chats");
-    const q = query(groupsRef, where("type", "==", "group"), where("members", "array-contains", business._id));
+    const q = query(groupsRef, where("members", "array-contains", business._id));
+    
     const unsub = onSnapshot(q, (snapshot: any) => {
-        setGroupsData(snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() })));
+        const groups: any[] = [];
+        const meta: Record<string, any> = {};
+        
+        snapshot.docs.forEach((doc: any) => {
+            const data = doc.data();
+            if (data.type === 'group') {
+                groups.push({ id: doc.id, _id: doc.id, ...data });
+            }
+            meta[doc.id] = data;
+        });
+        
+        setGroupsData(groups);
+        setChatMeta(meta);
     });
     return () => unsub();
   }, [business?._id]);
 
   const friendsList = Array.isArray(friendsData) ? friendsData : (friendsData?.friends || friendsData?.items || []);
+  
+  // MERGE & SORT
   const allConversations = [
-      ...friendsList,
-      ...groupsData
-  ];
+      ...friendsList.map((f: any) => {
+          const fid = f.business?._id || f._id;
+          const chatId = [business?._id, fid].sort().join("_");
+          return { ...f, chatId, lastMessageAt: chatMeta[chatId]?.lastMessageAt };
+      }),
+      ...groupsData.map((g: any) => ({ ...g, chatId: g.id }))
+  ].sort((a, b) => {
+      const timeA = a.lastMessageAt?.toMillis ? a.lastMessageAt.toMillis() : (a.lastMessageAt instanceof Date ? a.lastMessageAt.getTime() : 0);
+      const timeB = b.lastMessageAt?.toMillis ? b.lastMessageAt.toMillis() : (b.lastMessageAt instanceof Date ? b.lastMessageAt.getTime() : 0);
+      return timeB - timeA;
+  });
 
   const filteredFriends = allConversations.filter((f: any) => 
     (f?.business?.name || f?.name || f?.groupName || "").toLowerCase().includes(searchTerm.toLowerCase())
@@ -110,7 +138,7 @@ export default function Chat() {
     if (!business?._id || !activeFriend) return;
 
     const chatId = activeFriend.type === 'group' 
-        ? activeFriend._id 
+        ? activeFriend.id || activeFriend._id
         : [business._id, (activeFriend.business?._id || activeFriend._id)].sort().join("_");
 
     const q = query(
@@ -125,7 +153,6 @@ export default function Chat() {
       }));
       setMessages(msgs);
       
-      // MARK AS READ: If the last message is from the other person and unread, mark it read
       msgs.forEach(async (m: any) => {
           if (m.senderId !== business?._id && m.status !== 'read') {
               await updateDoc(doc(db, "chats", chatId, "messages", m.id), { status: 'read' });
@@ -143,12 +170,12 @@ export default function Chat() {
   const sendMessage = async (content: any) => {
     if (!business?._id || !activeFriend) return;
     const chatId = activeFriend.type === 'group' 
-        ? activeFriend._id 
+        ? activeFriend.id || activeFriend._id
         : [business._id, (activeFriend.business?._id || activeFriend._id)].sort().join("_");
 
-    // Firebase does not allow 'undefined' values. We must sanitize the content.
     const sanitizedContent = JSON.parse(JSON.stringify(content, (_, value) => (value === undefined ? null : value)));
 
+    // Update Message
     await addDoc(collection(db, "chats", chatId, "messages"), {
       ...sanitizedContent,
       senderId: business._id,
@@ -156,6 +183,14 @@ export default function Chat() {
       createdAt: serverTimestamp(),
       status: 'delivered'
     });
+
+    // Update Chat Metadata for Sorting
+    await setDoc(doc(db, "chats", chatId), {
+        lastMessage: content.text || (content.type === 'image' ? "Sent an image" : "Shared a product"),
+        lastMessageAt: serverTimestamp(),
+        members: activeFriend.type === 'group' ? activeFriend.members : [business._id, (activeFriend.business?._id || activeFriend._id)],
+        type: activeFriend.type || 'private'
+    }, { merge: true });
   };
 
   const handleSendText = async (e: React.FormEvent) => {
@@ -345,13 +380,14 @@ export default function Chat() {
                   sx={{
                     display: "flex",
                     alignItems: "center",
-                    gap: 2.5,
-                    p: 2,
-                    mb: 0.8,
+                    gap: 1.5,
+                    p: 1.5,
+                    mb: 0.5,
                     borderRadius: 3,
                     cursor: "pointer",
+                    transition: "all 0.2s ease",
                     background: isActive ? (isDark ? "rgba(56,189,248,0.12)" : "#eff6ff") : "transparent",
-                    "&:hover": { background: isActive ? (isDark ? "rgba(56,189,248,0.18)" : "#eff6ff") : "rgba(15,23,42,0.03)" }
+                    "&:hover": { background: isActive ? (isDark ? "rgba(56,189,248,0.18)" : "#eff6ff") : (isDark ? "rgba(255,255,255,0.03)" : "rgba(15,23,42,0.03)") }
                   }}
                 >
                   <Badge
@@ -369,14 +405,37 @@ export default function Chat() {
                         }
                     }}
                   >
-                    <Avatar sx={{ background: friend.type === 'group' ? "linear-gradient(135deg, #f59e0b, #ef4444)" : "linear-gradient(135deg, #0ea5e9, #6366f1)" }}>
+                    <Avatar 
+                       sx={{ 
+                         width: 44, height: 44,
+                         background: friend.type === 'group' ? "linear-gradient(135deg, #f59e0b, #ef4444)" : "linear-gradient(135deg, #0ea5e9, #6366f1)",
+                         fontSize: "1rem", fontWeight: 700
+                       }}>
                         {friend.type === 'group' ? <GroupsRoundedIcon /> : getFriendName(friend).substring(0, 2).toUpperCase()}
                     </Avatar>
                   </Badge>
-                  <Box>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{getFriendName(friend)}</Typography>
-                    <Typography variant="caption" sx={{ color: online ? "#10b981" : "text.secondary" }}>
-                        {online ? "Active Now" : "Offline"}
+                  <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                    <Stack direction="row" justifyContent="space-between" alignItems="center">
+                        <Typography variant="subtitle2" sx={{ fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                            {getFriendName(friend)}
+                        </Typography>
+                        {friend.lastMessageAt && (
+                           <Typography variant="caption" sx={{ opacity: 0.5, fontSize: "0.65rem" }}>
+                               {friend.lastMessageAt.toDate ? friend.lastMessageAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}
+                           </Typography>
+                        )}
+                    </Stack>
+                    <Typography 
+                        variant="caption" 
+                        noWrap 
+                        sx={{ 
+                            color: "text.secondary", 
+                            display: "block", 
+                            opacity: 0.8,
+                            fontSize: "0.75rem"
+                        }}
+                    >
+                        {chatMeta[friend.chatId]?.lastMessage || (online ? "Active Now" : "Offline")}
                     </Typography>
                   </Box>
                 </Box>
@@ -501,7 +560,7 @@ export default function Chat() {
                             )}
                             <MuiButton 
                                 fullWidth size="small" variant="contained" 
-                                onClick={() => navigate(`/products/${msg.productId}`)}
+                                onClick={() => setSelectedProductPreview(msg)}
                                 sx={{ color: isMe ? "primary.main" : "#fff", bgcolor: isMe ? "#fff" : "primary.main", fontSize: "0.7rem", py: 0.5 }}
                             >
                                 View Details
@@ -669,80 +728,150 @@ export default function Chat() {
         onClose={() => setGroupSettingsOpen(false)} 
         maxWidth="xs" 
         fullWidth
-        PaperProps={{ sx: { borderRadius: 4 } }}
+        PaperProps={{ sx: { borderRadius: 5, p: 1 } }}
       >
-        <DialogTitle sx={{ fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            Group Settings
+        <DialogTitle sx={{ fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "space-between", pb: 1 }}>
+            Group Info
             {isAdmin && (
-                <IconButton color="error" size="small" onClick={handleDeleteGroup}>
-                    <DeleteIcon />
+                <IconButton color="error" size="small" onClick={handleDeleteGroup} sx={{ bgcolor: "error.light", color: "error.main", "&:hover": { bgcolor: "error.light", opacity: 0.8 } }}>
+                    <DeleteIcon fontSize="small" />
                 </IconButton>
             )}
         </DialogTitle>
-        <DialogContent dividers>
-            <Stack spacing={3}>
-                {isAdmin ? (
-                    <Box>
-                        <Typography variant="caption" sx={{ fontWeight: 700, opacity: 0.6, ml: 1 }}>GROUP NAME</Typography>
-                        <TextField 
-                            fullWidth 
-                            value={editingGroupName} 
-                            onChange={(e: any) => setEditingGroupName(e.target.value)} 
-                            sx={{ mt: 1 }}
-                        />
-                    </Box>
-                ) : (
-                    <Typography variant="h6" sx={{ fontWeight: 700 }}>{activeFriend?.groupName}</Typography>
-                )}
+        <DialogContent sx={{ pb: 0 }}>
+            <Stack spacing={3} sx={{ mt: 1 }}>
+                <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1.5, mb: 1 }}>
+                    <Avatar sx={{ width: 80, height: 80, background: "linear-gradient(135deg, #f59e0b, #ef4444)", fontSize: "2rem", boxShadow: "0 10px 20px rgba(239,68,68,0.2)" }}>
+                        <GroupsRoundedIcon sx={{ fontSize: 40 }} />
+                    </Avatar>
+                    {isAdmin ? (
+                        <Box sx={{ width: "100%" }}>
+                            <Typography variant="caption" sx={{ fontWeight: 800, opacity: 0.5, ml: 1, fontSize: "0.65rem", textTransform: "uppercase" }}>Group Name</Typography>
+                            <TextField 
+                                fullWidth 
+                                variant="outlined"
+                                value={editingGroupName} 
+                                onChange={(e: any) => setEditingGroupName(e.target.value)} 
+                                sx={{ mt: 0.5 }}
+                            />
+                        </Box>
+                    ) : (
+                        <Typography variant="h6" sx={{ fontWeight: 900 }}>{activeFriend?.groupName}</Typography>
+                    )}
+                </Box>
 
                 <Box>
-                    <Typography variant="caption" sx={{ fontWeight: 700, opacity: 0.6, ml: 1 }}>MEMBERS ({activeFriend?.members?.length || 0})</Typography>
-                    <List sx={{ mt: 1 }}>
-                        {(activeFriend?.members || []).map((mId: string) => {
-                            const friendObj = friendsList.find((f: any) => (f.business?._id || f._id) === mId);
-                            const name = mId === business?._id ? "You" : (friendObj ? getFriendName(friendObj) : "Member");
-                            const isUserAdmin = mId === activeFriend?.createdBy;
-                            
-                            return (
-                                <ListItem key={mId} sx={{ px: 1 }}>
-                                    <ListItemAvatar>
-                                        <Avatar sx={{ width: 32, height: 32, fontSize: "0.8rem" }}>{name.charAt(0)}</Avatar>
-                                    </ListItemAvatar>
-                                    <ListItemText 
-                                        primary={name} 
-                                        secondary={isUserAdmin ? "Admin" : ""} 
-                                        primaryTypographyProps={{ fontWeight: 600, fontSize: "0.9rem" }}
-                                    />
-                                    {isAdmin && mId !== business?._id && (
-                                        <ListItemSecondaryAction>
-                                            <IconButton size="small" edge="end" onClick={() => handleRemoveMember(mId)}>
-                                                <PersonRemoveIcon fontSize="small" />
-                                            </IconButton>
-                                        </ListItemSecondaryAction>
-                                    )}
-                                </ListItem>
-                            )
-                        })}
-                    </List>
+                    <Typography variant="caption" sx={{ fontWeight: 800, opacity: 0.5, ml: 0.5, fontSize: "0.65rem", textTransform: "uppercase" }}>Members • {activeFriend?.members?.length || 0}</Typography>
+                    <Paper variant="outlined" sx={{ mt: 1, borderRadius: 3, maxHeight: 250, overflow: "auto", border: "1px solid", borderColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)" }}>
+                        <List sx={{ py: 0 }}>
+                            {(activeFriend?.members || []).map((mId: string, idx: number) => {
+                                const friendObj = friendsList.find((f: any) => (f.business?._id || f._id) === mId);
+                                const name = mId === business?._id ? "You" : (friendObj ? getFriendName(friendObj) : "Member");
+                                const isUserAdmin = mId === activeFriend?.createdBy;
+                                const online = isOnline(mId);
+                                
+                                return (
+                                    <ListItem key={mId + idx} sx={{ py: 1.2, borderBottom: idx < (activeFriend?.members?.length - 1) ? "1px solid" : "none", borderColor: "divider" }}>
+                                        <ListItemAvatar>
+                                            <Badge overlap="circular" variant="dot" sx={{ "& .MuiBadge-badge": { bgcolor: online ? "#10b981" : "#94a3b8" } }}>
+                                                <Avatar sx={{ width: 36, height: 36, fontSize: "0.9rem", fontWeight: 700, background: isUserAdmin ? "linear-gradient(135deg, #f59e0b, #ef4444)" : "linear-gradient(135deg, #0ea5e9, #6366f1)" }}>{name.charAt(0)}</Avatar>
+                                            </Badge>
+                                        </ListItemAvatar>
+                                        <ListItemText 
+                                            primary={name} 
+                                            secondary={isUserAdmin ? "Group Admin" : (online ? "Active Now" : "Offline")} 
+                                            primaryTypographyProps={{ fontWeight: 700, fontSize: "0.88rem" }}
+                                            secondaryTypographyProps={{ fontSize: "0.72rem", color: isUserAdmin ? "error.main" : "text.secondary" }}
+                                        />
+                                        {isAdmin && mId !== business?._id && (
+                                            <ListItemSecondaryAction>
+                                                <IconButton size="small" edge="end" onClick={() => handleRemoveMember(mId)} sx={{ color: "text.secondary", "&:hover": { color: "error.main" } }}>
+                                                    <PersonRemoveIcon fontSize="small" />
+                                                </IconButton>
+                                            </ListItemSecondaryAction>
+                                        )}
+                                    </ListItem>
+                                )
+                            })}
+                        </List>
+                    </Paper>
                 </Box>
             </Stack>
         </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
+        <DialogActions sx={{ p: 2.5, pt: 2, gap: 1 }}>
             <MuiButton 
                 startIcon={<LogoutIcon />} 
                 color="error" 
                 onClick={handleLeaveGroup}
-                sx={{ mr: "auto", fontWeight: 700 }}
+                sx={{ mr: "auto", fontWeight: 800, fontSize: "0.8rem", textTransform: "none" }}
             >
                 Leave Group
             </MuiButton>
             {isAdmin && (
-                <MuiButton variant="contained" onClick={handleUpdateGroupName} sx={{ fontWeight: 700, borderRadius: 2 }}>
-                    Save Changes
+                <MuiButton variant="contained" onClick={handleUpdateGroupName} sx={{ fontWeight: 800, borderRadius: 2.5, px: 3, textTransform: "none" }}>
+                    Save
                 </MuiButton>
             )}
-            <MuiButton onClick={() => setGroupSettingsOpen(false)} sx={{ fontWeight: 700 }}>Close</MuiButton>
+            <MuiButton onClick={() => setGroupSettingsOpen(false)} sx={{ fontWeight: 800, textTransform: "none" }}>Close</MuiButton>
         </DialogActions>
+      </Dialog>
+
+      {/* Product Preview Modal */}
+      <Dialog 
+        open={!!selectedProductPreview} 
+        onClose={() => setSelectedProductPreview(null)}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 5, overflow: "hidden" } }}
+      >
+        {selectedProductPreview && (
+            <>
+                <Box sx={{ position: "relative", height: 260 }}>
+                    <img 
+                        src={selectedProductPreview.productImage} 
+                        style={{ width: "100%", height: "100%", objectFit: "cover" }} 
+                        alt="Product"
+                    />
+                    <IconButton 
+                        onClick={() => setSelectedProductPreview(null)}
+                        sx={{ position: "absolute", top: 12, right: 12, bgcolor: "rgba(0,0,0,0.5)", color: "#fff", "&:hover": { bgcolor: "rgba(0,0,0,0.7)" } }}
+                    >
+                        <CloseIcon />
+                    </IconButton>
+                    <Box sx={{ 
+                        position: "absolute", bottom: 0, left: 0, right: 0, p: 2,
+                        background: "linear-gradient(to top, rgba(0,0,0,0.8), transparent)",
+                        color: "#fff"
+                    }}>
+                        <Typography variant="h6" sx={{ fontWeight: 900 }}>{selectedProductPreview.productName}</Typography>
+                        <Typography variant="body2" sx={{ opacity: 0.9 }}>₨{selectedProductPreview.productPrice?.toLocaleString()}</Typography>
+                    </Box>
+                </Box>
+                <DialogContent sx={{ py: 3 }}>
+                    <Typography variant="caption" sx={{ fontWeight: 800, color: "primary.main", textTransform: "uppercase", display: "block", mb: 1 }}>
+                        Product Details
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: "text.primary", lineHeight: 1.6 }}>
+                        {selectedProductPreview.productDescription || "No description available for this product."}
+                    </Typography>
+                    <Stack direction="row" spacing={1} sx={{ mt: 3 }}>
+                        <Paper variant="outlined" sx={{ p: 1.5, flex: 1, textAlign: "center", borderRadius: 3 }}>
+                            <Typography variant="caption" sx={{ display: "block", opacity: 0.6, fontSize: "0.6rem" }}>CATEGORY</Typography>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>{selectedProductPreview.productCategory}</Typography>
+                        </Paper>
+                        <Paper variant="outlined" sx={{ p: 1.5, flex: 1, textAlign: "center", borderRadius: 3 }}>
+                            <Typography variant="caption" sx={{ display: "block", opacity: 0.6, fontSize: "0.6rem" }}>SENDER</Typography>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>{selectedProductPreview.senderName}</Typography>
+                        </Paper>
+                    </Stack>
+                </DialogContent>
+                <DialogActions sx={{ p: 2.5 }}>
+                    <MuiButton fullWidth variant="contained" onClick={() => setSelectedProductPreview(null)} sx={{ borderRadius: 3, py: 1.2, fontWeight: 900 }}>
+                        Close Preview
+                    </MuiButton>
+                </DialogActions>
+            </>
+        )}
       </Dialog>
     </Box>
   );
