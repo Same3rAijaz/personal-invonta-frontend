@@ -89,7 +89,11 @@ export default function SalesReturnCreate({ onSuccess, onCancel, defaultSoId = "
   const handleSubmit = async () => {
     if (!originalSalesOrderId) { notify("Enter the original Sales Order ID", "error"); return; }
     if (!warehouseId) { notify("Select a warehouse", "error"); return; }
-    const validItems = items.filter((i) => i.qty > 0);
+    
+    const validItems = items
+      .filter((i) => Number(i.qty) > 0)
+      .map((i) => ({ ...i, qty: Number(i.qty) }));
+
     if (validItems.length === 0) { notify("Enter at least one return quantity", "error"); return; }
 
     for (const item of validItems) {
@@ -180,8 +184,15 @@ export default function SalesReturnCreate({ onSuccess, onCancel, defaultSoId = "
                             label={`Qty (max ${soItem?.qty || 0})`}
                             type="number"
                             size="small"
-                            value={item.qty}
-                            onChange={(e) => updateItem(idx, "qty", Math.min(Number(e.target.value), soItem?.qty || 0))}
+                            value={item.qty === 0 && String(item.qty) !== "0" ? "" : item.qty}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if (val === "") {
+                                updateItem(idx, "qty", "");
+                              } else {
+                                updateItem(idx, "qty", Math.min(Number(val), soItem?.qty || 0));
+                              }
+                            }}
                           />
                         </Grid>
                         <Grid item xs={6} md={4}>

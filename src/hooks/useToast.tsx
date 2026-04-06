@@ -44,17 +44,16 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         autoHideDuration={3000}
         onClose={() => setToast(null)}
         anchorOrigin={{ vertical: "top", horizontal: "right" }}
+        sx={{ top: { xs: 80, sm: 80 } }}
       >
-        {toast ? (
-          <Alert
-            severity={toast.severity}
-            variant="filled"
-            onClose={() => setToast(null)}
-            sx={{ width: "100%", minWidth: 280, boxShadow: 3, alignItems: "center" }}
-          >
-            {toast.message}
-          </Alert>
-        ) : null}
+        <Alert
+          severity={toast?.severity || "info"}
+          variant="filled"
+          onClose={() => setToast(null)}
+          sx={{ width: "100%", minWidth: 280, boxShadow: 3, alignItems: "center" }}
+        >
+          {toast?.message || ""}
+        </Alert>
       </Snackbar>
     </ToastContext.Provider>
   );

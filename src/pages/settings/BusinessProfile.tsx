@@ -138,7 +138,10 @@ export default function BusinessProfile() {
         setOwnerPhotoPreview(withCacheBust(ownerProfileUrl, Date.now()));
         setOwnerPhotoFile(null);
       }
-      const payload = { fullName: values.fullName, phoneNumber: values.phoneNumber };
+      const payload: any = { fullName: values.fullName };
+      if (values.phoneNumber && values.phoneNumber.trim() !== "") {
+        payload.phoneNumber = values.phoneNumber.trim();
+      }
       const updated = await profileMutation.mutateAsync(payload);
       updateUser({ ...user, ...updated });
       notify("Profile updated", "success");
