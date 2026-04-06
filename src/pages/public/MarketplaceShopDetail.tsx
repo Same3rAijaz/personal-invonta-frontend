@@ -49,6 +49,7 @@ import FavoriteIcon from "@mui/icons-material/Favorite";
 import { extractEntityId, toProductUrl } from "../../utils/seo";
 import MarketplaceHeader from "../../components/marketplace-detail/MarketplaceHeader";
 import PublicFooter from "../../components/marketplace-detail/PublicFooter";
+import { useThemeMode } from "../../contexts/ThemeContext";
 
 const LIMIT = 12;
 
@@ -64,12 +65,15 @@ export default function MarketplaceShopDetail() {
   const { notify } = useToast();
   const marketplaceAuth = useMarketplaceAuth();
   const { isFavorited, toggle } = useFavorites();
+  const { mode } = useThemeMode();
+
   const palette = {
-    canvas: "#d7dce4",
-    ink: "#0b1220",
-    muted: "#51607a",
-    accent: "#21a6df",
-    line: alpha("#0b1220", 0.14)
+    canvas: mode === "dark" ? "#020617" : "#f1f5f9",
+    surface: mode === "dark" ? "rgba(15,23,42,0.8)" : "#ffffff",
+    ink: mode === "dark" ? "#f8fafc" : "#0b1220",
+    muted: mode === "dark" ? "#94a3b8" : "#51607a",
+    accent: mode === "dark" ? "#2563eb" : "#21a6df",
+    line: mode === "dark" ? "rgba(255,255,255,0.08)" : alpha("#0b1220", 0.14)
   };
 
   const [page, setPage] = React.useState(1);
@@ -223,18 +227,18 @@ export default function MarketplaceShopDetail() {
 
       <Container maxWidth="xl" sx={{ py: 2.2 }}>
         {isLoading && !data ? (
-          <Paper sx={{ p: 3, borderRadius: 1.5 }}>
+          <Paper sx={{ p: 3, borderRadius: 1.5, background: palette.surface, backgroundImage: 'none' }}>
             <Typography color="text.secondary">Loading shop...</Typography>
           </Paper>
         ) : !shop ? (
-          <Paper sx={{ p: 3, borderRadius: 1.5 }}>
+          <Paper sx={{ p: 3, borderRadius: 1.5, background: palette.surface, backgroundImage: 'none' }}>
             <Typography variant="h6" sx={{ color: palette.ink, fontWeight: 700 }}>Shop not found</Typography>
           </Paper>
         ) : (
           <Stack spacing={1.8}>
             <Grid container spacing={1.8} alignItems="flex-start">
               <Grid item xs={12} md={8.5}>
-                <Paper sx={{ borderRadius: 1.5, overflow: "hidden" }}>
+                <Paper sx={{ borderRadius: 1.5, overflow: "hidden", background: palette.surface, backgroundImage: 'none' }}>
                   <Box sx={{ position: "relative", minHeight: 205, bgcolor: alpha(palette.ink, 0.08) }}>
                     {shop.bannerUrl ? (
                       <Box component="img" src={shop.bannerUrl} sx={{ width: "100%", height: 205, objectFit: "cover", display: "block" }} />
@@ -271,7 +275,7 @@ export default function MarketplaceShopDetail() {
 
                 {activeTab === "products" ? (
                   <>
-                    <Paper sx={{ borderRadius: 1.5, p: 1.4, mt: 1.5 }}>
+                    <Paper sx={{ borderRadius: 1.5, p: 1.4, mt: 1.5, background: palette.surface, backgroundImage: 'none' }}>
                       <Grid container spacing={1}>
                         <Grid item xs={12} md={5}>
                           <TextField
@@ -343,7 +347,7 @@ export default function MarketplaceShopDetail() {
 
                     <Grid container spacing={1.5} sx={{ mt: 0.2 }}>
                       <Grid item xs={12} md={4}>
-                        <Paper sx={{ borderRadius: 1.5, p: 1.6, height: "100%" }}>
+                        <Paper sx={{ borderRadius: 1.5, p: 1.6, height: "100%", background: palette.surface, backgroundImage: 'none' }}>
                           <Typography sx={{ color: palette.ink, fontWeight: 800, fontSize: 16, mb: 0.7 }}>About Us</Typography>
                           <Typography sx={{ color: palette.muted, fontSize: 13, mb: 1.1 }}>
                             {shop.description || "This shop is available on Invonta marketplace with public products and direct contact details."}
@@ -400,7 +404,7 @@ export default function MarketplaceShopDetail() {
                           <Typography sx={{ color: palette.muted, fontSize: 12, mb: 1 }}>Updating results...</Typography>
                         ) : null}
                         {inventory.length === 0 ? (
-                          <Paper sx={{ p: 2, borderRadius: 1.5 }}>
+                          <Paper sx={{ p: 2, borderRadius: 1.5, background: palette.surface, backgroundImage: 'none' }}>
                             <Typography sx={{ color: palette.ink, fontWeight: 700 }}>No public products found</Typography>
                           </Paper>
                         ) : (
@@ -412,7 +416,7 @@ export default function MarketplaceShopDetail() {
                                   onMouseEnter={() => prefetchProductDetail(item._id)}
                                   onFocus={() => prefetchProductDetail(item._id)}
                                   onTouchStart={() => prefetchProductDetail(item._id)}
-                                  sx={{ borderRadius: 1.2, border: `1px solid ${palette.line}`, cursor: "pointer" }}
+                                  sx={{ borderRadius: 1.2, border: `1px solid ${palette.line}`, cursor: "pointer", background: palette.surface, backgroundImage: 'none' }}
                                 >
                                   <Box component="img" src={item.thumbnailUrl || "/Invonta.png"} alt={item.name} sx={{ width: "100%", height: 150, objectFit: "cover", display: "block" }} />
                                   <Box sx={{ p: 1.1, position: "relative" }}>
@@ -464,7 +468,7 @@ export default function MarketplaceShopDetail() {
                 ) : null}
 
                 {activeTab === "about" ? (
-                  <Paper sx={{ borderRadius: 1.5, p: 2, mt: 1.5 }}>
+                  <Paper sx={{ borderRadius: 1.5, p: 2, mt: 1.5, background: palette.surface, backgroundImage: 'none' }}>
                     <Typography sx={{ color: palette.ink, fontWeight: 800, fontSize: 18, mb: 0.8 }}>About {shop.name}</Typography>
                     <Typography sx={{ color: palette.muted, fontSize: 14, mb: 1.5 }}>
                       {shop.description || "No detailed description provided by the shop owner yet."}
@@ -534,7 +538,7 @@ export default function MarketplaceShopDetail() {
                 ) : null}
 
                 {activeTab === "reviews" ? (
-                  <Paper sx={{ borderRadius: 1.5, p: 2, mt: 1.5 }}>
+                  <Paper sx={{ borderRadius: 1.5, p: 2, mt: 1.5, background: palette.surface, backgroundImage: 'none' }}>
                     <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.2}>
                       <Box>
                         <Typography sx={{ color: palette.ink, fontWeight: 800, fontSize: 18 }}>Customer Reviews</Typography>
@@ -603,7 +607,7 @@ export default function MarketplaceShopDetail() {
 
               <Grid item xs={12} md={3.5}>
                 <Stack spacing={1.5}>
-                  <Paper sx={{ borderRadius: 1.5, p: 1.6 }}>
+                  <Paper sx={{ borderRadius: 1.5, p: 1.6, background: palette.surface, backgroundImage: 'none' }}>
                     <Typography sx={{ color: palette.ink, fontWeight: 800, fontSize: 18, mb: 0.8 }}>
                       Business Owner Profile
                     </Typography>
@@ -630,7 +634,7 @@ export default function MarketplaceShopDetail() {
                     </Stack>
                   </Paper>
 
-                  <Paper sx={{ borderRadius: 1.5, p: 1.6 }}>
+                  <Paper sx={{ borderRadius: 1.5, p: 1.6, background: palette.surface, backgroundImage: 'none' }}>
                     <Typography sx={{ color: palette.ink, fontWeight: 800, fontSize: 18, mb: 0.8 }}>
                       Categories
                     </Typography>

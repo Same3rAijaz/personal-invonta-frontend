@@ -22,8 +22,8 @@ import MarketplaceHeader from "../../components/marketplace-detail/MarketplaceHe
 import PublicFooter from "../../components/marketplace-detail/PublicFooter";
 import { toProductUrl } from "../../utils/seo";
 import { useToast } from "../../hooks/useToast";
-
 import { useFavorites } from "../../hooks/useFavorites";
+import { useThemeMode } from "../../contexts/ThemeContext";
 
 export default function Favorites() {
   const navigate = useNavigate();
@@ -31,13 +31,15 @@ export default function Favorites() {
   const queryClient = useQueryClient();
   const { favorites, isLoading, toggle } = useFavorites();
   
+  const { mode } = useThemeMode();
+
   const palette = {
-    canvas: "#d7dce4",
-    surface: "#ffffff",
-    ink: "#0b1220",
-    muted: "#51607a",
-    accent: "#21a6df",
-    line: alpha("#0b1220", 0.14)
+    canvas: mode === "dark" ? "#020617" : "#f1f5f9",
+    surface: mode === "dark" ? "rgba(15,23,42,0.8)" : "#ffffff",
+    ink: mode === "dark" ? "#f8fafc" : "#0b1220",
+    muted: mode === "dark" ? "#94a3b8" : "#51607a",
+    accent: mode === "dark" ? "#2563eb" : "#21a6df",
+    line: mode === "dark" ? "rgba(255,255,255,0.08)" : alpha("#0b1220", 0.14)
   };
 
   return (
@@ -60,11 +62,11 @@ export default function Favorites() {
         </Stack>
 
         {isLoading ? (
-          <Paper sx={{ p: 4, borderRadius: 1.5, textAlign: "center" }}>
+          <Paper sx={{ p: 4, borderRadius: 1.5, textAlign: "center", background: palette.surface, backgroundImage: 'none' }}>
             <Typography color="text.secondary">Loading favorites...</Typography>
           </Paper>
         ) : favorites.length === 0 ? (
-          <Paper sx={{ p: 8, borderRadius: 1.5, textAlign: "center" }}>
+          <Paper sx={{ p: 8, borderRadius: 1.5, textAlign: "center", background: palette.surface, backgroundImage: 'none' }}>
             <FavoriteIcon sx={{ fontSize: 60, color: alpha(palette.ink, 0.1), mb: 2 }} />
             <Typography variant="h6" sx={{ color: palette.ink, fontWeight: 700 }}>
               No favorites yet
@@ -109,6 +111,8 @@ export default function Favorites() {
                       border: `1px solid ${palette.line}`,
                       overflow: "hidden",
                       transition: "all 0.3s ease",
+                      background: palette.surface,
+                      backgroundImage: 'none',
                       "&:hover": {
                         boxShadow: "0 12px 30px rgba(15,23,42,0.15)",
                         transform: "translateY(-4px)"

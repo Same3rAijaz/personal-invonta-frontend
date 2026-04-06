@@ -10,6 +10,7 @@ import { listPublicMarkets, listPublicProducts, listPublicShops } from "../../ap
 import MarketplaceHeader from "../../components/marketplace-detail/MarketplaceHeader";
 import PublicFooter from "../../components/marketplace-detail/PublicFooter";
 import { extractEntityId, toProductUrl, toShopUrl } from "../../utils/seo";
+import { useThemeMode } from "../../contexts/ThemeContext";
 
 
 export default function MarketplaceMarketDetail() {
@@ -19,12 +20,15 @@ export default function MarketplaceMarketDetail() {
   const [search, setSearch] = React.useState("");
   const [topMarketId, setTopMarketId] = React.useState(marketId);
 
+  const { mode } = useThemeMode();
+
   const palette = {
-    canvas: "#d7dce4",
-    ink: "#0b1220",
-    muted: "#51607a",
-    accent: "#21a6df",
-    line: alpha("#0b1220", 0.14)
+    canvas: mode === "dark" ? "#020617" : "#f1f5f9",
+    surface: mode === "dark" ? "rgba(15,23,42,0.8)" : "#ffffff",
+    ink: mode === "dark" ? "#f8fafc" : "#0b1220",
+    muted: mode === "dark" ? "#94a3b8" : "#51607a",
+    accent: mode === "dark" ? "#2563eb" : "#21a6df",
+    line: mode === "dark" ? "rgba(255,255,255,0.08)" : alpha("#0b1220", 0.14)
   };
 
   React.useEffect(() => {
@@ -72,14 +76,14 @@ export default function MarketplaceMarketDetail() {
         </Button>
 
         {!market ? (
-          <Paper sx={{ p: 3, borderRadius: 1 }}>
+          <Paper sx={{ p: 3, borderRadius: 1, background: palette.surface, backgroundImage: 'none' }}>
             <Typography variant="h6" sx={{ fontWeight: 700, color: palette.ink }}>
               Market not found
             </Typography>
           </Paper>
         ) : (
           <Stack spacing={2}>
-            <Paper sx={{ p: 2.5, borderRadius: 1, border: `1px solid ${palette.line}` }}>
+            <Paper sx={{ p: 2.5, borderRadius: 1, border: `1px solid ${palette.line}`, background: palette.surface, backgroundImage: 'none' }}>
               <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5}>
                 <Box>
                   <Typography sx={{ fontWeight: 800, fontSize: 32, color: palette.ink }}>
@@ -101,7 +105,7 @@ export default function MarketplaceMarketDetail() {
 
             <Grid container spacing={2}>
               <Grid item xs={12} md={6}>
-                <Paper sx={{ p: 2.2, borderRadius: 1 }}>
+                <Paper sx={{ p: 2.2, borderRadius: 1, background: palette.surface, backgroundImage: 'none' }}>
                   <Typography sx={{ fontWeight: 700, color: palette.ink, mb: 1 }}>Top Shops</Typography>
                   <Divider sx={{ mb: 1.5 }} />
                   <Stack spacing={1}>
@@ -109,7 +113,7 @@ export default function MarketplaceMarketDetail() {
                       <Typography color="text.secondary">No shops found in this market.</Typography>
                     ) : (
                       shops.map((shop: any) => (
-                        <Card key={shop._id} sx={{ p: 1.2, borderRadius: 1, cursor: "pointer" }} onClick={() => navigate(toShopUrl(shop))}>
+                        <Card key={shop._id} sx={{ p: 1.2, borderRadius: 1, cursor: "pointer", background: palette.surface, backgroundImage: 'none', border: `1px solid ${palette.line}` }} onClick={() => navigate(toShopUrl(shop))}>
                           <Typography sx={{ fontWeight: 700, color: palette.ink }}>{shop.name}</Typography>
                           <Typography sx={{ color: palette.muted, fontSize: 13 }}>{shop.contactPhone || "No phone"}</Typography>
                         </Card>
@@ -119,7 +123,7 @@ export default function MarketplaceMarketDetail() {
                 </Paper>
               </Grid>
               <Grid item xs={12} md={6}>
-                <Paper sx={{ p: 2.2, borderRadius: 1 }}>
+                <Paper sx={{ p: 2.2, borderRadius: 1, background: palette.surface, backgroundImage: 'none' }}>
                   <Typography sx={{ fontWeight: 700, color: palette.ink, mb: 1 }}>Latest Products</Typography>
                   <Divider sx={{ mb: 1.5 }} />
                   <Stack spacing={1}>
@@ -127,7 +131,7 @@ export default function MarketplaceMarketDetail() {
                       <Typography color="text.secondary">No products found in this market.</Typography>
                     ) : (
                       products.map((product: any) => (
-                        <Card key={product._id} sx={{ p: 1.2, borderRadius: 1, cursor: "pointer" }} onClick={() => navigate(toProductUrl(product))}>
+                        <Card key={product._id} sx={{ p: 1.2, borderRadius: 1, cursor: "pointer", background: palette.surface, backgroundImage: 'none', border: `1px solid ${palette.line}` }} onClick={() => navigate(toProductUrl(product))}>
                           <Typography sx={{ fontWeight: 700, color: palette.ink }}>{product.name}</Typography>
                           <Typography sx={{ color: palette.muted, fontSize: 13 }}>Rs {Number(product.salePrice || 0).toLocaleString()}</Typography>
                         </Card>

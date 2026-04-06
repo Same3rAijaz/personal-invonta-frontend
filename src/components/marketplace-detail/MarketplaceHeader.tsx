@@ -5,13 +5,14 @@ import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import SearchIcon from "@mui/icons-material/Search";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import GoogleIcon from "@mui/icons-material/Google";
-import { GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
+import { GoogleAuthProvider, signInWithPopup, signOut, signInWithRedirect } from "firebase/auth";
 import { Link } from "react-router-dom";
 import { firebaseGoogleLogin } from "../../api/auth";
 import { useMarketplaceAuth } from "../../hooks/useMarketplaceAuth";
 import { useToast } from "../../hooks/useToast";
 import { getFirebaseAuth } from "../../lib/firebase";
 import { keyframes } from "@mui/system";
+import { useThemeMode } from "../../contexts/ThemeContext";
 
 const aiGlow = keyframes`
   0% {
@@ -53,6 +54,7 @@ export default function MarketplaceHeader(props: MarketplaceHeaderProps) {
     showSearchBar = true
   } = props;
   const theme = useTheme();
+  const { mode } = useThemeMode();
   const { notify } = useToast();
   const marketplaceAuth = useMarketplaceAuth();
   const [isGoogleLoading, setIsGoogleLoading] = React.useState(false);
@@ -83,10 +85,26 @@ export default function MarketplaceHeader(props: MarketplaceHeaderProps) {
       const session = await firebaseGoogleLogin(firebaseIdToken);
       marketplaceAuth.login(session);
       notify("Signed in with Google", "success");
-    } catch (err: any) {
-      notify(err?.response?.data?.error?.message || "Google sign-in failed", "error");
-    } finally {
       setIsGoogleLoading(false);
+    } catch (err: any) {
+      if (
+        err?.code === "auth/popup-blocked" || 
+        err?.code === "auth/popup-closed-by-user" || 
+        err?.code === "auth/cross-origin-opener-policy-failed" ||
+        String(err?.message || "").includes("popup")
+      ) {
+        // Fallback to redirect on live environment or mobile browsers
+        const provider = new GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: "select_account" });
+        const firebaseAuth = getFirebaseAuth();
+        signInWithRedirect(firebaseAuth, provider);
+      } else if (err?.code === "auth/unauthorized-domain") {
+        notify("Domain not authorized. Please add it to Firebase Console.", "error");
+        setIsGoogleLoading(false);
+      } else {
+        notify(err?.response?.data?.error?.message || err?.message || "Google sign-in failed", "error");
+        setIsGoogleLoading(false);
+      }
     }
   };
 
@@ -103,7 +121,16 @@ export default function MarketplaceHeader(props: MarketplaceHeaderProps) {
 
   return (
     <Box>
-      <AppBar position="static" elevation={0} sx={{ background: `linear-gradient(90deg, ${theme.palette.primary.main} 0%, ${alpha(theme.palette.primary.main, 0.88)} 100%)` }}>
+      <AppBar 
+        position="static" 
+        elevation={0} 
+        sx={{ 
+          background: mode === "dark" 
+            ? "linear-gradient(90deg, #0f172a 0%, #1e293b 100%)" 
+            : `linear-gradient(90deg, ${theme.palette.primary.main} 0%, ${alpha(theme.palette.primary.main, 0.88)} 100%)`,
+          borderBottom: mode === "dark" ? "1px solid rgba(255,255,255,0.08)" : "none"
+        }}
+      >
         <Container maxWidth="xl">
           <Toolbar disableGutters sx={{ minHeight: 52, gap: 2, justifyContent: "space-between" }}>
             <Stack direction="row" spacing={1.1} alignItems="center">
@@ -285,7 +312,7 @@ export default function MarketplaceHeader(props: MarketplaceHeaderProps) {
                     borderBottomLeftRadius: 0,
                     px: { xs: 2, sm: 4 },
                     minWidth: { xs: 'auto', sm: 122 },
-                    background: `linear-gradient(135deg, #0b1220 0%, #172542 100%)`,
+                    background: mode === "dark" ? "linear-gradient(135deg, #2563eb 0%, #4f46e5 100%)" : `linear-gradient(135deg, #0b1220 0%, #172542 100%)`,
                     "& .MuiButton-startIcon": {
                        margin: { xs: 0, sm: "0 8px 0 -4px" }
                      }

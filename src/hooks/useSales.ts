@@ -44,8 +44,8 @@ export function useConfirmSalesOrder() {
 export function useShipSalesOrder() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, payload }: { id: string; payload: { warehouseId: string; locationId?: string } }) =>
-      (await api.post(`/sales/sos/${id}/ship`, payload)).data.data,
+    mutationFn: async ({ id }: { id: string }) =>
+      (await api.post(`/sales/sos/${id}/ship`)).data.data,
     onSuccess: () => {
       client.invalidateQueries({ queryKey: ["sos"] });
       client.invalidateQueries({ queryKey: ["inventory", "balances"] });
