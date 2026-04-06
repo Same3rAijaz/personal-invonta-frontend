@@ -1,7 +1,9 @@
 import React from "react";
-import { onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged, getRedirectResult } from "firebase/auth";
 import { getFirebaseAuth } from "../lib/firebase";
 import { useQueryClient } from "@tanstack/react-query";
+import { firebaseGoogleLogin } from "../api/auth";
+import { useToast } from "./useToast";
 
 type MarketplaceSession = {
   accessToken: string;
@@ -42,6 +44,7 @@ function buildMarketplaceProfile(user: any, overrides?: Partial<MarketplaceProfi
 
 export function MarketplaceAuthProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
+  const { notify } = useToast();
   const [accessToken, setAccessToken] = React.useState<string | null>(localStorage.getItem(MARKETPLACE_ACCESS_TOKEN_KEY));
   const [user, setUser] = React.useState<any | null>(() => {
     const saved = localStorage.getItem(MARKETPLACE_USER_KEY);
@@ -54,6 +57,24 @@ export function MarketplaceAuthProvider({ children }: { children: React.ReactNod
 
   React.useEffect(() => {
     const auth = getFirebaseAuth();
+
+    // Handle Google redirect login if it was triggered
+    getRedirectResult(auth).then(async (authResult) => {
+      if (authResult?.user) {
+        try {
+          const firebaseIdToken = await authResult.user.getIdToken();
+          const session = await firebaseGoogleLogin(firebaseIdToken);
+          login(session);
+          notify("Signed in with Google successfully", "success");
+        } catch (err: any) {
+          notify(err?.response?.data?.error?.message || err?.message || "Google sign-in failed", "error");
+        }
+      }
+    }).catch((error) => {
+       notify("Google sign-in redirect failed", "error");
+       console.error("Firebase redirect login error", error);
+    });
+
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (!firebaseUser) {
         localStorage.removeItem(MARKETPLACE_ACCESS_TOKEN_KEY);

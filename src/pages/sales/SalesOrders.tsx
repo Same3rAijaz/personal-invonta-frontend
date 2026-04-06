@@ -40,8 +40,6 @@ export default function SalesOrders() {
   const { confirm, confirmDialog } = useConfirmDialog();
   const [drawerState, setDrawerState] = React.useState<{ open: boolean; type: "new" | "edit" | "return" | null; id: string | null }>({ open: false, type: null, id: null });
   const { business } = useAuth();
-  const [shipDialog, setShipDialog] = React.useState<{ open: boolean; id: string | null }>({ open: false, id: null });
-  const [shipWarehouseId, setShipWarehouseId] = React.useState("");
 
   const openInvoice = async (id: string, download: boolean) => {
     const token = localStorage.getItem("accessToken");
@@ -116,21 +114,10 @@ export default function SalesOrders() {
     }
   };
 
-  const handleShipSalesOrder = async () => {
-    if (!shipDialog.id || !shipWarehouseId) {
-      notify("Select a warehouse before completing the order", "error");
-      return;
-    }
+  const handleShipSalesOrder = async (id: string) => {
     try {
-      await shipSO.mutateAsync({
-        id: shipDialog.id,
-        payload: {
-          warehouseId: shipWarehouseId
-        }
-      });
+      await shipSO.mutateAsync({ id });
       notify("Sales order completed and inventory updated", "success");
-      setShipDialog({ open: false, id: null });
-      setShipWarehouseId("");
     } catch (err: any) {
       notify(err?.response?.data?.error?.message || "Failed", "error");
     }
@@ -168,10 +155,7 @@ export default function SalesOrders() {
                     {
                       label: "Complete",
                       disabled: !canShip,
-                      onClick: () => {
-                        setShipDialog({ open: true, id: row._id });
-                        setShipWarehouseId("");
-                      }
+                      onClick: () => handleShipSalesOrder(row._id)
                     },
                     {
                       label: isViewLoading ? "Loading invoice..." : "View Invoice",
@@ -215,33 +199,7 @@ export default function SalesOrders() {
           setPage(0);
         }}
       />
-      <Dialog open={shipDialog.open} onClose={() => setShipDialog({ open: false, id: null })} fullWidth maxWidth="sm">
-        <DialogTitle>Complete Sales Order</DialogTitle>
-        <DialogContent sx={{ display: "grid", gap: 2, pt: "12px !important" }}>
-          <TextField
-            select
-            fullWidth
-            label="Warehouse *"
-            value={shipWarehouseId}
-            onChange={(event) => setShipWarehouseId(event.target.value)}
-            helperText={(warehouses?.items || []).length === 0 ? "Create a warehouse first." : "Stock will be deducted from the selected warehouse."}
-          >
-            {(warehouses?.items || []).map((item: any) => (
-              <MenuItem key={item._id} value={item._id}>
-                {item.name}
-              </MenuItem>
-            ))}
-          </TextField>
 
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setShipDialog({ open: false, id: null })}>Cancel</Button>
-          <Button variant="contained" onClick={handleShipSalesOrder} disabled={shipSO.isPending}>
-            Complete Order
-          </Button>
-        </DialogActions>
-      </Dialog>
-      
       <Drawer anchor="right" open={drawerState.open} onClose={() => setDrawerState({ open: false, type: null, id: null })} sx={{ zIndex: 1300 }} PaperProps={{ sx: { width: { xs: "100%", sm: 700, md: 800 }, backdropFilter: "blur(16px)" } }}>
         {drawerState.type === "new" && <SalesOrderCreate onSuccess={() => setDrawerState({ open: false, type: null, id: null })} onCancel={() => setDrawerState({ open: false, type: null, id: null })} />}
         {drawerState.type === "edit" && drawerState.id && <SalesOrderEdit explicitId={drawerState.id} onSuccess={() => setDrawerState({ open: false, type: null, id: null })} onCancel={() => setDrawerState({ open: false, type: null, id: null })} />}

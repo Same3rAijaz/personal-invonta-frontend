@@ -35,6 +35,8 @@ import { toMarketUrl, toProductUrl, toShopUrl } from "../../utils/seo";
 import { useMarketplaceAuth } from "../../hooks/useMarketplaceAuth";
 import { useFavorites } from "../../hooks/useFavorites";
 import FavoriteIcon from "@mui/icons-material/Favorite";
+import { useThemeMode } from "../../contexts/ThemeContext";
+import { useTheme } from "@mui/material";
 
 
 const LIMIT = 12;
@@ -42,15 +44,18 @@ const LIMIT = 12;
 export default function Marketplace() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { mode } = useThemeMode();
+  const theme = useTheme();
+
   const palette = {
-    navStart: "#0b1220",
-    navEnd: "#1f2a40",
-    canvas: "#d7dce4",
-    surface: "#ffffff",
-    ink: "#0b1220",
-    muted: "#51607a",
-    accent: "#21a6df",
-    line: alpha("#0b1220", 0.14)
+    navStart: mode === "dark" ? "#020617" : "#0b1220",
+    navEnd: mode === "dark" ? "#0f172a" : "#1f2a40",
+    canvas: mode === "dark" ? "#020617" : "#f1f5f9",
+    surface: mode === "dark" ? "rgba(15,23,42,0.8)" : "#ffffff",
+    ink: mode === "dark" ? "#f8fafc" : "#0b1220",
+    muted: mode === "dark" ? "#94a3b8" : "#51607a",
+    accent: mode === "dark" ? "#2563eb" : "#21a6df",
+    line: mode === "dark" ? "rgba(255,255,255,0.08)" : alpha("#0b1220", 0.14)
   };
   const [search, setSearch] = React.useState("");
   const [marketId, setMarketId] = React.useState("");
@@ -339,7 +344,7 @@ export default function Marketplace() {
         <Grid container spacing={2} alignItems="flex-start">
           <Grid item xs={12} md={2.8}>
             {resultType !== "markets" ? (
-              <Paper sx={{ borderRadius: 1, p: 1.5, mb: 1.5 }}>
+              <Paper sx={{ borderRadius: 1, p: 1.5, mb: 1.5, background: palette.surface, backgroundImage: 'none' }}>
                 <Typography variant="subtitle1" sx={{ color: palette.ink, fontWeight: 800, mb: 1.5, fontSize: 14 }}>
                   Categories
                 </Typography>
@@ -374,7 +379,7 @@ export default function Marketplace() {
               </Paper>
             ) : null}
 
-            <Paper sx={{ borderRadius: 1, p: 1.5, mb: 1.5 }}>
+            <Paper sx={{ borderRadius: 1, p: 1.5, mb: 1.5, background: palette.surface, backgroundImage: 'none' }}>
               <Typography variant="subtitle1" sx={{ color: palette.ink, fontWeight: 800, mb: 1, fontSize: 14 }}>
                 Location
               </Typography>
@@ -439,7 +444,7 @@ export default function Marketplace() {
             </Paper>
 
             {resultType === "products" ? (
-              <Paper sx={{ borderRadius: 1, p: 1.5, mb: 1.5 }}>
+              <Paper sx={{ borderRadius: 1, p: 1.5, mb: 1.5, background: palette.surface, backgroundImage: 'none' }}>
                 <Typography variant="subtitle1" sx={{ color: palette.ink, fontWeight: 800, mb: 1, fontSize: 14 }}>
                   Price
                 </Typography>
@@ -472,7 +477,7 @@ export default function Marketplace() {
               <Box sx={{ mb: 1.5 }} />
             )}
 
-            <Paper sx={{ borderRadius: 1, p: 1.5 }}>
+            <Paper sx={{ borderRadius: 1, p: 1.5, background: palette.surface, backgroundImage: 'none' }}>
               <Typography variant="subtitle1" sx={{ color: palette.ink, fontWeight: 800, mb: 1, fontSize: 14 }}>
                 Filters
               </Typography>
@@ -586,11 +591,11 @@ export default function Marketplace() {
             <Divider sx={{ mb: 2 }} />
 
             {isLoading ? (
-              <Paper sx={{ p: 4, borderRadius: 1 }}>
+              <Paper sx={{ p: 4, borderRadius: 1, background: palette.surface, backgroundImage: 'none' }}>
                 <Typography color="text.secondary">Loading {resultType}...</Typography>
               </Paper>
             ) : items.length === 0 ? (
-              <Paper sx={{ p: 4, borderRadius: 1 }}>
+              <Paper sx={{ p: 4, borderRadius: 1, background: palette.surface, backgroundImage: 'none' }}>
                 <Typography variant="h6" sx={{ fontWeight: 700, color: palette.ink }}>No {resultType} found</Typography>
                 <Typography color="text.secondary">Try another market, category, or search keyword.</Typography>
               </Paper>
@@ -601,7 +606,7 @@ export default function Marketplace() {
                   return (
                     <Card
                       key={shop._id}
-                      sx={{ borderRadius: 1.5, border: `1px solid ${palette.line}`, cursor: "pointer", overflow: "hidden", transition: "box-shadow 0.2s ease, transform 0.2s ease", "&:hover": { boxShadow: "0 8px 24px rgba(15,23,42,0.12)", transform: "translateY(-2px)" } }}
+                      sx={{ borderRadius: 1.5, border: `1px solid ${palette.line}`, cursor: "pointer", overflow: "hidden", background: palette.surface, backgroundImage: 'none', transition: "box-shadow 0.2s ease, transform 0.2s ease", "&:hover": { boxShadow: "0 8px 24px rgba(15,23,42,0.12)", transform: "translateY(-2px)" } }}
                       onClick={() => navigate(toShopUrl(shop))}
                     >
                       <Box onMouseEnter={() => prefetchShopDetail(shop._id)} onFocus={() => prefetchShopDetail(shop._id)} onTouchStart={() => prefetchShopDetail(shop._id)}>
@@ -756,7 +761,7 @@ export default function Marketplace() {
             ) : resultType === "markets" ? (
               <Stack spacing={1.8}>
                 {items.map((market: any) => (
-                  <Card key={market._id} sx={{ borderRadius: 1, border: `1px solid ${palette.line}`, transition: "box-shadow 0.2s ease, transform 0.2s ease", "&:hover": { boxShadow: "0 8px 24px rgba(15,23,42,0.12)", transform: "translateY(-2px)" } }}>
+                  <Card key={market._id} sx={{ borderRadius: 1, border: `1px solid ${palette.line}`, background: palette.surface, backgroundImage: 'none', transition: "box-shadow 0.2s ease, transform 0.2s ease", "&:hover": { boxShadow: "0 8px 24px rgba(15,23,42,0.12)", transform: "translateY(-2px)" } }}>
                     <Box sx={{ p: 1.8 }}>
                       <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} spacing={1.5}>
                         <Box>
@@ -818,6 +823,8 @@ export default function Marketplace() {
                         borderRadius: 1.5, 
                         border: `1px solid ${palette.line}`, 
                         cursor: "pointer", 
+                        background: palette.surface,
+                        backgroundImage: 'none',
                         transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)", 
                         boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
                         "&:hover": { 
@@ -899,6 +906,8 @@ export default function Marketplace() {
                           border: `1px solid ${palette.line}`, 
                           height: "100%", 
                           cursor: "pointer", 
+                          background: palette.surface,
+                          backgroundImage: 'none',
                           transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)", 
                           boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
                           "&:hover": { 
