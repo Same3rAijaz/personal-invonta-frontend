@@ -367,54 +367,62 @@ export default function AppLayout() {
     });
   }, [filteredNavGroups, location.pathname, collapsed]);
 
+  const contentBg = mode === "dark" ? "#020617" : "#eff6ff";
+  const activeBg  = mode === "dark" ? "#020617" : "#eff6ff";
+  const activeColor = mode === "dark" ? "#38bdf8" : "#0f172a";
+
   const getActiveItemSx = (active: boolean) => {
     if (!active) {
       return {
-        color: "rgba(226,232,240,0.6)",
+        borderRadius: 2,
+        color: "rgba(226,232,240,0.55)",
         "&:hover": {
+          borderRadius: 2,
           color: "#ffffff",
-          background: "transparent"
+          background: "rgba(255,255,255,0.07)",
         }
       };
     }
-    
+
     return {
-      background: mode === "dark" ? "#020617" : "#eff6ff",
-      color: mode === "dark" ? "#38bdf8" : "#0f172a",
-      borderTopLeftRadius: 24,
-      borderBottomLeftRadius: 24,
+      background: activeBg,
+      color: activeColor,
+      borderTopLeftRadius: 20,
+      borderBottomLeftRadius: 20,
       borderTopRightRadius: 0,
       borderBottomRightRadius: 0,
       mr: "-16px",
+      // left accent bar
+      boxShadow: `inset 3px 0 0 #0ea5e9`,
       "&:hover": {
-        background: mode === "dark" ? "#020617" : "#eff6ff"
+        background: activeBg,
       },
+      // top corner cutout
       "&::before": {
-         content: '""',
-         position: "absolute",
-         right: -1,
-         top: -20,
-         width: 20,
-         height: 20,
-         background: "transparent",
-         borderBottomRightRadius: 20,
-         boxShadow: `10px 10px 0 10px ${mode === "dark" ? "#020617" : "#eff6ff"}`,
-         zIndex: 1,
-         pointerEvents: "none"
+        content: '""',
+        position: "absolute",
+        right: -4,
+        top: -20,
+        width: 20,
+        height: 20,
+        background: "transparent",
+        borderBottomRightRadius: 20,
+        boxShadow: `15px 15px 0px 15px ${contentBg}`,
+        pointerEvents: "none",
       },
+      // bottom corner cutout
       "&::after": {
-         content: '""',
-         position: "absolute",
-         right: -1,
-         bottom: -20,
-         width: 20,
-         height: 20,
-         background: "transparent",
-         borderTopRightRadius: 20,
-         boxShadow: `10px -10px 0 10px ${mode === "dark" ? "#020617" : "#eff6ff"}`,
-         zIndex: 1,
-         pointerEvents: "none"
-      }
+        content: '""',
+        position: "absolute",
+        right: -4,
+        bottom: -20,
+        width: 20,
+        height: 20,
+        background: "transparent",
+        borderTopRightRadius: 20,
+        boxShadow: `15px -15px 0px 15px ${contentBg}`,
+        pointerEvents: "none",
+      },
     };
   };
 
