@@ -110,7 +110,10 @@ export default function CustomLoader() {
             fontWeight: 800,
             fontSize: "1rem",
             letterSpacing: "0.08em",
-            background: "linear-gradient(90deg, #0f172a 20%, #0ea5e9 50%, #6366f1 65%, #0f172a 80%)",
+            background: (theme) =>
+              theme.palette.mode === "dark"
+                ? "linear-gradient(90deg, #e2e8f0 20%, #0ea5e9 50%, #6366f1 65%, #e2e8f0 80%)"
+                : "linear-gradient(90deg, #0f172a 20%, #0ea5e9 50%, #6366f1 65%, #0f172a 80%)",
             backgroundSize: "200% auto",
             WebkitBackgroundClip: "text",
             WebkitTextFillColor: "transparent",
