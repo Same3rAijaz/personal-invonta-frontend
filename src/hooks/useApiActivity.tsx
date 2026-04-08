@@ -69,7 +69,7 @@ export function ApiActivityProvider({ children }: { children: React.ReactNode })
   return (
     <ApiActivityContext.Provider value={{ pending }}>
       {children}
-      <Backdrop open={visible} sx={{ color: "#fff", zIndex: (theme) => theme.zIndex.drawer + 9999, backgroundColor: "rgba(255, 255, 255, 0.8)", backdropFilter: "blur(4px)" }}>
+      <Backdrop open={visible} sx={{ color: "#fff", zIndex: (theme) => theme.zIndex.drawer + 9999, backgroundColor: (theme) => theme.palette.mode === "dark" ? "rgba(10, 15, 30, 0.85)" : "rgba(255, 255, 255, 0.85)", backdropFilter: "blur(6px)" }}>
         <CustomLoader />
       </Backdrop>
     </ApiActivityContext.Provider>

@@ -68,6 +68,7 @@ import BorrowOrderDetail from "./pages/borrows/BorrowOrderDetail";
 import BorrowProfitReport from "./pages/borrows/BorrowProfitReport";
 import SalesReturns from "./pages/sales/SalesReturns";
 import SalesReturnCreate from "./pages/sales/SalesReturnCreate";
+import SalesReturnDetail from "./pages/sales/SalesReturnDetail";
 import ShopFriends from "./pages/friends/ShopFriends";
 import ShopDiscover from "./pages/friends/ShopDiscover";
 import Partners from "./pages/Partners";
@@ -121,6 +122,7 @@ export default function App() {
             <Route path="/sales/:id/edit" element={<SalesOrderEdit />} />
             <Route path="/sales/returns" element={<SalesReturns />} />
             <Route path="/sales/returns/new" element={<SalesReturnCreate />} />
+            <Route path="/sales/returns/:id" element={<SalesReturnDetail />} />
             <Route path="/borrows" element={<BorrowOrders />} />
             <Route path="/borrows/new" element={<BorrowOrderCreate />} />
             <Route path="/borrows/:id" element={<BorrowOrderDetail />} />

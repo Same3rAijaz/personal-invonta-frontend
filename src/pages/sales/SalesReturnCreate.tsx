@@ -1,4 +1,4 @@
-import { Box, Button, Chip, Divider, Grid, MenuItem, Paper, Stack, Typography, Alert } from "@mui/material";
+import { Box, Button, Chip, Divider, Grid, MenuItem, Paper, Stack, Typography, Alert, IconButton, Tooltip } from "@mui/material";
 import TextField from "../../components/CustomTextField";
 import React from "react";
 import SidebarLayout from "../../components/SidebarLayout";
@@ -14,9 +14,12 @@ const DISPOSITIONS = [
   { value: "DAMAGED", label: "Damaged (write off)" }
 ];
 
+const RETURNABLE_STATUSES = ["SHIPPED", "INVOICED"];
+
 type ReturnItem = {
   productId: string;
   qty: number;
+  maxQty: number;
   disposition: string;
   borrowOrderId?: string;
   lenderBusinessId?: string;
@@ -38,6 +41,7 @@ export default function SalesReturnCreate({ onSuccess, onCancel, defaultSoId = "
   const { data: products } = useProducts({ page: 1, limit: 1000 });
 
   const [originalSalesOrderId, setOriginalSalesOrderId] = React.useState(defaultSoId);
+  const [soInput, setSoInput] = React.useState(defaultSoId);
   const [warehouseId, setWarehouseId] = React.useState("");
   const [notes, setNotes] = React.useState("");
   const [soData, setSoData] = React.useState<any>(null);
@@ -49,16 +53,40 @@ export default function SalesReturnCreate({ onSuccess, onCancel, defaultSoId = "
     [products?.items]
   );
 
-  const fetchSO = async (id: string) => {
-    if (!id || id.length !== 24) return;
+  const warehouseList: any[] = warehouses?.items || [];
+
+  const fetchSO = async (input: string) => {
+    const trimmed = input.trim();
+    if (!trimmed) return;
+
     setLoadingSo(true);
     try {
-      const { data } = await api.get(`/sales/sos/${id}`);
-      const so = data?.data;
+      let so: any = null;
+
+      // Try by ObjectId first (24 hex chars), then fall back to SO number search
+      if (trimmed.length === 24 && /^[a-fA-F0-9]{24}$/.test(trimmed)) {
+        const { data } = await api.get(`/sales/sos/${trimmed}`);
+        so = data?.data;
+      } else {
+        // Search by SO number (e.g. "SO-001")
+        const { data } = await api.get(`/sales/sos`, { params: { number: trimmed, limit: 1 } });
+        const items = data?.data?.items || [];
+        if (items.length > 0) so = items[0];
+      }
+
+      if (!so) {
+        notify("Sales order not found", "error");
+        setSoData(null);
+        setItems([]);
+        return;
+      }
+
       setSoData(so);
+      setOriginalSalesOrderId(String(so._id));
       setItems((so?.items || []).map((i: any) => ({
         productId: String(i.productId),
-        qty: 0,
+        qty: i.qty,           // pre-fill with full sold qty (full return by default)
+        maxQty: i.qty,        // store max for capping without relying on soData in closures
         disposition: i.borrowOrderId ? "RETURN_TO_LENDER" : "RESTOCK",
         borrowOrderId: i.borrowOrderId || undefined,
         lenderBusinessId: i.lenderBusinessId || undefined,
@@ -87,9 +115,14 @@ export default function SalesReturnCreate({ onSuccess, onCancel, defaultSoId = "
   };
 
   const handleSubmit = async () => {
-    if (!originalSalesOrderId) { notify("Enter the original Sales Order ID", "error"); return; }
+    if (!originalSalesOrderId) { notify("Enter the original Sales Order ID or number", "error"); return; }
     if (!warehouseId) { notify("Select a warehouse", "error"); return; }
-    
+
+    if (soData && !RETURNABLE_STATUSES.includes(soData.status)) {
+      notify(`Cannot return a ${soData.status} order. Only SHIPPED or INVOICED orders can be returned.`, "error");
+      return;
+    }
+
     const validItems = items
       .filter((i) => Number(i.qty) > 0)
       .map((i) => ({ ...i, qty: Number(i.qty) }));
@@ -99,7 +132,7 @@ export default function SalesReturnCreate({ onSuccess, onCancel, defaultSoId = "
     for (const item of validItems) {
       if (item.disposition === "RETURN_TO_LENDER" && !item.lenderWarehouseId) {
         const product = productMap.get(item.productId) as any;
-        notify(`Enter lender warehouse ID for ${product?.name || item.productId}`, "error");
+        notify(`Select a lender warehouse for ${product?.name || item.productId}`, "error");
         return;
       }
     }
@@ -114,126 +147,178 @@ export default function SalesReturnCreate({ onSuccess, onCancel, defaultSoId = "
       notify("Sales return processed", "success");
       if (onSuccess) onSuccess();
     } catch (err: any) {
-      notify(err?.response?.data?.error?.message || "Failed", "error");
+      notify(err?.response?.data?.message || err?.response?.data?.error?.message || "Failed to process return", "error");
     }
+  };
+
+  const soStatusColor = (status: string) => {
+    if (status === "SHIPPED" || status === "INVOICED") return "success";
+    if (status === "CONFIRMED") return "info";
+    if (status === "DRAFT") return "default";
+    return "warning";
   };
 
   return (
     <SidebarLayout title="Create Sales Return" onCancel={onCancel} isSubmitting={createReturn.isPending} submitLabel="Process Return" onSubmit={handleSubmit}>
       <Grid container spacing={2}>
 
-          <Grid item xs={12} md={6}>
-            <TextField
-              fullWidth
-              label="Original Sales Order ID *"
-              value={originalSalesOrderId}
-              onChange={(e) => setOriginalSalesOrderId(e.target.value)}
-              onBlur={() => fetchSO(originalSalesOrderId)}
-              helperText={loadingSo ? "Loading SO..." : soData ? `SO ${soData.number} loaded` : "Enter the SO ID then click away"}
-            />
-          </Grid>
-
-          <Grid item xs={12} md={6}>
-            <TextField
-              select
-              fullWidth
-              label="Return to Warehouse *"
-              value={warehouseId}
-              onChange={(e) => setWarehouseId(e.target.value)}
-            >
-              {(warehouses?.items || []).map((w: any) => (
-                <MenuItem key={w._id} value={w._id}>{w.name}</MenuItem>
-              ))}
-            </TextField>
-          </Grid>
-
-          <Grid item xs={12}>
-            <TextField fullWidth label="Notes" multiline rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
-          </Grid>
-
+        <Grid item xs={12} md={6}>
+          <TextField
+            fullWidth
+            label="Sales Order ID or Number *"
+            value={soInput}
+            onChange={(e) => setSoInput(e.target.value)}
+            onBlur={() => fetchSO(soInput)}
+            onKeyDown={(e) => { if (e.key === "Enter") fetchSO(soInput); }}
+            helperText={
+              loadingSo
+                ? "Loading..."
+                : soData
+                ? `SO ${soData.number} loaded`
+                : "Enter the SO ID or number (e.g. SO-001), then press Enter or click away"
+            }
+          />
           {soData && (
-            <>
-              <Grid item xs={12}>
-                <Typography variant="subtitle1" fontWeight={600}>Return Items</Typography>
-                {items.some((i) => i.borrowOrderId) && (
-                  <Alert severity="info" sx={{ mt: 1 }}>
-                    Some items were borrowed from another shop. Choose "Return to Lender" for those.
-                  </Alert>
-                )}
-              </Grid>
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
+              <Chip
+                label={`Status: ${soData.status}`}
+                size="small"
+                color={soStatusColor(soData.status) as any}
+              />
+              {!RETURNABLE_STATUSES.includes(soData.status) && (
+                <Alert severity="warning" sx={{ py: 0, px: 1, flex: 1 }}>
+                  Only SHIPPED or INVOICED orders can be returned.
+                </Alert>
+              )}
+            </Stack>
+          )}
+        </Grid>
 
-              {items.map((item, idx) => {
-                const product = productMap.get(item.productId) as any;
-                const soItem = soData?.items?.[idx];
-                return (
-                  <Grid item xs={12} key={idx}>
-                    <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
-                      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
-                        <Box>
-                          <Typography fontWeight={600}>{product?.name || item.productId}</Typography>
-                          {item.borrowOrderId && (
-                            <Chip label="Borrowed Product" size="small" color="warning" sx={{ mt: 0.5 }} />
-                          )}
-                        </Box>
-                        <Typography variant="body2" color="text.secondary">Sold: {soItem?.qty}</Typography>
+        <Grid item xs={12} md={6}>
+          <TextField
+            select
+            fullWidth
+            label="Return to Warehouse *"
+            value={warehouseId}
+            onChange={(e) => setWarehouseId(e.target.value)}
+          >
+            {warehouseList.map((w: any) => (
+              <MenuItem key={w._id} value={w._id}>{w.name}</MenuItem>
+            ))}
+          </TextField>
+        </Grid>
+
+        <Grid item xs={12}>
+          <TextField fullWidth label="Notes" multiline rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
+        </Grid>
+
+        {soData && (
+          <>
+            <Grid item xs={12}>
+              <Stack direction="row" justifyContent="space-between" alignItems="center">
+                <Typography variant="subtitle1" fontWeight={600}>Return Items</Typography>
+                <Stack direction="row" spacing={1}>
+                  <Button size="small" variant="outlined" onClick={() => setItems((prev) => prev.map((i) => ({ ...i, qty: i.maxQty })))}>
+                    Return All
+                  </Button>
+                  <Button size="small" variant="outlined" color="inherit" onClick={() => setItems((prev) => prev.map((i) => ({ ...i, qty: 0 })))}>
+                    Clear All
+                  </Button>
+                </Stack>
+              </Stack>
+              {items.some((i) => i.borrowOrderId) && (
+                <Alert severity="info" sx={{ mt: 1 }}>
+                  Some items were borrowed from another shop. Choose "Return to Lender" for those and select the lender's warehouse.
+                </Alert>
+              )}
+            </Grid>
+
+            {items.map((item, idx) => {
+              const product = productMap.get(item.productId) as any;
+              return (
+                <Grid item xs={12} key={idx}>
+                  <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+                    <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
+                      <Box>
+                        <Typography fontWeight={600}>{product?.name || item.productId}</Typography>
+                        {item.borrowOrderId && (
+                          <Chip label="Borrowed Product" size="small" color="warning" sx={{ mt: 0.5 }} />
+                        )}
+                      </Box>
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <Typography variant="body2" color="text.secondary">Sold: {item.maxQty}</Typography>
+                        <Tooltip title="Return all">
+                          <Button size="small" onClick={() => updateItem(idx, "qty", item.maxQty)} sx={{ minWidth: 0, px: 1 }}>All</Button>
+                        </Tooltip>
+                        <Tooltip title="Remove from return">
+                          <Button size="small" color="inherit" onClick={() => updateItem(idx, "qty", 0)} sx={{ minWidth: 0, px: 1 }}>None</Button>
+                        </Tooltip>
                       </Stack>
-                      <Grid container spacing={2}>
-                        <Grid item xs={6} md={2}>
-                          <TextField
-                            fullWidth
-                            label={`Qty (max ${soItem?.qty || 0})`}
-                            type="number"
-                            size="small"
-                            value={item.qty === 0 && String(item.qty) !== "0" ? "" : item.qty}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              if (val === "") {
-                                updateItem(idx, "qty", "");
-                              } else {
-                                updateItem(idx, "qty", Math.min(Number(val), soItem?.qty || 0));
-                              }
-                            }}
-                          />
-                        </Grid>
-                        <Grid item xs={6} md={4}>
+                    </Stack>
+                    <Grid container spacing={2}>
+                      <Grid item xs={6} md={2}>
+                        <TextField
+                          fullWidth
+                          label="Return Qty"
+                          type="number"
+                          size="small"
+                          value={item.qty}
+                          helperText={`max: ${item.maxQty}`}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val === "") {
+                              updateItem(idx, "qty", 0);
+                            } else {
+                              updateItem(idx, "qty", Math.min(Math.max(0, Number(val)), item.maxQty));
+                            }
+                          }}
+                          inputProps={{ min: 0, max: item.maxQty }}
+                        />
+                      </Grid>
+                      <Grid item xs={6} md={4}>
+                        <TextField
+                          select
+                          fullWidth
+                          label="Disposition"
+                          size="small"
+                          value={item.disposition}
+                          onChange={(e) => updateItem(idx, "disposition", e.target.value)}
+                        >
+                          {DISPOSITIONS.map((d) => (
+                            <MenuItem key={d.value} value={d.value}
+                              disabled={d.value === "RETURN_TO_LENDER" && !item.borrowOrderId}
+                            >
+                              {d.label}
+                            </MenuItem>
+                          ))}
+                        </TextField>
+                      </Grid>
+                      {item.disposition === "RETURN_TO_LENDER" && (
+                        <Grid item xs={12} md={6}>
                           <TextField
                             select
                             fullWidth
-                            label="Disposition"
+                            label="Lender Warehouse *"
                             size="small"
-                            value={item.disposition}
-                            onChange={(e) => updateItem(idx, "disposition", e.target.value)}
+                            value={item.lenderWarehouseId || ""}
+                            onChange={(e) => updateItem(idx, "lenderWarehouseId", e.target.value)}
+                            helperText="Select the lender's warehouse to return stock to"
                           >
-                            {DISPOSITIONS.map((d) => (
-                              <MenuItem key={d.value} value={d.value}
-                                disabled={d.value === "RETURN_TO_LENDER" && !item.borrowOrderId}
-                              >
-                                {d.label}
-                              </MenuItem>
+                            {warehouseList.map((w: any) => (
+                              <MenuItem key={w._id} value={w._id}>{w.name}</MenuItem>
                             ))}
                           </TextField>
                         </Grid>
-                        {item.disposition === "RETURN_TO_LENDER" && (
-                          <Grid item xs={12} md={6}>
-                            <TextField
-                              fullWidth
-                              label="Lender Warehouse ID *"
-                              size="small"
-                              value={item.lenderWarehouseId || ""}
-                              onChange={(e) => updateItem(idx, "lenderWarehouseId", e.target.value)}
-                              helperText="The lender's warehouse ID to return stock to"
-                            />
-                          </Grid>
-                        )}
-                      </Grid>
-                    </Paper>
-                  </Grid>
-                );
-              })}
-            </>
-          )}
+                      )}
+                    </Grid>
+                  </Paper>
+                </Grid>
+              );
+            })}
+          </>
+        )}
 
-        </Grid>
+      </Grid>
     </SidebarLayout>
   );
 }
