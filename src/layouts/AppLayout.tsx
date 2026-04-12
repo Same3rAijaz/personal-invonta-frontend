@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { AppBar, Toolbar, Typography, Box, Drawer, List, ListItemButton, ListItemText, IconButton, Divider, Avatar, Stack, Menu, MenuItem, ListItemIcon, ListSubheader, Collapse, Paper, Button, CircularProgress, Tooltip } from "@mui/material";
+import { AppBar, Toolbar, Typography, Box, Drawer, List, ListItemButton, ListItemText, IconButton, Divider, Avatar, Stack, Menu, MenuItem, ListItemIcon, ListSubheader, Collapse, Paper, Button, CircularProgress, Tooltip, Alert } from "@mui/material";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import LogoutIcon from "@mui/icons-material/Logout";
 import MenuIcon from "@mui/icons-material/Menu";
@@ -32,6 +32,7 @@ import SwitchAccountIcon from '@mui/icons-material/SwitchAccount';
 import ChatBubbleRoundedIcon from '@mui/icons-material/ChatBubbleRounded';
 import SettingsSuggestRoundedIcon from '@mui/icons-material/SettingsSuggestRounded';
 import SmartToyRoundedIcon from '@mui/icons-material/SmartToyRounded';
+import CreditCardIcon from '@mui/icons-material/CreditCard';
 
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import AssistantPanel from "../components/Assistant/AssistantPanel";
@@ -61,6 +62,8 @@ export default function AppLayout() {
   const { notify } = useToast();
   const { mode, toggleTheme } = useThemeMode();
   const [subLoading, setSubLoading] = React.useState(false);
+  const [subscriptionMeta, setSubscriptionMeta] = React.useState<{ status: string; active: boolean; currentPeriodEnd?: string | null } | null>(null);
+  const [paidThisMonth, setPaidThisMonth] = React.useState(false);
   const [dndMode, setDndMode] = React.useState(localStorage.getItem("invonta_dnd") === "true");
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const { data: notifications = [] } = useNotifications({ limit: 5 });
@@ -216,23 +219,103 @@ export default function AppLayout() {
   const drawerWidth = collapsed ? 84 : 260;
 
   const isSuperAdmin = user?.role === "SUPER_ADMIN";
-  const showPaywall = !isSuperAdmin && business && business.subscriptionStatus !== "active" && business.subscriptionStatus !== "pending";
 
-  const handleSubscribe = async () => {
-    setSubLoading(true);
-    try {
-      const { data } = await api.post("/subscriptions/checkout");
-      const url = data?.data?.url || data?.url;
-      if (url) {
-        window.location.href = url;
-      } else {
-        notify("Failed to create checkout session", "error");
+  React.useEffect(() => {
+    if (isSuperAdmin) return;
+    let canceled = false;
+
+    const checkSubscription = async () => {
+      try {
+        const [statusRes, txRes] = await Promise.all([
+          api.get("/subscriptions/status"),
+          api.get("/subscriptions/transactions", { params: { page: 1, limit: 50 } }),
+        ]);
+
+        if (canceled) return;
+        const statusData = statusRes?.data?.data || statusRes?.data || {};
+        const normalizedStatus = String(statusData?.status || business?.subscriptionStatus || "pending").toLowerCase();
+        setSubscriptionMeta({
+          status: normalizedStatus,
+          active: Boolean(statusData?.active),
+          currentPeriodEnd: statusData?.currentPeriodEnd || null,
+        });
+
+        const txItems = txRes?.data?.data?.items || txRes?.data?.items || [];
+        const now = new Date();
+        const hasPaidThisMonth = txItems.some((tx: any) => {
+          if (String(tx?.status || "").toLowerCase() !== "paid" || !tx?.paidAt) return false;
+          const paidDate = new Date(tx.paidAt);
+          return paidDate.getFullYear() === now.getFullYear() && paidDate.getMonth() === now.getMonth();
+        });
+        setPaidThisMonth(hasPaidThisMonth);
+      } catch {
+        if (canceled) return;
+        const fallbackStatus = String(business?.subscriptionStatus || "pending").toLowerCase();
+        setSubscriptionMeta({
+          status: fallbackStatus,
+          active: fallbackStatus === "active",
+          currentPeriodEnd: null,
+        });
+        setPaidThisMonth(false);
       }
-    } catch (err: any) {
-      notify(err?.response?.data?.error?.message || "Payment initiation failed", "error");
-    } finally {
-      setSubLoading(false);
-    }
+    };
+
+    checkSubscription();
+    return () => {
+      canceled = true;
+    };
+  }, [isSuperAdmin, business?.subscriptionStatus]);
+
+  const effectiveSubStatus = String(subscriptionMeta?.status || business?.subscriptionStatus || "pending").toLowerCase();
+  const businessSubStatus = String(business?.subscriptionStatus || "pending").toLowerCase();
+  const isSubscriptionActive =
+    effectiveSubStatus === "active" &&
+    businessSubStatus === "active" &&
+    (subscriptionMeta?.active ?? true);
+  const dayOfMonth = new Date().getDate();
+  const showMonthlyWarning = !isSuperAdmin && isSubscriptionActive && !paidThisMonth && dayOfMonth >= 1 && dayOfMonth <= 4;
+  const monthlyBlocked = !isSuperAdmin && isSubscriptionActive && !paidThisMonth && dayOfMonth > 4;
+
+  const showSubscriptionNav = !isSuperAdmin && (!isSubscriptionActive || showMonthlyWarning || monthlyBlocked);
+  const showPaywall = !isSuperAdmin && (!isSubscriptionActive || monthlyBlocked) && location.pathname !== "/subscription";
+  
+  const handleSubscribe = () => {
+    setSubLoading(true);
+    api
+      .post("/subscriptions/payfast/checkout-session")
+      .then(({ data }) => {
+        const session = data?.data || data;
+        const actionUrl = session?.actionUrl;
+        const fields = session?.fields || {};
+        if (!actionUrl || !fields || typeof fields !== "object") {
+          throw new Error("Invalid checkout session response");
+        }
+
+        const form = document.createElement("form");
+        form.method = "POST";
+        form.action = actionUrl;
+        form.target = "_self";
+
+        Object.entries(fields).forEach(([key, value]) => {
+          const input = document.createElement("input");
+          input.type = "hidden";
+          input.name = key;
+          input.value = String(value ?? "");
+          form.appendChild(input);
+        });
+
+        document.body.appendChild(form);
+        form.submit();
+      })
+      .catch((err: any) => {
+        const msg =
+          err?.response?.data?.error?.message ||
+          err?.response?.data?.message ||
+          err?.message ||
+          "Failed to start checkout";
+        notify(msg, "error");
+      })
+      .finally(() => setSubLoading(false));
   };
 
   const handleMenu = (event: React.MouseEvent<HTMLElement>) => setAnchorEl(event.currentTarget);
@@ -283,7 +366,8 @@ export default function AppLayout() {
             { label: "Businesses", to: "/superadmin/businesses", icon: <BusinessRoundedIcon /> },
             { label: "Categories", to: "/superadmin/categories", icon: <CategoryRoundedIcon /> },
             { label: "Approval Requests", to: "/superadmin/requests", icon: <AssignmentRoundedIcon /> },
-            { label: "Transactions", to: "/superadmin/transactions", icon: <ReceiptRoundedIcon /> }
+            { label: "Transactions", to: "/superadmin/transactions", icon: <ReceiptRoundedIcon /> },
+            { label: "Subscriptions", to: "/superadmin/subscription-status", icon: <CreditCardIcon /> }
           ]
         },
         {
@@ -303,7 +387,8 @@ export default function AppLayout() {
             ...(isAllowed("purchasing") ? [{ label: "Purchasing", to: "/purchasing", icon: <ShoppingCartRoundedIcon /> }] : []),
             ...(isAllowed("sales") ? [{ label: "Sales", to: "/sales", icon: <MonetizationOnRoundedIcon /> }] : []),
             ...(isAllowed("sales") ? [{ label: "Sales Returns", to: "/sales/returns", icon: <KeyboardReturnRoundedIcon /> }] : []),
-            ...(isAllowed("sales") ? [{ label: "Stock Loans", to: "/borrows", icon: <SwitchAccountIcon /> }] : [])
+            ...(isAllowed("sales") ? [{ label: "Stock Loans", to: "/borrows", icon: <SwitchAccountIcon /> }] : []),
+            ...(showSubscriptionNav ? [{ label: "Subscription", to: "/subscription", icon: <CreditCardIcon /> }] : [])
           ]
         },
         {
@@ -697,6 +782,19 @@ export default function AppLayout() {
           zIndex: 0
         }}
       >
+        {showMonthlyWarning && (
+          <Alert
+            severity="warning"
+            sx={{ mb: 2 }}
+            action={
+              <Button color="inherit" size="small" onClick={handleSubscribe} disabled={subLoading}>
+                {subLoading ? "Processing..." : "Pay Now"}
+              </Button>
+            }
+          >
+            Subscription payment reminder: please pay between 1st and 4th of this month to avoid access block.
+          </Alert>
+        )}
         <Outlet />
       </Box>
 
@@ -741,8 +839,14 @@ export default function AppLayout() {
             >
               <LockOutlinedIcon sx={{ color: "#fff", fontSize: 32 }} />
             </Box>
-            <Typography variant="h5" sx={{ fontWeight: 800, color: "#0f172a", mb: 0.5 }}>Subscription Required</Typography>
-            <Typography variant="body2" sx={{ color: "#64748b", mb: 3 }}>Activate your plan to unlock all features</Typography>
+            <Typography variant="h5" sx={{ fontWeight: 800, color: "#0f172a", mb: 0.5 }}>
+              {monthlyBlocked ? "Payment Overdue" : "Subscription Required"}
+            </Typography>
+            <Typography variant="body2" sx={{ color: "#64748b", mb: 3 }}>
+              {monthlyBlocked
+                ? "Your monthly subscription payment was not received by the 4th. Please pay now to restore access."
+                : "Activate your plan to unlock all features."}
+            </Typography>
             <Box sx={{ p: 2.5, borderRadius: 2, border: "2px solid rgba(14,165,233,0.15)", background: "linear-gradient(135deg, rgba(14,165,233,0.04) 0%, rgba(99,102,241,0.04) 100%)", mb: 3 }}>
               <Typography variant="overline" sx={{ color: "#6366f1", fontWeight: 700, letterSpacing: 1.5 }}>Monthly Plan</Typography>
               <Box sx={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: 0.5, mt: 0.5 }}>
@@ -756,7 +860,7 @@ export default function AppLayout() {
               </Box>
             </Box>
             <Button variant="contained" fullWidth size="large" onClick={handleSubscribe} disabled={subLoading} sx={{ py: 1.4, fontWeight: 700, fontSize: "0.95rem", borderRadius: 2, background: "linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%)", boxShadow: "0 8px 24px rgba(14,165,233,0.3)", "&:hover": { background: "linear-gradient(135deg, #0284c7 0%, #4f46e5 100%)" } }}>
-              {subLoading ? <CircularProgress size={22} sx={{ color: "#fff" }} /> : "Subscribe Now"}
+              {subLoading ? <CircularProgress size={22} sx={{ color: "#fff" }} /> : "Pay Now"}
             </Button>
             <Button variant="text" fullWidth onClick={logout} sx={{ mt: 1.5, color: "#94a3b8", fontWeight: 600 }}>Logout</Button>
           </Paper>

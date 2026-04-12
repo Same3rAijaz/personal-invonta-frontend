@@ -62,6 +62,7 @@ import SubscriptionPaywall from "./pages/SubscriptionPaywall";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentCancel from "./pages/PaymentCancel";
 import Transactions from "./pages/superadmin/Transactions";
+import SubscriptionStatus from "./pages/superadmin/SubscriptionStatus";
 import BorrowOrders from "./pages/borrows/BorrowOrders";
 import BorrowOrderCreate from "./pages/borrows/BorrowOrderCreate";
 import BorrowOrderDetail from "./pages/borrows/BorrowOrderDetail";
@@ -142,6 +143,7 @@ export default function App() {
             <Route path="/udhaar/reports" element={<UdhaarReports />} />
             <Route path="/settings/profile" element={<BusinessProfile />} />
             <Route path="/referrals" element={<MyReferrals />} />
+            <Route path="/subscription" element={<SubscriptionPaywall />} />
           </Route>
           <Route element={<SuperAdminOnlyRoute />}>
             <Route path="/superadmin/markets" element={<Markets />} />
@@ -156,6 +158,7 @@ export default function App() {
             <Route path="/superadmin/requests" element={<ShopRequests />} />
             <Route path="/referrals/settings" element={<ReferralSettings />} />
             <Route path="/superadmin/transactions" element={<Transactions />} />
+            <Route path="/superadmin/subscription-status" element={<SubscriptionStatus />} />
           </Route>
         </Route>
       </Route>

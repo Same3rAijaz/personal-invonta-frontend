@@ -14,6 +14,22 @@ export default function PaymentSuccess() {
   useEffect(() => {
     const refreshBusinessData = async () => {
       try {
+        const params = new URLSearchParams(window.location.search);
+        const basketId = params.get("basketId") || params.get("basket_id") || params.get("BASKET_ID") || undefined;
+        const transactionId =
+          params.get("transactionId") || params.get("transaction_id") || params.get("TRANSACTION_ID") || undefined;
+        const errCode = params.get("err_code") || params.get("ERR_CODE") || undefined;
+        const errMsg = params.get("err_msg") || params.get("ERR_MSG") || undefined;
+
+        if (basketId) {
+          await api.post("/subscriptions/payfast/finalize-hosted-success", {
+            basketId,
+            transactionId,
+            errCode,
+            errMsg,
+          });
+        }
+
         // Refresh business data to get updated subscriptionStatus
         const { data } = await api.get("/businesses/me");
         if (data?.data) {

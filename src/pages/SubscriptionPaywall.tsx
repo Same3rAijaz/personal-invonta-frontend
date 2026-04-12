@@ -1,10 +1,11 @@
-import { Box, Button, Paper, Typography, CircularProgress } from "@mui/material";
-import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
+import { Box, Button, Paper, Typography, CircularProgress, Alert, Chip, Stack } from "@mui/material";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import PaymentIcon from "@mui/icons-material/Payment";
+import CreditCardIcon from "@mui/icons-material/CreditCard";
 import { useAuth } from "../hooks/useAuth";
 import { api } from "../api/client";
 import { useState } from "react";
 import { useToast } from "../hooks/useToast";
-
 import { useThemeMode } from "../contexts/ThemeContext";
 
 export default function SubscriptionPaywall() {
@@ -12,24 +13,48 @@ export default function SubscriptionPaywall() {
   const { notify } = useToast();
   const { mode } = useThemeMode();
   const isDark = mode === "dark";
-  const [loading, setLoading] = useState(false);
 
-  const handleSubscribe = async () => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [txnResult, setTxnResult] = useState<any>(null);
+
+  const handleQuickPay = async () => {
+    setError(null);
     setLoading(true);
     try {
-      const { data } = await api.post("/subscriptions/checkout");
-      const url = data?.data?.url || data?.url;
-      if (url) {
-        window.location.href = url;
-      } else {
-        notify("Failed to create checkout session", "error");
+      const { data } = await api.post("/subscriptions/payfast/checkout-session");
+      const session = data?.data || data;
+      const actionUrl = session?.actionUrl;
+      const fields = session?.fields || {};
+      if (!actionUrl || !fields || typeof fields !== "object") {
+        throw new Error("Invalid checkout session response");
       }
+
+      const form = document.createElement("form");
+      form.method = "POST";
+      form.action = actionUrl;
+      form.target = "_self";
+
+      Object.entries(fields).forEach(([key, value]) => {
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = key;
+        input.value = String(value ?? "");
+        form.appendChild(input);
+      });
+
+      document.body.appendChild(form);
+      form.submit();
     } catch (err: any) {
-      notify(err?.response?.data?.error?.message || "Payment initiation failed", "error");
+      const msg = err?.response?.data?.error?.message || err?.response?.data?.message || "Payment failed. Please try again.";
+      setError(msg);
+      notify(msg, "error");
     } finally {
       setLoading(false);
     }
   };
+
+  const accentGradient = "linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%)";
 
   return (
     <Box
@@ -38,108 +63,139 @@ export default function SubscriptionPaywall() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: isDark 
-          ? "radial-gradient(circle at top left, rgba(14,165,233,0.15) 0%, #020617 40%, #0f172a 100%)" 
+        background: isDark
+          ? "radial-gradient(circle at top left, rgba(14,165,233,0.15) 0%, #020617 40%, #0f172a 100%)"
           : "radial-gradient(circle at top left, rgba(14,165,233,0.08) 0%, #f1f5f9 40%, #e2e8f0 100%)",
-        transition: "background 0.3s ease",
-        p: 3
+        p: 3,
       }}
     >
       <Paper
         elevation={0}
         sx={{
-          maxWidth: 520,
+          maxWidth: 560,
           width: "100%",
-          p: { xs: 4, md: 6 },
+          p: { xs: 3, md: 5 },
           borderRadius: 3,
           textAlign: "center",
+          boxShadow: isDark ? "0 24px 64px rgba(0,0,0,0.4)" : "0 24px 64px rgba(0,0,0,0.1)",
         }}
       >
         <Box
           sx={{
-            width: 72,
-            height: 72,
+            width: 64,
+            height: 64,
             borderRadius: "50%",
-            background: "linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%)",
+            background: txnResult ? "linear-gradient(135deg, #10b981 0%, #059669 100%)" : accentGradient,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             mx: "auto",
-            mb: 3,
-            boxShadow: "0 8px 24px rgba(14,165,233,0.3)"
+            mb: 2.5,
+            boxShadow: txnResult
+              ? "0 8px 24px rgba(16,185,129,0.3)"
+              : "0 8px 24px rgba(14,165,233,0.3)",
           }}
         >
-          <LockOutlinedIcon sx={{ color: "#fff", fontSize: 36 }} />
+          {txnResult ? (
+            <CheckCircleOutlineIcon sx={{ color: "#fff", fontSize: 32 }} />
+          ) : (
+            <PaymentIcon sx={{ color: "#fff", fontSize: 32 }} />
+          )}
         </Box>
 
-        <Typography variant="h4" sx={{ fontWeight: 800, color: "text.primary", mb: 1 }}>
-          Subscription Required
+        <Typography variant="h5" sx={{ fontWeight: 800, color: "text.primary", mb: 0.5 }}>
+          {txnResult ? "Payment Successful!" : "Subscribe to Invonta"}
+        </Typography>
+        <Typography variant="body2" sx={{ color: "text.secondary", mb: 3 }}>
+          {txnResult
+            ? "Your subscription is now active. Redirecting to dashboard..."
+            : `${business?.name || "Your business"} needs an active subscription to access the dashboard.`}
         </Typography>
 
-        <Typography variant="body1" sx={{ color: "text.secondary", mb: 3 }}>
-          {business?.name ? `${business.name} needs` : "Your business needs"} an active subscription to access the dashboard.
+        {error && (
+          <Alert severity="error" sx={{ mb: 2, textAlign: "left", borderRadius: 2 }}>
+            {error}
+          </Alert>
+        )}
+
+        {!txnResult && (
+          <Box>
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2.5,
+                borderRadius: 2,
+                border: "2px solid",
+                borderColor: "divider",
+                background: isDark ? "rgba(255,255,255,0.03)" : "rgba(14,165,233,0.04)",
+                mb: 3,
+                textAlign: "left",
+              }}
+            >
+              <Stack direction="row" justifyContent="space-between" alignItems="center">
+                <Box>
+                  <Chip
+                    label="Monthly Plan"
+                    size="small"
+                    sx={{ bgcolor: "rgba(99,102,241,0.1)", color: "#6366f1", fontWeight: 700, letterSpacing: 0.5 }}
+                  />
+                  <Box sx={{ display: "flex", alignItems: "baseline", gap: 0.5, mt: 1 }}>
+                    <Typography variant="h4" sx={{ fontWeight: 800, color: "text.primary" }}>
+                      Rs 5,000
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                      /month
+                    </Typography>
+                  </Box>
+                </Box>
+                <CreditCardIcon sx={{ fontSize: 40, color: "text.disabled" }} />
+              </Stack>
+            </Paper>
+
+            <Stack direction="row" spacing={1} justifyContent="center" sx={{ mb: 2 }}>
+              <Chip label="Visa" size="small" />
+              <Chip label="Mastercard" size="small" />
+              <Chip label="Debit Card" size="small" />
+            </Stack>
+
+            <Button
+              variant="contained"
+              fullWidth
+              size="large"
+              onClick={handleQuickPay}
+              disabled={loading}
+              sx={{
+                mt: 1,
+                py: 1.5,
+                fontWeight: 700,
+                fontSize: "0.95rem",
+                borderRadius: 2,
+                background: accentGradient,
+                boxShadow: "0 8px 24px rgba(14,165,233,0.3)",
+                "&:hover": {
+                  background: "linear-gradient(135deg, #0284c7 0%, #4f46e5 100%)",
+                },
+              }}
+            >
+              {loading ? <CircularProgress size={24} sx={{ color: "#fff" }} /> : "Pay with Card"}
+            </Button>
+          </Box>
+        )}
+
+        {!txnResult && (
+          <Button
+            variant="text"
+            fullWidth
+            onClick={logout}
+            sx={{ mt: 2, color: "text.secondary", fontWeight: 600 }}
+          >
+            Logout
+          </Button>
+        )}
+
+        <Typography variant="caption" sx={{ color: "text.disabled", display: "block", mt: 2, opacity: 0.65 }}>
+          Secured by PayFast • ASASA Tech
         </Typography>
-
-        <Paper
-          elevation={0}
-          sx={{
-            p: 3,
-            borderRadius: 2,
-            border: "2px solid",
-            borderColor: "divider",
-            background: isDark ? "rgba(255,255,255,0.03)" : "rgba(14,165,233,0.05)",
-            mb: 4
-          }}
-        >
-          <Typography variant="overline" sx={{ color: "#6366f1", fontWeight: 700, letterSpacing: 1.5 }}>
-            Monthly Plan
-          </Typography>
-          <Box sx={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: 0.5, mt: 1 }}>
-            <Typography variant="h3" sx={{ fontWeight: 800, color: "text.primary" }}>
-              ₨5,000
-            </Typography>
-            <Typography variant="body2" sx={{ color: "text.secondary" }}>
-              /month
-            </Typography>
-          </Box>
-          <Box sx={{ mt: 2, textAlign: "left" }}>
-            <Typography variant="body2" sx={{ color: "text.secondary", py: 0.5 }}>✓ Full dashboard access</Typography>
-            <Typography variant="body2" sx={{ color: "text.secondary", py: 0.5 }}>✓ Inventory & stock management</Typography>
-            <Typography variant="body2" sx={{ color: "text.secondary", py: 0.5 }}>✓ Sales & purchasing</Typography>
-            <Typography variant="body2" sx={{ color: "text.secondary", py: 0.5 }}>✓ Reports & analytics</Typography>
-            <Typography variant="body2" sx={{ color: "text.secondary", py: 0.5 }}>✓ Team & employee management</Typography>
-          </Box>
-        </Paper>
-
-        <Button
-          variant="contained"
-          fullWidth
-          size="large"
-          onClick={handleSubscribe}
-          disabled={loading}
-          sx={{
-            py: 1.6,
-            fontWeight: 700,
-            fontSize: "1rem",
-            borderRadius: 2,
-            background: "linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%)",
-            boxShadow: "0 8px 24px rgba(14,165,233,0.3)",
-            "&:hover": {
-              background: "linear-gradient(135deg, #0284c7 0%, #4f46e5 100%)"
-            }
-          }}
-        >
-          {loading ? <CircularProgress size={24} sx={{ color: "#fff" }} /> : "Subscribe Now — ₨5,000/mo"}
-        </Button>
-
-        <Button
-          variant="text"
-          fullWidth
-          onClick={logout}
-          sx={{ mt: 2, color: "text.secondary", fontWeight: 600 }}
-        >
-          Logout
-        </Button>
       </Paper>
     </Box>
   );

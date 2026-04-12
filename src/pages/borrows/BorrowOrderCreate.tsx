@@ -8,14 +8,16 @@ import { useCreateBorrowOrder } from "../../hooks/useBorrows";
 import { useShopFriends, useFriendProducts } from "../../hooks/useShopFriends";
 import { useToast } from "../../hooks/useToast";
 import { useWarehouses } from "../../hooks/useWarehouses";
+import { useNavigate } from "react-router-dom";
 import SidebarLayout from "../../components/SidebarLayout";
 
 interface BorrowOrderCreateProps {
-  onSuccess: () => void;
-  onCancel: () => void;
+  onSuccess?: () => void;
+  onCancel?: () => void;
 }
 
 export default function BorrowOrderCreate({ onSuccess, onCancel }: BorrowOrderCreateProps) {
+  const navigate = useNavigate();
   const createBO = useCreateBorrowOrder();
   const { notify } = useToast();
   const { data: warehouses } = useWarehouses({ page: 1, limit: 1000 });
@@ -61,7 +63,8 @@ export default function BorrowOrderCreate({ onSuccess, onCancel }: BorrowOrderCr
         notes: values.notes || undefined
       });
       notify("Stock loan request sent — waiting for the lender shop to accept", "success");
-      onSuccess();
+      if (onSuccess) onSuccess();
+      else navigate("/borrows");
     } catch (err: any) {
       notify(err?.response?.data?.error?.message || "Failed", "error");
     }
@@ -70,7 +73,7 @@ export default function BorrowOrderCreate({ onSuccess, onCancel }: BorrowOrderCr
   return (
     <SidebarLayout 
       title="Request Stock Loan" 
-      onCancel={onCancel}
+      onCancel={onCancel || (() => navigate("/borrows"))}
       isSubmitting={createBO.isPending}
       submitLabel="Send Loan Request"
     >
