@@ -1,7 +1,14 @@
 import axios from "axios";
 
+// BUG-25: Removed production URL fallback — missing VITE_API_URL must be set explicitly.
+// Without this, local dev would silently send requests to production.
+const apiBase = import.meta.env.VITE_API_URL;
+if (!apiBase) {
+  console.error("[API] VITE_API_URL is not set. Please create a .env file with VITE_API_URL=http://localhost:4000");
+}
+
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "https://www.invonta.com/api"
+  baseURL: apiBase || "http://localhost:4000"
 });
 
 type RetryableRequest = {

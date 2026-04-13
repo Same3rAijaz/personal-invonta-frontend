@@ -46,8 +46,12 @@ export default function SalesOrderCreate({
 
   const onSubmit = async (values: any) => {
     try {
-      const items = values.items.map((item: any, idx: number) => {
-        const borrowItem = borrowState?.items?.[idx];
+      const items = values.items.map((item: any) => {
+        // BUG-12: Match borrow item by productId (not array index) to prevent wrong linkage
+        // when items are removed or reordered in the form
+        const borrowItem = borrowState?.items?.find(
+          (b: any) => String(b.productId) === String(item.productId)
+        );
         return {
           productId: item.productId,
           qty: Number(item.qty),

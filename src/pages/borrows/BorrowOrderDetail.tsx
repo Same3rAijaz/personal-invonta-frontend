@@ -1,15 +1,17 @@
-import { Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Divider, Grid, IconButton, MenuItem, Paper, Stack, Typography } from "@mui/material";
-import TextField from "../../components/CustomTextField";;
+import {
+  Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent,
+  DialogTitle, Divider, Grid, IconButton, MenuItem, Paper, Skeleton, Stack, Typography
+} from "@mui/material";
+import TextField from "../../components/CustomTextField";
 import React from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import {
-  useActivateBorrowOrder, useApproveBorrowOrder,
-  useBorrowOrder, useBorrowProfitSummary, useRejectBorrowOrder, useReturnBorrowOrder
+  useActivateBorrowOrder, useApproveBorrowOrder, useBorrowOrder,
+  useBorrowProfitSummary, useCancelBorrowOrder, useRejectBorrowOrder, useReturnBorrowOrder
 } from "../../hooks/useBorrows";
 import { useToast } from "../../hooks/useToast";
 import { useConfirmDialog } from "../../hooks/useConfirmDialog";
-import { useProducts } from "../../hooks/useProducts";
 import { useWarehouses } from "../../hooks/useWarehouses";
 import { useAuth } from "../../hooks/useAuth";
 
@@ -33,33 +35,33 @@ const statusLabel: Record<string, string> = {
   CANCELLED: "Cancelled"
 };
 
+// BUG-24: Helper to extract readable message from API error response
+function extractErrorMessage(err: any): string {
+  const raw = err?.response?.data?.error?.message;
+  if (!raw) return "An error occurred";
+  return Array.isArray(raw) ? raw.join("; ") : String(raw);
+}
+
 export default function BorrowOrderDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { business } = useAuth();
   const { data: bo, isLoading } = useBorrowOrder(id!);
   const { data: profitData } = useBorrowProfitSummary(id!);
-  const { data: products } = useProducts({ page: 1, limit: 1000 });
+  // BUG-15: Removed useProducts({ page:1, limit:1000 }) — product names come from API populate
   const { data: warehouses } = useWarehouses({ page: 1, limit: 1000 });
   const approve = useApproveBorrowOrder();
   const reject = useRejectBorrowOrder();
   const activate = useActivateBorrowOrder();
   const returnBO = useReturnBorrowOrder();
+  const cancel = useCancelBorrowOrder();
   const { notify } = useToast();
   const { confirm, confirmDialog } = useConfirmDialog();
 
-  // Approve dialog — lender assigns warehouse per item
   const [approveDialog, setApproveDialog] = React.useState(false);
   const [warehouseAssignments, setWarehouseAssignments] = React.useState<Record<string, string>>({});
-
-  // Return dialog
   const [returnDialog, setReturnDialog] = React.useState(false);
   const [returnQtys, setReturnQtys] = React.useState<Record<string, number>>({});
-
-  const productMap = React.useMemo(
-    () => new Map((products?.items || []).map((p: any) => [String(p._id), p])),
-    [products?.items]
-  );
 
   const myBusinessId = String((business as any)?._id || "");
   const isLender = bo ? String(bo.lenderBusinessId) === myBusinessId : false;
@@ -86,20 +88,39 @@ export default function BorrowOrderDetail() {
       notify("Borrow request accepted — borrower can now activate to transfer stock", "success");
       setApproveDialog(false);
     } catch (err: any) {
-      notify(err?.response?.data?.error?.message || "Failed", "error");
+      notify(extractErrorMessage(err), "error");
     }
   };
 
   const handleReject = async () => {
     if (!(await confirm({ title: "Reject Request", message: "Reject this borrow request?", confirmText: "Reject" }))) return;
-    try { await reject.mutateAsync(id!); notify("Request rejected", "success"); }
-    catch (err: any) { notify(err?.response?.data?.error?.message || "Failed", "error"); }
+    try {
+      await reject.mutateAsync(id!);
+      notify("Request rejected", "success");
+    } catch (err: any) {
+      notify(extractErrorMessage(err), "error");
+    }
+  };
+
+  const handleCancel = async () => {
+    if (!(await confirm({ title: "Cancel Loan Request", message: "Cancel your pending loan request? This cannot be undone.", confirmText: "Cancel Request" }))) return;
+    try {
+      await cancel.mutateAsync(id!);
+      notify("Loan request cancelled", "success");
+      navigate("/borrows");
+    } catch (err: any) {
+      notify(extractErrorMessage(err), "error");
+    }
   };
 
   const handleActivate = async () => {
     if (!(await confirm({ title: "Transfer Stock", message: "Transfer stock from lender to your warehouse now?", confirmText: "Transfer" }))) return;
-    try { await activate.mutateAsync(id!); notify("Stock transferred — borrow is ACTIVE", "success"); }
-    catch (err: any) { notify(err?.response?.data?.error?.message || "Failed", "error"); }
+    try {
+      await activate.mutateAsync(id!);
+      notify("Stock transferred — borrow is ACTIVE", "success");
+    } catch (err: any) {
+      notify(extractErrorMessage(err), "error");
+    }
   };
 
   const handleReturn = async () => {
@@ -112,12 +133,27 @@ export default function BorrowOrderDetail() {
       notify("Items returned to lender", "success");
       setReturnDialog(false);
     } catch (err: any) {
-      notify(err?.response?.data?.error?.message || "Failed", "error");
+      notify(extractErrorMessage(err), "error");
     }
   };
 
-  if (isLoading) return <Typography>Loading…</Typography>;
-  if (!bo) return <Typography>Not found</Typography>;
+  // BUG-23: Use CircularProgress + Skeleton instead of plain text
+  if (isLoading) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Skeleton variant="text" width={200} height={40} sx={{ mb: 2 }} />
+        <Skeleton variant="rounded" height={200} sx={{ mb: 2 }} />
+        <Skeleton variant="rounded" height={150} />
+      </Box>
+    );
+  }
+  if (!bo) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error">Borrow order not found or you don't have access to it.</Alert>
+      </Box>
+    );
+  }
 
   return (
     <Box>
@@ -130,6 +166,9 @@ export default function BorrowOrderDetail() {
           </Stack>
           <Typography variant="caption" color="text.secondary">
             {isLender ? "You are the Lender" : isBorrower ? "You are the Borrower" : ""}
+            {bo.createdAt && (
+              <> &nbsp;·&nbsp; Created {new Date(bo.createdAt).toLocaleDateString()}</>
+            )}
           </Typography>
         </Box>
       </Stack>
@@ -151,9 +190,10 @@ export default function BorrowOrderDetail() {
             <Typography variant="subtitle1" fontWeight={700} gutterBottom>Loan Items</Typography>
             <Divider sx={{ mb: 2 }} />
             {bo.items?.map((item: any, idx: number) => {
-              const product = productMap.get(String(item.productId));
-              const productName = item.productName || item.product?.name || product?.name || `Product …${String(item.productId || "").slice(-6)}`;
-              const warehouseObj = (warehouses?.items || []).find((w: any) => String(w._id) === String(item.lenderWarehouseId));
+              // BUG-15: Use item.productName from API response (populated), no local productMap needed
+              const productName = item.productName || item.product?.name || `Product …${String(item.productId || "").slice(-6)}`;
+              // BUG-14: Use lenderWarehouseName populated from backend
+              const warehouseName = item.lenderWarehouseName || (item.lenderWarehouseId ? `ID: …${String(item.lenderWarehouseId).slice(-6)}` : null);
               return (
                 <Box key={idx} sx={{ py: 1.5, borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
                   <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
@@ -161,8 +201,8 @@ export default function BorrowOrderDetail() {
                       <Typography fontWeight={600}>{productName}</Typography>
                       <Typography variant="caption" color="text.secondary">
                         Agreed Cost: <b>{item.agreedUnitCost}</b> / unit
-                        {item.lenderWarehouseId && (
-                          <> &nbsp;·&nbsp; Lender Warehouse: <b>{warehouseObj?.name || item.lenderWarehouseId}</b></>
+                        {warehouseName && (
+                          <> &nbsp;·&nbsp; Lender Warehouse: <b>{warehouseName}</b></>
                         )}
                       </Typography>
                     </Box>
@@ -170,6 +210,9 @@ export default function BorrowOrderDetail() {
                       <Typography variant="body2">Loaned Qty: <b>{item.qty}</b></Typography>
                       <Typography variant="body2" color="success.main">Sold: <b>{item.soldQty || 0}</b></Typography>
                       <Typography variant="body2" color="info.main">Returned: <b>{item.returnedQty || 0}</b></Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Available: <b>{item.qty - (item.soldQty || 0) - (item.returnedQty || 0)}</b>
+                      </Typography>
                     </Stack>
                   </Stack>
                 </Box>
@@ -187,14 +230,13 @@ export default function BorrowOrderDetail() {
                 <Typography variant="body2" color="text.secondary">Total Due</Typography>
                 <Typography fontWeight={700} color="error.main">{(bo.totalSettlementDue || 0).toFixed(2)}</Typography>
               </Stack>
-              {profitData?.profitByBusiness && Object.entries(profitData.profitByBusiness).map(([shopId, profit]: any) => (
-                <Stack key={shopId} direction="row" justifyContent="space-between">
-                  <Typography variant="body2" color="text.secondary">
-                    {shopId === myBusinessId ? "Your profit" : `Shop …${shopId.slice(-6)}`}
-                  </Typography>
-                  <Typography fontWeight={600} color="success.main">{(profit as number).toFixed(2)}</Typography>
+              {/* BUG-21: profitSummary now only shows the requesting user's own profit */}
+              {profitData?.myProfit !== undefined && (
+                <Stack direction="row" justifyContent="space-between">
+                  <Typography variant="body2" color="text.secondary">Your Profit</Typography>
+                  <Typography fontWeight={600} color="success.main">{(profitData.myProfit as number).toFixed(2)}</Typography>
                 </Stack>
-              ))}
+              )}
             </Stack>
           </Paper>
 
@@ -212,6 +254,13 @@ export default function BorrowOrderDetail() {
                   </Button>
                 </>
               )}
+              {/* BUG-17: Cancel action for borrower on PENDING orders */}
+              {bo.status === "PENDING" && isBorrower && (
+                <Button variant="outlined" color="error" fullWidth onClick={handleCancel} disabled={cancel.isPending}>
+                  Cancel Request
+                </Button>
+              )}
+              {/* BUG-02 (UI guard): Only borrower can activate */}
               {bo.status === "APPROVED" && isBorrower && (
                 <Button variant="contained" fullWidth onClick={handleActivate} disabled={activate.isPending}>
                   Transfer Stock to My Warehouse
@@ -228,16 +277,13 @@ export default function BorrowOrderDetail() {
                         state: {
                           borrowOrderId: bo._id,
                           lenderBusinessId: bo.lenderBusinessId,
-                          items: (bo.items || []).map((i: any) => {
-                            const p = productMap.get(String(i.productId));
-                            return {
-                              productId: String(i.productId),
-                              productName: i.productName || i.product?.name || p?.name || "",
-                              qty: i.qty - (i.soldQty || 0) - (i.returnedQty || 0),
-                              unitPrice: p?.salePrice || 0,
-                              agreedUnitCost: i.agreedUnitCost || 0
-                            };
-                          }).filter((i: any) => i.qty > 0)
+                          items: (bo.items || []).map((i: any) => ({
+                            productId: String(i.productId),
+                            productName: i.productName || i.product?.name || "",
+                            qty: i.qty - (i.soldQty || 0) - (i.returnedQty || 0),
+                            unitPrice: 0,
+                            agreedUnitCost: i.agreedUnitCost || 0
+                          })).filter((i: any) => i.qty > 0)
                         }
                       });
                     }}
@@ -267,8 +313,7 @@ export default function BorrowOrderDetail() {
             Assign one of your warehouses to each item. Stock will be pulled from those warehouses when the borrower activates the order.
           </Typography>
           {(bo?.items || []).map((item: any) => {
-            const product = productMap.get(String(item.productId));
-            const productName = item.productName || item.product?.name || product?.name || `Product …${String(item.productId || "").slice(-6)}`;
+            const productName = item.productName || item.product?.name || `Product …${String(item.productId || "").slice(-6)}`;
             return (
               <Stack key={String(item.productId)} direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
                 <Box sx={{ flex: 1 }}>
@@ -303,22 +348,33 @@ export default function BorrowOrderDetail() {
       <Dialog open={returnDialog} onClose={() => setReturnDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Return Items to Lender</DialogTitle>
         <DialogContent sx={{ pt: "12px !important" }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Only unsold, unreturned units can be returned.
+          </Typography>
           {(bo?.items || []).map((item: any) => {
-            const product = productMap.get(String(item.productId));
-            const productName = item.productName || item.product?.name || product?.name || `Product …${String(item.productId || "").slice(-6)}`;
-            const maxReturn = item.qty - (item.returnedQty || 0);
+            const productName = item.productName || item.product?.name || `Product …${String(item.productId || "").slice(-6)}`;
+            // BUG-07 + BUG-11: Correct max return excludes soldQty; min clamped at 0
+            const maxReturn = item.qty - (item.returnedQty || 0) - (item.soldQty || 0);
+            if (maxReturn <= 0) return null; // hide items that can't be returned
             return (
               <Stack key={String(item.productId)} direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
-                <Typography sx={{ flex: 1 }}>{productName}</Typography>
+                <Box sx={{ flex: 1 }}>
+                  <Typography>{productName}</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Max returnable: {maxReturn} (sold: {item.soldQty || 0}, already returned: {item.returnedQty || 0})
+                  </Typography>
+                </Box>
                 <TextField
                   label={`Qty (max ${maxReturn})`}
                   type="number"
                   size="small"
-                  sx={{ width: 130 }}
+                  sx={{ width: 140 }}
+                  inputProps={{ min: 0, max: maxReturn }}
                   value={returnQtys[String(item.productId)] || 0}
                   onChange={(e) => setReturnQtys((prev) => ({
                     ...prev,
-                    [String(item.productId)]: Math.min(Number(e.target.value), maxReturn)
+                    // BUG-11: Clamp between 0 and maxReturn (prevents negative input)
+                    [String(item.productId)]: Math.max(0, Math.min(Number(e.target.value), maxReturn))
                   }))}
                 />
               </Stack>
