@@ -64,6 +64,15 @@ export function useReturnBorrowOrder() {
   });
 }
 
+// BUG-17: Cancel mutation — borrower cancels their own PENDING order
+export function useCancelBorrowOrder() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => (await api.post(`/borrows/${id}/cancel`)).data.data,
+    onSuccess: () => client.invalidateQueries({ queryKey: ["borrows"] })
+  });
+}
+
 export function useBorrowProfitSummary(id: string) {
   return useQuery({
     queryKey: ["borrows", id, "profit"],

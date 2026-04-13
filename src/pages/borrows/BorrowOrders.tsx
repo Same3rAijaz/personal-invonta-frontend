@@ -7,7 +7,7 @@ import SalesOrderCreate from "../sales/SalesOrderCreate";
 import { Drawer } from "@mui/material";
 import {
   useActivateBorrowOrder, useApproveBorrowOrder,
-  useBorrowOrders, useRejectBorrowOrder
+  useBorrowOrders, useCancelBorrowOrder, useRejectBorrowOrder
 } from "../../hooks/useBorrows";
 import DataTable from "../../components/DataTable";
 import PageHeader from "../../components/PageHeader";
@@ -37,6 +37,13 @@ const statusLabel: Record<string, string> = {
   CANCELLED: "Cancelled"
 };
 
+// BUG-24: Helper to extract readable message from API error response
+function extractErrorMessage(err: any): string {
+  const raw = err?.response?.data?.error?.message;
+  if (!raw) return "An error occurred";
+  return Array.isArray(raw) ? raw.join("; ") : String(raw);
+}
+
 export default function BorrowOrders() {
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(20);
@@ -56,12 +63,20 @@ export default function BorrowOrders() {
   const approve = useApproveBorrowOrder();
   const reject = useRejectBorrowOrder();
   const activate = useActivateBorrowOrder();
+  const cancel = useCancelBorrowOrder();
   const navigate = useNavigate();
   const { notify } = useToast();
   const { confirm, confirmDialog } = useConfirmDialog();
 
-  const { data: lendRequests } = useBorrowOrders({ page: 1, limit: 100, role: "lender" });
-  const pendingCount = (lendRequests?.items || []).filter((b: any) => b.status === "PENDING").length;
+  // BUG-19: Compute pending lend count from already-fetched data when on lender tab
+  // instead of firing a separate API call unconditionally
+  const lenderData = tab === "lender" ? data : undefined;
+  const pendingCount = React.useMemo(() => {
+    if (lenderData?.items) {
+      return lenderData.items.filter((b: any) => b.status === "PENDING").length;
+    }
+    return 0;
+  }, [lenderData?.items]);
 
   const openApproveDialog = (bo: any) => {
     const initial: Record<string, string> = {};
@@ -85,14 +100,28 @@ export default function BorrowOrders() {
       notify("Loan request approved", "success");
       setApproveDialog({ open: false, bo: null });
     } catch (err: any) {
-      notify(err?.response?.data?.error?.message || "Failed", "error");
+      notify(extractErrorMessage(err), "error");
     }
   };
 
   const handleReject = async (id: string) => {
     if (!(await confirm({ title: "Reject Loan Request", message: "Reject this stock loan request?", confirmText: "Reject" }))) return;
-    try { await reject.mutateAsync(id); notify("Loan request rejected", "success"); }
-    catch (err: any) { notify(err?.response?.data?.error?.message || "Failed", "error"); }
+    try {
+      await reject.mutateAsync(id);
+      notify("Loan request rejected", "success");
+    } catch (err: any) {
+      notify(extractErrorMessage(err), "error");
+    }
+  };
+
+  const handleCancel = async (id: string) => {
+    if (!(await confirm({ title: "Cancel Loan Request", message: "Cancel your pending loan request? This cannot be undone.", confirmText: "Cancel Request" }))) return;
+    try {
+      await cancel.mutateAsync(id);
+      notify("Loan request cancelled", "success");
+    } catch (err: any) {
+      notify(extractErrorMessage(err), "error");
+    }
   };
 
   const handleActivate = async () => {
@@ -102,7 +131,7 @@ export default function BorrowOrders() {
       notify("Stock transferred — loan is now ACTIVE", "success");
       setActivateId(null);
     } catch (err: any) {
-      notify(err?.response?.data?.error?.message || "Failed", "error");
+      notify(extractErrorMessage(err), "error");
     }
   };
 
@@ -130,7 +159,8 @@ export default function BorrowOrders() {
           label={
             <Stack direction="row" spacing={0.5} alignItems="center">
               <span>Lending Requests</span>
-              {pendingCount > 0 && (
+              {/* BUG-19: Badge only appears when on lender tab — no extra API call */}
+              {tab === "lender" && pendingCount > 0 && (
                 <Chip label={pendingCount} size="small" color="warning" sx={{ height: 18, fontSize: 11 }} />
               )}
             </Stack>
@@ -180,6 +210,16 @@ export default function BorrowOrders() {
             label: "Settlement Due",
             render: (row: any) => <Typography variant="body2">{(row.totalSettlementDue || 0).toFixed(2)}</Typography>
           },
+          // BUG-16: Add created date column for temporal context
+          {
+            key: "createdAt",
+            label: "Date",
+            render: (row: any) => (
+              <Typography variant="caption" color="text.secondary">
+                {row.createdAt ? new Date(row.createdAt).toLocaleDateString() : "—"}
+              </Typography>
+            )
+          },
           {
             key: "actions",
             label: "Actions",
@@ -208,20 +248,29 @@ export default function BorrowOrders() {
                       });
                     }
                   },
+                  // BUG-06: Approve/Reject only shown when current user IS the lender
                   {
                     label: "Approve Loan Request",
-                    disabled: row.status !== "PENDING",
+                    disabled: row.status !== "PENDING" || !row.isLender,
                     onClick: () => openApproveDialog(row)
                   },
                   {
                     label: "Reject Request",
-                    disabled: row.status !== "PENDING",
+                    disabled: row.status !== "PENDING" || !row.isLender,
                     onClick: () => handleReject(row._id),
+                    danger: true
+                  },
+                  // BUG-17: Cancel only available to the borrower for PENDING orders
+                  {
+                    label: "Cancel Request",
+                    disabled: row.status !== "PENDING" || !row.isBorrower,
+                    onClick: () => handleCancel(row._id),
                     danger: true
                   },
                   {
                     label: "Transfer Stock to Borrower",
-                    disabled: row.status !== "APPROVED",
+                    // BUG-02 (UI guard): Only borrower can activate
+                    disabled: row.status !== "APPROVED" || !row.isBorrower,
                     onClick: () => setActivateId(row._id)
                   }
                 ]}
@@ -294,7 +343,7 @@ export default function BorrowOrders() {
           </Button>
         </DialogActions>
       </Dialog>
-      
+
       <Drawer anchor="right" open={drawerState.open} onClose={() => setDrawerState({ open: false, type: null, id: null })} sx={{ zIndex: 1300 }} PaperProps={{ sx: { width: { xs: "100%", sm: 700, md: 800 }, backdropFilter: "blur(16px)" } }}>
         {drawerState.type === "new" && <BorrowOrderCreate onSuccess={() => setDrawerState({ open: false, type: null, id: null })} onCancel={() => setDrawerState({ open: false, type: null, id: null })} />}
         {drawerState.type === "so" && <SalesOrderCreate borrowState={drawerState.initialSOData} onSuccess={() => setDrawerState({ open: false, type: null, id: null })} onCancel={() => setDrawerState({ open: false, type: null, id: null })} />}

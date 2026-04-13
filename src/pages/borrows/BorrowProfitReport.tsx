@@ -29,7 +29,8 @@ export default function BorrowProfitReport() {
       <Grid container spacing={3} sx={{ mb: 4 }}>
         <Grid item xs={12} sm={6} md={4}>
           <Paper sx={{ p: 3, borderRadius: 3, boxShadow: "0 18px 40px rgba(15,23,42,0.08)", textAlign: "center" }}>
-            <Typography variant="overline" color="text.secondary">Total Profit (All Borrow Activity)</Typography>
+            {/* BUG-20: Clarified label — total includes both lender and borrower roles */}
+            <Typography variant="overline" color="text.secondary">Total Profit (Lending Activity)</Typography>
             <Typography variant="h4" fontWeight={800} color="success.main" sx={{ mt: 0.5 }}>
               {(data?.totalProfit || 0).toFixed(2)}
             </Typography>
@@ -37,7 +38,7 @@ export default function BorrowProfitReport() {
         </Grid>
         <Grid item xs={12} sm={6} md={4}>
           <Paper sx={{ p: 3, borderRadius: 3, boxShadow: "0 18px 40px rgba(15,23,42,0.08)", textAlign: "center" }}>
-            <Typography variant="overline" color="text.secondary">Active Borrow Orders</Typography>
+            <Typography variant="overline" color="text.secondary">Active Borrow Orders (as Borrower)</Typography>
             <Typography variant="h4" fontWeight={800} sx={{ mt: 0.5 }}>
               {(data?.borrowOrders || []).filter((b: any) => b.status === "ACTIVE").length}
             </Typography>
@@ -45,7 +46,7 @@ export default function BorrowProfitReport() {
         </Grid>
         <Grid item xs={12} sm={6} md={4}>
           <Paper sx={{ p: 3, borderRadius: 3, boxShadow: "0 18px 40px rgba(15,23,42,0.08)", textAlign: "center" }}>
-            <Typography variant="overline" color="text.secondary">Total Settlement Due (I owe)</Typography>
+            <Typography variant="overline" color="text.secondary">Total Settlement Due (You Owe as Borrower)</Typography>
             <Typography variant="h4" fontWeight={800} color="error.main" sx={{ mt: 0.5 }}>
               {(data?.borrowOrders || []).reduce((s: number, b: any) => s + (b.totalSettlementDue || 0), 0).toFixed(2)}
             </Typography>
@@ -53,7 +54,8 @@ export default function BorrowProfitReport() {
         </Grid>
       </Grid>
 
-      <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>Borrow Orders (as Borrower)</Typography>
+      {/* BUG-20: Clearly labelled as "as Borrower" */}
+      <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>Borrowed Stock Orders (as Borrower)</Typography>
       <Paper sx={{ p: 3, borderRadius: 3, boxShadow: "0 18px 40px rgba(15,23,42,0.08)", mb: 4 }}>
         {(data?.borrowOrders || []).length === 0 ? (
           <Typography color="text.secondary">No borrow orders found.</Typography>
@@ -81,9 +83,10 @@ export default function BorrowProfitReport() {
         )}
       </Paper>
 
+      {/* BUG-20: Labelled clearly as "as Lender" */}
       {(data?.profitByBorrowOrder || []).length > 0 && (
         <>
-          <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>Profit by Borrow Order (as Lender)</Typography>
+          <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>Profit Earned per Loan (as Lender)</Typography>
           <Paper sx={{ p: 3, borderRadius: 3, boxShadow: "0 18px 40px rgba(15,23,42,0.08)" }}>
             {data.profitByBorrowOrder.map((entry: any) => (
               <Box
@@ -92,7 +95,10 @@ export default function BorrowProfitReport() {
                 onClick={() => navigate(`/borrows/${entry._id}`)}
               >
                 <Stack direction="row" justifyContent="space-between" alignItems="center">
-                  <Typography fontWeight={600}>{entry._id}</Typography>
+                  {/* BUG-13: Show order number instead of raw ObjectId */}
+                  <Typography fontWeight={600}>
+                    {entry.orderNumber || entry._id}
+                  </Typography>
                   <Stack direction="row" spacing={3}>
                     <Box textAlign="right">
                       <Typography variant="caption" color="text.secondary">Qty Sold</Typography>

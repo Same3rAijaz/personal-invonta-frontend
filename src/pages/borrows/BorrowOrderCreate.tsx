@@ -1,5 +1,5 @@
 import { Box, Button, Divider, Grid, IconButton, MenuItem, Paper, Typography, Alert } from "@mui/material";
-import TextField from "../../components/CustomTextField";;
+import TextField from "../../components/CustomTextField";
 import React from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import AddCircleOutline from "@mui/icons-material/AddCircleOutline";
@@ -10,6 +10,13 @@ import { useToast } from "../../hooks/useToast";
 import { useWarehouses } from "../../hooks/useWarehouses";
 import { useNavigate } from "react-router-dom";
 import SidebarLayout from "../../components/SidebarLayout";
+
+// BUG-24: Consistent error extraction for array validation messages from API
+function extractErrorMessage(err: any): string {
+  const raw = err?.response?.data?.error?.message;
+  if (!raw) return "An error occurred";
+  return Array.isArray(raw) ? raw.join("; ") : String(raw);
+}
 
 interface BorrowOrderCreateProps {
   onSuccess?: () => void;
@@ -45,6 +52,10 @@ export default function BorrowOrderCreate({ onSuccess, onCancel }: BorrowOrderCr
   });
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
 
+  // BUG-26: Warn user if any item has agreed cost of zero (likely unintentional)
+  const watchedItems = watch("items");
+  const hasZeroCost = (watchedItems || []).some((item: any) => Number(item.agreedUnitCost) === 0 && item.productId);
+
   const onSubmit = async (values: any) => {
     if (!lenderBusinessId) {
       notify("Select a lender shop", "error");
@@ -66,7 +77,7 @@ export default function BorrowOrderCreate({ onSuccess, onCancel }: BorrowOrderCr
       if (onSuccess) onSuccess();
       else navigate("/borrows");
     } catch (err: any) {
-      notify(err?.response?.data?.error?.message || "Failed", "error");
+      notify(extractErrorMessage(err), "error");
     }
   };
 
@@ -219,6 +230,15 @@ export default function BorrowOrderCreate({ onSuccess, onCancel }: BorrowOrderCr
               Add Item
             </Button>
           </Grid>
+
+          {/* BUG-26: Zero agreed-cost warning — prompts user to confirm intentional free loan */}
+          {hasZeroCost && (
+            <Grid item xs={12}>
+              <Alert severity="warning" sx={{ borderRadius: 2 }}>
+                One or more items have an agreed cost of <b>0</b>. If this is intentional (a free loan), you can ignore this. Otherwise, update the cost before sending.
+              </Alert>
+            </Grid>
+          )}
 
         </Grid>
       </Box>
