@@ -277,7 +277,7 @@ export default function AppLayout() {
   const monthlyBlocked = !isSuperAdmin && isSubscriptionActive && !paidThisMonth && dayOfMonth > 4;
 
   const showSubscriptionNav = !isSuperAdmin && (!isSubscriptionActive || showMonthlyWarning || monthlyBlocked);
-  const showPaywall = !isSuperAdmin && (!isSubscriptionActive || monthlyBlocked) && location.pathname !== "/subscription";
+  const showPaywall = false;
   
   const handleSubscribe = () => {
     setSubLoading(true);
@@ -388,7 +388,6 @@ export default function AppLayout() {
             ...(isAllowed("sales") ? [{ label: "Sales", to: "/sales", icon: <MonetizationOnRoundedIcon /> }] : []),
             ...(isAllowed("sales") ? [{ label: "Sales Returns", to: "/sales/returns", icon: <KeyboardReturnRoundedIcon /> }] : []),
             ...(isAllowed("sales") ? [{ label: "Stock Loans", to: "/borrows", icon: <SwitchAccountIcon /> }] : []),
-            ...(showSubscriptionNav ? [{ label: "Subscription", to: "/subscription", icon: <CreditCardIcon /> }] : [])
           ]
         },
         {
@@ -782,90 +781,9 @@ export default function AppLayout() {
           zIndex: 0
         }}
       >
-        {showMonthlyWarning && (
-          <Alert
-            severity="warning"
-            sx={{ mb: 2 }}
-            action={
-              <Button color="inherit" size="small" onClick={handleSubscribe} disabled={subLoading}>
-                {subLoading ? "Processing..." : "Pay Now"}
-              </Button>
-            }
-          >
-            Subscription payment reminder: please pay between 1st and 4th of this month to avoid access block.
-          </Alert>
-        )}
         <Outlet />
       </Box>
 
-      {showPaywall && (
-        <Box
-          sx={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 9999,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            bgcolor: "rgba(0,0,0,0.7)",
-            backdropFilter: "blur(8px)"
-          }}
-        >
-          <Paper
-            elevation={0}
-            sx={{
-              maxWidth: 480,
-              width: "90%",
-              p: { xs: 3, md: 5 },
-              borderRadius: 3,
-              textAlign: "center",
-              background: "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)",
-              boxShadow: "0 32px 80px rgba(0,0,0,0.3)"
-            }}
-          >
-            <Box
-              sx={{
-                width: 64,
-                height: 64,
-                borderRadius: "50%",
-                background: "linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                mx: "auto",
-                mb: 2.5,
-                boxShadow: "0 8px 24px rgba(14,165,233,0.3)"
-              }}
-            >
-              <LockOutlinedIcon sx={{ color: "#fff", fontSize: 32 }} />
-            </Box>
-            <Typography variant="h5" sx={{ fontWeight: 800, color: "#0f172a", mb: 0.5 }}>
-              {monthlyBlocked ? "Payment Overdue" : "Subscription Required"}
-            </Typography>
-            <Typography variant="body2" sx={{ color: "#64748b", mb: 3 }}>
-              {monthlyBlocked
-                ? "Your monthly subscription payment was not received by the 4th. Please pay now to restore access."
-                : "Activate your plan to unlock all features."}
-            </Typography>
-            <Box sx={{ p: 2.5, borderRadius: 2, border: "2px solid rgba(14,165,233,0.15)", background: "linear-gradient(135deg, rgba(14,165,233,0.04) 0%, rgba(99,102,241,0.04) 100%)", mb: 3 }}>
-              <Typography variant="overline" sx={{ color: "#6366f1", fontWeight: 700, letterSpacing: 1.5 }}>Monthly Plan</Typography>
-              <Box sx={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: 0.5, mt: 0.5 }}>
-                <Typography variant="h4" sx={{ fontWeight: 800, color: "#0f172a" }}>₨5,000</Typography>
-                <Typography variant="body2" sx={{ color: "#94a3b8" }}>/month</Typography>
-              </Box>
-              <Box sx={{ mt: 1.5, textAlign: "left" }}>
-                <Typography variant="body2" sx={{ color: "#475569", py: 0.3 }}>✓ Full dashboard access</Typography>
-                <Typography variant="body2" sx={{ color: "#475569", py: 0.3 }}>✓ Inventory & sales management</Typography>
-                <Typography variant="body2" sx={{ color: "#475569", py: 0.3 }}>✓ Reports & team management</Typography>
-              </Box>
-            </Box>
-            <Button variant="contained" fullWidth size="large" onClick={handleSubscribe} disabled={subLoading} sx={{ py: 1.4, fontWeight: 700, fontSize: "0.95rem", borderRadius: 2, background: "linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%)", boxShadow: "0 8px 24px rgba(14,165,233,0.3)", "&:hover": { background: "linear-gradient(135deg, #0284c7 0%, #4f46e5 100%)" } }}>
-              {subLoading ? <CircularProgress size={22} sx={{ color: "#fff" }} /> : "Pay Now"}
-            </Button>
-            <Button variant="text" fullWidth onClick={logout} sx={{ mt: 1.5, color: "#94a3b8", fontWeight: 600 }}>Logout</Button>
-          </Paper>
-        </Box>
-      )}
       {/* Floating Assistant Button */}
       {!isSuperAdmin && !assistantOpen && (
         <Tooltip title={voiceMode ? "Voice mode active — click to open" : "Invonta Assistant"} placement="left">

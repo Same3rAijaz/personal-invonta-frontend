@@ -12,9 +12,47 @@ import VolumeOffRoundedIcon from "@mui/icons-material/VolumeOffRounded";
 import SmartToyRoundedIcon from "@mui/icons-material/SmartToyRounded";
 import GraphicEqRoundedIcon from "@mui/icons-material/GraphicEqRounded";
 import WifiOffRoundedIcon from "@mui/icons-material/WifiOffRounded";
+import DeleteSweepRoundedIcon from "@mui/icons-material/DeleteSweepRounded";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../api/client";
 import { useThemeMode } from "../../contexts/ThemeContext";
+
+// Quick actions shown as chips
+const QUICK_ACTIONS = [
+  { label: "Business summary", msg: "business summary" },
+  { label: "List products", msg: "show all products" },
+  { label: "Add product", msg: "add a product" },
+  { label: "List customers", msg: "show all customers" },
+  { label: "Add customer", msg: "create a customer" },
+  { label: "Attendance log", msg: "show attendance" },
+  { label: "Go to sales", msg: "go to sales" },
+  { label: "Go to reports", msg: "go to reports" },
+];
+
+// Renders a message with basic formatting: **bold**, bullet lines
+function FormattedMessage({ text, color }: { text: string; color: string }) {
+  const lines = text.split("\n");
+  return (
+    <Box>
+      {lines.map((line, i) => {
+        const isBullet = /^[-•·]\s/.test(line);
+        const parts = line.replace(/^[-•·]\s/, "").split(/\*\*(.+?)\*\*/g);
+        return (
+          <Box key={i} sx={{ display: "flex", gap: isBullet ? 0.7 : 0, mb: lines.length > 1 ? 0.15 : 0 }}>
+            {isBullet && <Box component="span" sx={{ color, opacity: 0.5, fontSize: "0.75rem", mt: "2px", flexShrink: 0 }}>•</Box>}
+            <Typography component="span" sx={{ fontSize: "0.855rem", lineHeight: 1.65, color, display: "block" }}>
+              {parts.map((part, j) =>
+                j % 2 === 1
+                  ? <Box component="span" key={j} sx={{ fontWeight: 700 }}>{part}</Box>
+                  : part
+              )}
+            </Typography>
+          </Box>
+        );
+      })}
+    </Box>
+  );
+}
 
 interface Message {
   id: string;
@@ -46,11 +84,12 @@ export default function AssistantPanel({ open, onClose, voiceMode, setVoiceMode 
   const { mode } = useThemeMode();
   const navigate = useNavigate();
 
-  const [messages, setMessages] = useState<Message[]>([{
+  const WELCOME: Message = {
     id: "welcome", role: "assistant",
-    content: "Hello! I'm your Invonta Assistant.\nSay \"go to products\" or \"create a customer\".",
+    content: "Hello! I'm your **Invonta Assistant**.\n\nAsk me anything:\n- \"business summary\"\n- \"add a product\"\n- \"go to sales\"\n- \"check in Sara\"",
     timestamp: new Date(),
-  }]);
+  };
+  const [messages, setMessages] = useState<Message[]>([WELCOME]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [language, setLanguage] = useState<"ur" | "en">("ur");
@@ -290,6 +329,11 @@ export default function AssistantPanel({ open, onClose, voiceMode, setVoiceMode 
     onClose();
   };
 
+  const handleClearChat = () => {
+    setMessages([{ ...WELCOME, id: "welcome-" + Date.now(), timestamp: new Date() }]);
+    historyRef.current = [];
+  };
+
   const toggleVoiceMode = () => {
     const next = !voiceMode;
     setVoiceMode(next);
@@ -374,9 +418,16 @@ export default function AssistantPanel({ open, onClose, voiceMode, setVoiceMode 
             </Typography>
           </Box>
 
-          <IconButton size="small" onClick={handleClose} sx={{ color: "#64748b" }}>
-            <CloseIcon sx={{ fontSize: 18 }} />
-          </IconButton>
+          <Stack direction="row" spacing={0.5}>
+            <Tooltip title="Clear chat">
+              <IconButton size="small" onClick={handleClearChat} sx={{ color: "#64748b" }}>
+                <DeleteSweepRoundedIcon sx={{ fontSize: 17 }} />
+              </IconButton>
+            </Tooltip>
+            <IconButton size="small" onClick={handleClose} sx={{ color: "#64748b" }}>
+              <CloseIcon sx={{ fontSize: 18 }} />
+            </IconButton>
+          </Stack>
         </Box>
 
         {/* ── Header Row 2: controls ── */}
@@ -437,25 +488,46 @@ export default function AssistantPanel({ open, onClose, voiceMode, setVoiceMode 
         "&::-webkit-scrollbar": { width: 3 },
         "&::-webkit-scrollbar-thumb": { background: "rgba(99,102,241,0.25)", borderRadius: 2 },
       }}>
-        {messages.map((msg) => (
+        {messages.map((msg, idx) => (
           <Fade in key={msg.id} timeout={250}>
-            <Box sx={{ display: "flex", flexDirection: "column", alignItems: msg.role === "user" ? "flex-end" : "flex-start" }}>
-              <Paper elevation={0} sx={{
-                px: 1.8, py: 1.1, maxWidth: "80%",
-                borderRadius: msg.role === "user" ? "16px 16px 3px 16px" : "16px 16px 16px 3px",
-                background: msg.role === "user" ? userBg : aiBg,
-                color: msg.role === "user" ? "#fff" : aiColor,
-                border: msg.role === "assistant" ? aiBorder : "none",
-                boxShadow: msg.role === "user" ? "0 2px 10px rgba(99,102,241,0.22)" : (isDark ? "none" : "0 1px 4px rgba(0,0,0,0.06)"),
-              }}>
-                <Typography sx={{ fontSize: "0.855rem", lineHeight: 1.65, whiteSpace: "pre-wrap" }}>
-                  {msg.content}
-                </Typography>
-                <Typography sx={{ fontSize: "0.58rem", opacity: 0.4, mt: 0.3, textAlign: msg.role === "user" ? "right" : "left" }}>
-                  {msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                  {msg.offline ? " · offline" : ""}
-                </Typography>
-              </Paper>
+            <Box>
+              <Box sx={{ display: "flex", flexDirection: "column", alignItems: msg.role === "user" ? "flex-end" : "flex-start" }}>
+                <Paper elevation={0} sx={{
+                  px: 1.8, py: 1.1, maxWidth: "86%",
+                  borderRadius: msg.role === "user" ? "16px 16px 3px 16px" : "16px 16px 16px 3px",
+                  background: msg.role === "user" ? userBg : aiBg,
+                  border: msg.role === "assistant" ? aiBorder : "none",
+                  boxShadow: msg.role === "user" ? "0 2px 10px rgba(99,102,241,0.22)" : (isDark ? "none" : "0 1px 4px rgba(0,0,0,0.06)"),
+                }}>
+                  <FormattedMessage text={msg.content} color={msg.role === "user" ? "#fff" : aiColor} />
+                  <Typography sx={{ fontSize: "0.58rem", opacity: 0.4, mt: 0.4, textAlign: msg.role === "user" ? "right" : "left" }}>
+                    {msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    {msg.offline ? " · offline" : ""}
+                  </Typography>
+                </Paper>
+              </Box>
+              {/* Quick action chips after welcome message */}
+              {msg.id.startsWith("welcome") && idx === 0 && (
+                <Box sx={{ mt: 1, display: "flex", flexWrap: "wrap", gap: 0.7 }}>
+                  {QUICK_ACTIONS.map((qa) => (
+                    <Chip
+                      key={qa.label}
+                      label={qa.label}
+                      size="small"
+                      onClick={() => { if (!loading) { sendMessage(qa.msg); } }}
+                      disabled={loading}
+                      sx={{
+                        fontSize: "0.72rem", cursor: "pointer", height: 24,
+                        bgcolor: isDark ? "rgba(99,102,241,0.12)" : "rgba(99,102,241,0.08)",
+                        color: isDark ? "#a5b4fc" : "#4f46e5",
+                        border: `1px solid ${isDark ? "rgba(99,102,241,0.25)" : "rgba(99,102,241,0.2)"}`,
+                        "&:hover": { bgcolor: isDark ? "rgba(99,102,241,0.22)" : "rgba(99,102,241,0.15)" },
+                        "& .MuiChip-label": { px: 1 },
+                      }}
+                    />
+                  ))}
+                </Box>
+              )}
             </Box>
           </Fade>
         ))}

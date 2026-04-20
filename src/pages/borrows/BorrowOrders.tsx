@@ -1,10 +1,11 @@
-import { Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Paper, Stack, Tab, Tabs, Typography } from "@mui/material";
+import { Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Divider, Drawer, IconButton, MenuItem, Paper, Stack, Tab, Table, TableBody, TableCell, TableHead, TableRow, Tabs, Typography } from "@mui/material";
+import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
+import CloseIcon from "@mui/icons-material/Close";
 import TextField from "../../components/CustomTextField";
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import BorrowOrderCreate from "./BorrowOrderCreate";
 import SalesOrderCreate from "../sales/SalesOrderCreate";
-import { Drawer } from "@mui/material";
 import {
   useActivateBorrowOrder, useApproveBorrowOrder,
   useBorrowOrders, useCancelBorrowOrder, useRejectBorrowOrder
@@ -53,6 +54,7 @@ export default function BorrowOrders() {
   const [warehouseAssignments, setWarehouseAssignments] = React.useState<Record<string, string>>({});
   const [activateId, setActivateId] = React.useState<string | null>(null);
   const [drawerState, setDrawerState] = React.useState<{ open: boolean; type: "new" | "edit" | "so" | null; id: string | null; initialSOData?: any }>({ open: false, type: null, id: null });
+  const [receiptOrder, setReceiptOrder] = React.useState<any | null>(null);
 
   const { data: warehouses } = useWarehouses({ page: 1, limit: 1000 });
   const { business } = useAuth();
@@ -197,12 +199,15 @@ export default function BorrowOrders() {
             key: "productNames",
             label: "Items",
             render: (row: any) => (
-              <Box>
-                <Typography variant="body2" fontWeight={600}>{row.itemsCount} item{row.itemsCount !== 1 ? "s" : ""}</Typography>
-                <Typography variant="caption" color="text.secondary" sx={{ display: "block", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {row.productNames}
-                </Typography>
-              </Box>
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<ReceiptLongIcon fontSize="small" />}
+                onClick={() => setReceiptOrder(row)}
+                sx={{ textTransform: "none", borderRadius: 2, fontSize: "0.78rem" }}
+              >
+                {row.itemsCount} item{row.itemsCount !== 1 ? "s" : ""}
+              </Button>
             )
           },
           {
@@ -350,6 +355,93 @@ export default function BorrowOrders() {
       </Drawer>
 
       {confirmDialog}
+
+      {/* Items side drawer */}
+      <Drawer anchor="right" open={!!receiptOrder} onClose={() => setReceiptOrder(null)} sx={{ zIndex: 1400 }} PaperProps={{ sx: { width: { xs: "100%", sm: 500 }, display: "flex", flexDirection: "column" } }}>
+        {receiptOrder && (() => {
+          const totalQty = (receiptOrder.items || []).reduce((s: number, i: any) => s + Number(i.qty || 0), 0);
+          return (
+            <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
+
+              {/* Header */}
+              <Box sx={{ px: 3, pt: 2.5, pb: 2, borderBottom: "1px solid", borderColor: "divider" }}>
+                <Stack direction="row" alignItems="flex-start" justifyContent="space-between">
+                  <Box>
+                    <Typography variant="overline" color="text.disabled" sx={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: 2, display: "block", mb: 0.3 }}>Stock Loan</Typography>
+                    <Typography variant="h5" fontWeight={800} color="text.primary" sx={{ lineHeight: 1.2 }}>{receiptOrder.number}</Typography>
+                    <Stack direction="row" spacing={1} alignItems="center" mt={0.6}>
+                      <Chip label={statusLabel[receiptOrder.status] || receiptOrder.status} color={statusColor[receiptOrder.status] || "default"} size="small" sx={{ fontWeight: 700, fontSize: "0.68rem", height: 20 }} />
+                      <Chip label={receiptOrder.role} size="small" variant="outlined" sx={{ fontSize: "0.68rem", height: 20 }} />
+                      {receiptOrder.createdAt && <Typography variant="caption" color="text.secondary">{new Date(receiptOrder.createdAt).toLocaleDateString("en-PK", { day: "numeric", month: "short", year: "numeric" })}</Typography>}
+                    </Stack>
+                  </Box>
+                  <IconButton size="small" onClick={() => setReceiptOrder(null)}><CloseIcon fontSize="small" /></IconButton>
+                </Stack>
+              </Box>
+
+              {/* Other party */}
+              <Box sx={{ px: 3, py: 1.5, borderBottom: "1px solid", borderColor: "divider" }}>
+                <Typography variant="overline" color="text.disabled" sx={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: 1.5, display: "block", mb: 0.3 }}>Other Shop</Typography>
+                <Typography variant="body1" fontWeight={600} color="text.primary">{receiptOrder.otherParty}</Typography>
+              </Box>
+
+              {/* Items table */}
+              <Box sx={{ flex: 1, overflow: "auto" }}>
+                <Table size="small" stickyHeader>
+                  <TableHead>
+                    <TableRow>
+                      {["#", "Product", "Qty", "Agreed Cost", "Sold", "Returned"].map((h, i) => (
+                        <TableCell key={h} align={i > 1 ? "right" : "left"} sx={{ fontWeight: 700, fontSize: "0.72rem", color: "text.secondary", textTransform: "uppercase", letterSpacing: 0.5, py: 1, bgcolor: "action.hover", borderBottom: "2px solid", borderColor: "divider" }}>
+                          {h}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {(receiptOrder.items || []).map((item: any, idx: number) => (
+                      <TableRow key={idx} hover sx={{ "& td": { borderBottom: "1px solid", borderColor: "divider" }, "&:last-child td": { borderBottom: 0 } }}>
+                        <TableCell sx={{ color: "text.disabled", fontSize: "0.78rem", width: 28 }}>{idx + 1}</TableCell>
+                        <TableCell sx={{ fontWeight: 500, color: "text.primary", fontSize: "0.88rem" }}>
+                          {item.productName || item.product?.name || item.productId}
+                        </TableCell>
+                        <TableCell align="right" sx={{ color: "text.secondary", fontSize: "0.88rem" }}>{item.qty}</TableCell>
+                        <TableCell align="right" sx={{ color: "text.secondary", fontSize: "0.88rem" }}>{Number(item.agreedUnitCost || 0).toLocaleString()}</TableCell>
+                        <TableCell align="right" sx={{ color: "text.secondary", fontSize: "0.88rem" }}>{item.soldQty ?? 0}</TableCell>
+                        <TableCell align="right" sx={{ color: "text.secondary", fontSize: "0.88rem" }}>{item.returnedQty ?? 0}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </Box>
+
+              {/* Summary */}
+              <Box sx={{ px: 3, py: 2, borderTop: "2px solid", borderColor: "divider" }}>
+                <Stack direction="row" justifyContent="space-between" mb={0.5}>
+                  <Typography variant="body2" color="text.secondary">Total items</Typography>
+                  <Typography variant="body2" color="text.secondary">{receiptOrder.items?.length || 0}</Typography>
+                </Stack>
+                <Stack direction="row" justifyContent="space-between" mb={0.5}>
+                  <Typography variant="body2" color="text.secondary">Total quantity</Typography>
+                  <Typography variant="body2" color="text.secondary">{totalQty}</Typography>
+                </Stack>
+                <Divider sx={{ my: 1 }} />
+                <Stack direction="row" justifyContent="space-between">
+                  <Typography variant="subtitle1" fontWeight={800} color="text.primary">Settlement Due</Typography>
+                  <Typography variant="subtitle1" fontWeight={800} color="text.primary">{(receiptOrder.totalSettlementDue || 0).toFixed(2)}</Typography>
+                </Stack>
+              </Box>
+
+              {/* Actions */}
+              <Box sx={{ px: 3, py: 2, borderTop: "1px solid", borderColor: "divider" }}>
+                <Button fullWidth variant="outlined" onClick={() => { setReceiptOrder(null); navigate(`/borrows/${receiptOrder._id}`); }} sx={{ textTransform: "none", borderRadius: 2 }}>
+                  View Full Details
+                </Button>
+              </Box>
+
+            </Box>
+          );
+        })()}
+      </Drawer>
     </Box>
   );
 }

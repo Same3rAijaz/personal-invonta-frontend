@@ -6,8 +6,6 @@ import PageHeader from "../../components/PageHeader";
 import { useNavigate } from "react-router-dom";
 import { useInventoryBalances } from "../../hooks/useInventory";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
-import { useProducts } from "../../hooks/useProducts";
-import { useWarehouses } from "../../hooks/useWarehouses";
 import RowActionMenu from "../../components/RowActionMenu";
 
 export default function Inventory() {
@@ -16,8 +14,6 @@ export default function Inventory() {
   const [search, setSearch] = React.useState("");
   const debouncedSearch = useDebouncedValue(search.trim());
   const { data, isLoading } = useInventoryBalances({ page: page + 1, limit: rowsPerPage, search: debouncedSearch || undefined });
-  const { data: products } = useProducts({ page: 1, limit: 1000 });
-  const { data: warehouses } = useWarehouses({ page: 1, limit: 1000 });
   const navigate = useNavigate();
 
   React.useEffect(() => {
@@ -50,11 +46,7 @@ export default function Inventory() {
             )
           }
         ]}
-        rows={(data?.items || []).map((row: any) => ({
-          ...row,
-          productName: products?.items?.find((p: any) => p._id === row.productId)?.name || row.productId,
-          warehouseName: warehouses?.items?.find((w: any) => w._id === row.warehouseId)?.name || row.warehouseId
-        }))}
+        rows={data?.items || []}
         loading={isLoading}
         actions={
           <TextField

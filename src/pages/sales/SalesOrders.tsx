@@ -1,4 +1,6 @@
-import { Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Drawer } from "@mui/material";
+import { Box, Button, Chip, CircularProgress, Divider, Drawer, IconButton, Stack, Table, TableBody, TableCell, TableHead, TableRow, Typography } from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
+import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import TextField from "../../components/CustomTextField";
 import React from "react";
 import { api } from "../../api/client";
@@ -12,9 +14,7 @@ import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import { useConfirmDialog } from "../../hooks/useConfirmDialog";
 import { useAuth } from "../../hooks/useAuth";
 import RowActionMenu from "../../components/RowActionMenu";
-import { useWarehouses } from "../../hooks/useWarehouses";
 import { useProducts } from "../../hooks/useProducts";
-import OrderItemsTable from "../../components/OrderItemsTable";
 import SalesOrderCreate from "./SalesOrderCreate";
 import SalesOrderEdit from "./SalesOrderEdit";
 import SalesReturnCreate from "./SalesReturnCreate";
@@ -24,13 +24,13 @@ export default function SalesOrders() {
   const [rowsPerPage, setRowsPerPage] = React.useState(20);
   const [search, setSearch] = React.useState("");
   const [loadingInvoiceId, setLoadingInvoiceId] = React.useState<string | null>(null);
+  const [receiptOrder, setReceiptOrder] = React.useState<any | null>(null);
   const debouncedSearch = useDebouncedValue(search.trim());
   const { data, isLoading } = useSalesOrders({ page: page + 1, limit: rowsPerPage, search: debouncedSearch || undefined });
   const deleteSO = useDeleteSalesOrder();
   const confirmSO = useConfirmSalesOrder();
   const shipSO = useShipSalesOrder();
   const { data: customers } = useCustomers({ page: 1, limit: 1000 });
-  const { data: warehouses } = useWarehouses({ page: 1, limit: 1000 });
   const { data: products } = useProducts({ page: 1, limit: 1000 });
   const navigate = useNavigate();
   const customerMap = new Map<string, string>((customers?.items || []).map((c: any) => [String(c._id), String(c.name)]));
@@ -133,11 +133,19 @@ export default function SalesOrders() {
           { key: "status", label: "Status" },
           {
             key: "items",
-            label: "Item Details",
-            render: (row: any) => <OrderItemsTable items={row.items} labelByProductId={productMap} />
+            label: "Items",
+            render: (row: any) => (
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<ReceiptLongIcon fontSize="small" />}
+                onClick={() => setReceiptOrder(row)}
+                sx={{ textTransform: "none", borderRadius: 2, fontSize: "0.78rem" }}
+              >
+                Show Items
+              </Button>
+            )
           },
-          { key: "itemsCount", label: "Items" },
-          { key: "salesQuantity", label: "Quantity" },
           {
             key: "actions",
             label: "Actions",
@@ -206,6 +214,98 @@ export default function SalesOrders() {
         {drawerState.type === "return" && drawerState.id && <SalesReturnCreate defaultSoId={drawerState.id} onSuccess={() => setDrawerState({ open: false, type: null, id: null })} onCancel={() => setDrawerState({ open: false, type: null, id: null })} />}
       </Drawer>
       {confirmDialog}
+
+      {/* Receipt side drawer */}
+      <Drawer anchor="right" open={!!receiptOrder} onClose={() => setReceiptOrder(null)} sx={{ zIndex: 1400 }} PaperProps={{ sx: { width: { xs: "100%", sm: 500 }, display: "flex", flexDirection: "column" } }}>
+        {receiptOrder && (() => {
+          const grandTotal = (receiptOrder.items || []).reduce((sum: number, item: any) => sum + Number(item.qty || 0) * Number(item.unitPrice || 0), 0);
+          const statusColor: Record<string, "default" | "warning" | "success" | "info" | "error"> = {
+            DRAFT: "warning", CONFIRMED: "info", SHIPPED: "success", INVOICED: "success", CANCELLED: "error"
+          };
+          return (
+            <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
+
+              {/* Header */}
+              <Box sx={{ px: 3, pt: 2.5, pb: 2, borderBottom: "1px solid", borderColor: "divider" }}>
+                <Stack direction="row" alignItems="flex-start" justifyContent="space-between">
+                  <Box>
+                    <Typography variant="overline" color="text.disabled" sx={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: 2, mb: 0.3, display: "block" }}>Sales Receipt</Typography>
+                    <Typography variant="h5" fontWeight={800} color="text.primary" sx={{ lineHeight: 1.2 }}>{receiptOrder.number}</Typography>
+                    <Stack direction="row" spacing={1} alignItems="center" mt={0.6}>
+                      <Chip label={receiptOrder.status} color={statusColor[receiptOrder.status] || "default"} size="small" sx={{ fontWeight: 700, fontSize: "0.68rem", height: 20 }} />
+                      {receiptOrder.createdAt && <Typography variant="caption" color="text.secondary">{new Date(receiptOrder.createdAt).toLocaleDateString("en-PK", { day: "numeric", month: "short", year: "numeric" })}</Typography>}
+                    </Stack>
+                  </Box>
+                  <IconButton size="small" onClick={() => setReceiptOrder(null)}><CloseIcon fontSize="small" /></IconButton>
+                </Stack>
+              </Box>
+
+              {/* Bill To */}
+              <Box sx={{ px: 3, py: 1.5, borderBottom: "1px solid", borderColor: "divider" }}>
+                <Typography variant="overline" color="text.disabled" sx={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: 1.5, display: "block", mb: 0.3 }}>Bill To</Typography>
+                <Typography variant="body1" fontWeight={600} color="text.primary">{customerMap.get(receiptOrder.customerId) || receiptOrder.customerId}</Typography>
+              </Box>
+
+              {/* Items table */}
+              <Box sx={{ flex: 1, overflow: "auto" }}>
+                <Table size="small" stickyHeader>
+                  <TableHead>
+                    <TableRow>
+                      {["#", "Product", "Qty", "Price", "Total"].map((h, i) => (
+                        <TableCell key={h} align={i > 1 ? "right" : "left"} sx={{ fontWeight: 700, fontSize: "0.72rem", color: "text.secondary", textTransform: "uppercase", letterSpacing: 0.5, py: 1, bgcolor: "action.hover", borderBottom: "2px solid", borderColor: "divider" }}>
+                          {h}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {(receiptOrder.items || []).map((item: any, idx: number) => {
+                      const lineTotal = Number(item.qty || 0) * Number(item.unitPrice || 0);
+                      return (
+                        <TableRow key={idx} hover sx={{ "& td": { borderBottom: "1px solid", borderColor: "divider" }, "&:last-child td": { borderBottom: 0 } }}>
+                          <TableCell sx={{ color: "text.disabled", fontSize: "0.78rem", width: 28 }}>{idx + 1}</TableCell>
+                          <TableCell sx={{ fontWeight: 500, color: "text.primary", fontSize: "0.88rem" }}>{productMap.get(String(item.productId)) || item.productId}</TableCell>
+                          <TableCell align="right" sx={{ color: "text.secondary", fontSize: "0.88rem" }}>{item.qty}</TableCell>
+                          <TableCell align="right" sx={{ color: "text.secondary", fontSize: "0.88rem" }}>{Number(item.unitPrice || 0).toLocaleString()}</TableCell>
+                          <TableCell align="right" sx={{ fontWeight: 700, color: "text.primary", fontSize: "0.88rem" }}>{lineTotal.toLocaleString()}</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </Box>
+
+              {/* Totals */}
+              <Box sx={{ px: 3, py: 2, borderTop: "2px solid", borderColor: "divider" }}>
+                <Stack direction="row" justifyContent="space-between" mb={0.5}>
+                  <Typography variant="body2" color="text.secondary">Subtotal ({receiptOrder.items?.length || 0} items)</Typography>
+                  <Typography variant="body2" color="text.secondary">{grandTotal.toLocaleString()}</Typography>
+                </Stack>
+                <Divider sx={{ my: 1 }} />
+                <Stack direction="row" justifyContent="space-between">
+                  <Typography variant="subtitle1" fontWeight={800} color="text.primary">Total</Typography>
+                  <Typography variant="subtitle1" fontWeight={800} color="text.primary">{grandTotal.toLocaleString()}</Typography>
+                </Stack>
+              </Box>
+
+              {/* Actions */}
+              <Box sx={{ px: 3, py: 2, borderTop: "1px solid", borderColor: "divider" }}>
+                <Stack direction="row" spacing={1.5}>
+                  <Button fullWidth variant="outlined" disabled={!!loadingInvoiceId} onClick={() => openInvoice(receiptOrder._id, false)} sx={{ textTransform: "none", borderRadius: 2 }}>
+                    {loadingInvoiceId === receiptOrder._id + "-view" ? <CircularProgress size={14} sx={{ mr: 1 }} /> : null}
+                    View PDF
+                  </Button>
+                  <Button fullWidth variant="contained" disabled={!!loadingInvoiceId} onClick={() => openInvoice(receiptOrder._id, true)} sx={{ textTransform: "none", borderRadius: 2 }}>
+                    {loadingInvoiceId === receiptOrder._id + "-dl" ? <CircularProgress size={14} sx={{ mr: 1 }} /> : null}
+                    Download Invoice
+                  </Button>
+                </Stack>
+              </Box>
+
+            </Box>
+          );
+        })()}
+      </Drawer>
     </Box>
   );
 }
