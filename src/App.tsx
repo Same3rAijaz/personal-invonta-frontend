@@ -65,6 +65,7 @@ import PartyDetail from "./pages/udhaar/PartyDetail";
 import UdhaarReports from "./pages/udhaar/Reports";
 import Transactions from "./pages/superadmin/Transactions";
 import SubscriptionStatus from "./pages/superadmin/SubscriptionStatus";
+import MonthlyBilling from "./pages/superadmin/MonthlyBilling";
 import BorrowOrders from "./pages/borrows/BorrowOrders";
 import BorrowOrderCreate from "./pages/borrows/BorrowOrderCreate";
 import BorrowOrderDetail from "./pages/borrows/BorrowOrderDetail";
@@ -163,6 +164,7 @@ export default function App() {
             <Route path="/referrals/settings" element={<ReferralSettings />} />
             <Route path="/superadmin/transactions" element={<Transactions />} />
             <Route path="/superadmin/subscription-status" element={<SubscriptionStatus />} />
+            <Route path="/superadmin/monthly-billing" element={<MonthlyBilling />} />
           </Route>
         </Route>
       </Route>

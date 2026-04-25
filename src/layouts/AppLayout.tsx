@@ -36,6 +36,7 @@ import SettingsSuggestRoundedIcon from '@mui/icons-material/SettingsSuggestRound
 import SmartToyRoundedIcon from '@mui/icons-material/SmartToyRounded';
 import CreditCardIcon from '@mui/icons-material/CreditCard';
 import PaymentsRoundedIcon from '@mui/icons-material/PaymentsRounded';
+import CalendarMonthRoundedIcon from '@mui/icons-material/CalendarMonthRounded';
 
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import AssistantPanel from "../components/Assistant/AssistantPanel";
@@ -372,6 +373,7 @@ export default function AppLayout() {
             { label: "Businesses", to: "/superadmin/businesses", icon: <BusinessRoundedIcon /> },
             { label: "Categories", to: "/superadmin/categories", icon: <CategoryRoundedIcon /> },
             { label: "Approval Requests", to: "/superadmin/requests", icon: <AssignmentRoundedIcon /> },
+            { label: "Monthly Billing", to: "/superadmin/monthly-billing", icon: <CalendarMonthRoundedIcon /> },
             { label: "Transactions", to: "/superadmin/transactions", icon: <ReceiptRoundedIcon /> },
             { label: "Subscriptions", to: "/superadmin/subscription-status", icon: <CreditCardIcon /> }
           ]
