@@ -33,6 +33,7 @@ import ChatBubbleRoundedIcon from '@mui/icons-material/ChatBubbleRounded';
 import SettingsSuggestRoundedIcon from '@mui/icons-material/SettingsSuggestRounded';
 import SmartToyRoundedIcon from '@mui/icons-material/SmartToyRounded';
 import CreditCardIcon from '@mui/icons-material/CreditCard';
+import ForwardToInboxIcon from '@mui/icons-material/ForwardToInbox';
 
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import AssistantPanel from "../components/Assistant/AssistantPanel";
@@ -366,6 +367,7 @@ export default function AppLayout() {
             { label: "Businesses", to: "/superadmin/businesses", icon: <BusinessRoundedIcon /> },
             { label: "Categories", to: "/superadmin/categories", icon: <CategoryRoundedIcon /> },
             { label: "Approval Requests", to: "/superadmin/requests", icon: <AssignmentRoundedIcon /> },
+            { label: "Invitations", to: "/superadmin/invitations", icon: <ForwardToInboxIcon /> },
             { label: "Transactions", to: "/superadmin/transactions", icon: <ReceiptRoundedIcon /> },
             { label: "Subscriptions", to: "/superadmin/subscription-status", icon: <CreditCardIcon /> }
           ]

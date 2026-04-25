@@ -44,6 +44,7 @@ import BusinessUserRoute from "./routes/BusinessUserRoute";
 import BusinessProfile from "./pages/settings/BusinessProfile";
 import Signup from "./pages/Signup";
 import ShopRequests from "./pages/superadmin/ShopRequests";
+import Invitations from "./pages/superadmin/Invitations";
 import Privacy from "./pages/public/Privacy";
 import Terms from "./pages/public/Terms";
 import Tutorial from "./pages/public/Tutorial";
@@ -150,6 +151,7 @@ export default function App() {
             <Route path="/superadmin/businesses/new" element={<BusinessCreate />} />
             <Route path="/superadmin/businesses/:id/edit" element={<BusinessEdit />} />
             <Route path="/superadmin/requests" element={<ShopRequests />} />
+            <Route path="/superadmin/invitations" element={<Invitations />} />
             <Route path="/referrals/settings" element={<ReferralSettings />} />
             <Route path="/superadmin/transactions" element={<Transactions />} />
             <Route path="/superadmin/subscription-status" element={<SubscriptionStatus />} />

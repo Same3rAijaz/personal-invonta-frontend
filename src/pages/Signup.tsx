@@ -17,10 +17,11 @@ import {
 import TextField from "../components/CustomTextField";
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined";
 import { useToast } from "../hooks/useToast";
 import { api } from "../api/client";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import React from "react";
 import { PublicCategoryNode } from "../api/public";
@@ -256,10 +257,12 @@ function OtpVerifyDialog({
 
 function BusinessSetupForm({
   onSubmitForm,
-  sendingOtp
+  sendingOtp,
+  lockedEmail
 }: {
   onSubmitForm: (values: any) => Promise<void>;
   sendingOtp: boolean;
+  lockedEmail?: string;
 }) {
   const [showPassword, setShowPassword] = React.useState(false);
 
@@ -518,18 +521,36 @@ function BusinessSetupForm({
             />
           </Grid>
           <Grid item xs={12} md={6}>
-            <TextField
-              fullWidth
-              label="Admin Email *"
-              type="email"
-              {...register("adminEmail", {
-                required: "Admin Email is required",
-                pattern: { value: /^\S+@\S+\.\S+$/, message: "Enter a valid email address" }
-              })}
-              error={!!errors.adminEmail}
-              helperText={errors.adminEmail?.message as string}
-              sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1 } }}
-            />
+            {lockedEmail ? (
+              <TextField
+                fullWidth
+                label="Admin Email"
+                value={lockedEmail}
+                disabled
+                sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1 } }}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <CheckCircleOutlineIcon sx={{ color: "success.main", fontSize: 20 }} />
+                    </InputAdornment>
+                  )
+                }}
+                helperText="Verified via invitation"
+              />
+            ) : (
+              <TextField
+                fullWidth
+                label="Admin Email *"
+                type="email"
+                {...register("adminEmail", {
+                  required: "Admin Email is required",
+                  pattern: { value: /^\S+@\S+\.\S+$/, message: "Enter a valid email address" }
+                })}
+                error={!!errors.adminEmail}
+                helperText={errors.adminEmail?.message as string}
+                sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1 } }}
+              />
+            )}
           </Grid>
 
           <Grid item xs={12}>
@@ -598,12 +619,57 @@ export default function Signup() {
   const isDark = mode === "dark";
   const { notify } = useToast();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const rawInviteToken = searchParams.get("inviteToken") || "";
 
+  // Invite-mode state
+  const [inviteValidating, setInviteValidating] = React.useState(!!rawInviteToken);
+  const [inviteEmail, setInviteEmail] = React.useState("");
+  const [inviteError, setInviteError] = React.useState("");
+
+  // OTP-mode state (normal signup)
   const [otpDialogOpen, setOtpDialogOpen] = React.useState(false);
   const [sendingOtp, setSendingOtp] = React.useState(false);
   const [pendingFormValues, setPendingFormValues] = React.useState<any>(null);
 
-  // Called when form is submitted — validate email → send OTP → open dialog
+  // Validate the invite token on mount when present
+  React.useEffect(() => {
+    if (!rawInviteToken) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: body } = await api.get(`/public/invitations/validate?token=${rawInviteToken}`);
+        if (!cancelled) setInviteEmail(body.data.email);
+      } catch (err: any) {
+        if (!cancelled) {
+          setInviteError(
+            err?.response?.data?.error?.message ||
+            "This invitation link is invalid or has expired. Please ask the administrator to send a new one."
+          );
+        }
+      } finally {
+        if (!cancelled) setInviteValidating(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [rawInviteToken]);
+
+  // ── Invite flow: form submit → directly create account ────────────────────
+  const handleInviteFormSubmit = async (values: any) => {
+    const selectedMarketIdRaw = String(values.marketId || "").trim();
+    const selectedMarketId = selectedMarketIdRaw === REQUEST_MARKET_VALUE ? "" : selectedMarketIdRaw;
+    const payload: any = {
+      ...values,
+      inviteToken: rawInviteToken,
+      marketId: selectedMarketId || undefined,
+      marketName: selectedMarketId ? undefined : String(values.marketName || "").trim() || undefined
+    };
+    await api.post("/public/invitations/accept", payload);
+    notify("Account created successfully! Please log in.", "success");
+    navigate("/login");
+  };
+
+  // ── Normal OTP flow: form submit → send OTP → open dialog ────────────────
   const handleFormSubmit = async (values: any) => {
     setSendingOtp(true);
     try {
@@ -617,12 +683,11 @@ export default function Signup() {
     }
   };
 
-  // Called after OTP is verified — creates the account
+  // Called after OTP verified → creates the account
   const handleOtpVerified = async (token: string) => {
     const values = pendingFormValues;
     const selectedMarketIdRaw = String(values.marketId || "").trim();
     const selectedMarketId = selectedMarketIdRaw === REQUEST_MARKET_VALUE ? "" : selectedMarketIdRaw;
-
     const payload: any = {
       ...values,
       adminEmail: values.adminEmail,
@@ -630,13 +695,54 @@ export default function Signup() {
       marketId: selectedMarketId || undefined,
       marketName: selectedMarketId ? undefined : String(values.marketName || "").trim() || undefined
     };
-
     await api.post("/public/signup", payload);
     setOtpDialogOpen(false);
     notify("Account created successfully! Please log in.", "success");
     navigate("/login");
   };
 
+  // ── Invite token: loading / error states ─────────────────────────────────
+  if (rawInviteToken && inviteValidating) {
+    return (
+      <PageLayout isDark={isDark}>
+        <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, py: 8 }}>
+          <CircularProgress />
+          <Typography color="text.secondary">Validating your invitation…</Typography>
+        </Box>
+      </PageLayout>
+    );
+  }
+
+  if (rawInviteToken && inviteError) {
+    return (
+      <PageLayout isDark={isDark}>
+        <Box sx={{ py: 4, textAlign: "center" }}>
+          <Typography variant="h5" fontWeight={700} color="error.main" mb={1}>
+            Invalid Invitation
+          </Typography>
+          <Typography color="text.secondary" mb={3}>{inviteError}</Typography>
+          <Link to="/signup" style={{ color: "#0ea5e9", fontWeight: 600, textDecoration: "none" }}>
+            Sign up without invitation
+          </Link>
+        </Box>
+      </PageLayout>
+    );
+  }
+
+  // ── Invite flow ───────────────────────────────────────────────────────────
+  if (rawInviteToken && inviteEmail) {
+    return (
+      <PageLayout isDark={isDark}>
+        <BusinessSetupForm
+          onSubmitForm={handleInviteFormSubmit}
+          sendingOtp={false}
+          lockedEmail={inviteEmail}
+        />
+      </PageLayout>
+    );
+  }
+
+  // ── Normal OTP flow ───────────────────────────────────────────────────────
   return (
     <PageLayout isDark={isDark}>
       <BusinessSetupForm onSubmitForm={handleFormSubmit} sendingOtp={sendingOtp} />
