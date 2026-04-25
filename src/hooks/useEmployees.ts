@@ -24,6 +24,14 @@ export function useNextEmployeeId() {
   });
 }
 
+export function useEmployee(id?: string) {
+  return useQuery({
+    queryKey: ["employees", id],
+    enabled: Boolean(id),
+    queryFn: async () => (await api.get(`/employees/${id}`)).data.data
+  });
+}
+
 export function useCreateEmployee() {
   const client = useQueryClient();
   return useMutation({
