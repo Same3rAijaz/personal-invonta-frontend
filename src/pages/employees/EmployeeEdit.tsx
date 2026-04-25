@@ -62,6 +62,7 @@ export default function EmployeeEdit({ explicitId, onSuccess, onCancel }: { expl
   const employee = (data?.items || []).find((item: any) => item._id === id);
   const salaryType = watch("salaryType");
   const loginEmail = watch("loginEmail");
+  const loginPassword = watch("loginPassword");
   const isBusinessAdminEmployee =
     Boolean(employee?.isBusinessAdmin) ||
     String(employee?.role || "").toUpperCase() === "ADMIN" ||
@@ -103,6 +104,8 @@ export default function EmployeeEdit({ explicitId, onSuccess, onCancel }: { expl
       return;
     }
     try {
+      const normalizedLoginEmail = String(values.loginEmail || "").trim();
+      const isSendingInvite = !employee.userId && Boolean(normalizedLoginEmail);
       const allowedModules = Object.keys(values)
         .filter((key) => key.startsWith("module_") && values[key])
         .map((key) => key.replace("module_", ""));
@@ -115,11 +118,11 @@ export default function EmployeeEdit({ explicitId, onSuccess, onCancel }: { expl
         payload: {
           ...payload,
           allowedModules,
-          loginEmail: values.loginEmail || undefined,
+          loginEmail: normalizedLoginEmail || undefined,
           loginPassword: values.loginPassword || undefined
         }
       });
-      notify("Employee updated", "success");
+      notify(isSendingInvite ? "Employee updated and invite email sent" : "Employee updated", "success");
       if (onSuccess) onSuccess();
       else navigate("/employees");
     } catch (err: any) {
@@ -146,7 +149,7 @@ export default function EmployeeEdit({ explicitId, onSuccess, onCancel }: { expl
         </Alert>
       ) : (
         <Alert severity="info" sx={{ mb: 2 }}>
-          This employee does not have a portal login yet. You can add one below.
+          This employee does not have a portal login yet. Add an email below to create access and send an invite email.
         </Alert>
       )}
       <Grid container spacing={2} component="form" id="sidebar-form" onSubmit={handleSubmit(onSubmit)}>
@@ -318,7 +321,21 @@ export default function EmployeeEdit({ explicitId, onSuccess, onCancel }: { expl
               </Typography>
             </Grid>
             <Grid item xs={12} md={6}>
-              <TextField fullWidth label="Login Email" disabled={!canEdit} {...register("loginEmail")} />
+              <TextField
+                fullWidth
+                type="email"
+                label="Login Email"
+                disabled={!canEdit}
+                {...register("loginEmail", {
+                  validate: (value) => {
+                    if (!value && !loginPassword) return true;
+                    if (!value && loginPassword) return "Login email is required when password is provided";
+                    return true;
+                  }
+                })}
+                error={!!errors.loginEmail}
+                helperText={(errors.loginEmail?.message as string) || "We will send the employee invite to this email address."}
+              />
             </Grid>
             <Grid item xs={12} md={6}>
               <TextField
@@ -329,13 +346,16 @@ export default function EmployeeEdit({ explicitId, onSuccess, onCancel }: { expl
                 {...register("loginPassword", {
                   validate: (value) => {
                     if (!loginEmail && !value) return true;
-                    if (loginEmail && !value) return "Password is required when login email is provided";
+                    if (loginEmail && !String(value || "").trim()) return true;
                     if (value && String(value).length < 6) return "Password must be at least 6 characters";
                     return true;
                   }
                 })}
                 error={!!errors.loginPassword}
-                helperText={errors.loginPassword?.message as string}
+                helperText={
+                  (errors.loginPassword?.message as string) ||
+                  "Leave blank to auto-generate a temporary password and email the invite."
+                }
                 InputProps={{
                   endAdornment: (
                     <InputAdornment position="end">

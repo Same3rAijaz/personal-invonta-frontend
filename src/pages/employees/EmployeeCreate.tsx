@@ -54,6 +54,7 @@ export default function EmployeeCreate({ onSuccess, onCancel }: { onSuccess?: ()
     }
   });
   const loginEmail = watch("loginEmail");
+  const loginPassword = watch("loginPassword");
   const salaryType = watch("salaryType");
   const employeeId = watch("employeeId");
   const availableModules = business?.enabledModules?.length ? business.enabledModules : [...SYSTEM_MODULE_OPTIONS];
@@ -66,6 +67,7 @@ export default function EmployeeCreate({ onSuccess, onCancel }: { onSuccess?: ()
 
   const onSubmit = async (values: any) => {
     try {
+      const normalizedLoginEmail = String(values.loginEmail || "").trim();
       const allowedModules = Object.keys(values)
         .filter((key) => key.startsWith("module_") && values[key])
         .map((key) => key.replace("module_", ""));
@@ -77,10 +79,10 @@ export default function EmployeeCreate({ onSuccess, onCancel }: { onSuccess?: ()
         ...payload,
         employeeId: dirtyFields.employeeId ? values.employeeId || undefined : undefined,
         allowedModules,
-        loginEmail: values.loginEmail || undefined,
+        loginEmail: normalizedLoginEmail || undefined,
         loginPassword: values.loginPassword || undefined
       });
-      notify("Employee created", "success");
+      notify(normalizedLoginEmail ? "Employee created and invite email sent" : "Employee created", "success");
       if (onSuccess) onSuccess();
       else navigate("/employees");
     } catch (err: any) {
@@ -245,7 +247,20 @@ export default function EmployeeCreate({ onSuccess, onCancel }: { onSuccess?: ()
           </Typography>
         </Grid>
         <Grid item xs={12} md={6}>
-          <TextField fullWidth label="Login Email (optional)" {...register("loginEmail")} />
+          <TextField
+            fullWidth
+            type="email"
+            label="Login Email (optional)"
+            {...register("loginEmail", {
+              validate: (value) => {
+                if (!value && !loginPassword) return true;
+                if (!value && loginPassword) return "Login email is required when password is provided";
+                return true;
+              }
+            })}
+            error={!!errors.loginEmail}
+            helperText={(errors.loginEmail?.message as string) || "We will send the employee invite to this email address."}
+          />
         </Grid>
         <Grid item xs={12} md={6}>
           <TextField
@@ -255,13 +270,16 @@ export default function EmployeeCreate({ onSuccess, onCancel }: { onSuccess?: ()
             {...register("loginPassword", {
               validate: (value) => {
                 if (!loginEmail && !value) return true;
-                if (loginEmail && !value) return "Password is required when login email is provided";
+                if (loginEmail && !String(value || "").trim()) return true;
                 if (value && String(value).length < 6) return "Password must be at least 6 characters";
                 return true;
               }
             })}
             error={!!errors.loginPassword}
-            helperText={errors.loginPassword?.message as string}
+            helperText={
+              (errors.loginPassword?.message as string) ||
+              "Leave blank to auto-generate a temporary password and email the invite."
+            }
             InputProps={{
               endAdornment: (
                 <InputAdornment position="end">
