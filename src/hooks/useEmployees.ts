@@ -24,11 +24,23 @@ export function useNextEmployeeId() {
   });
 }
 
+export function useEmployee(id?: string) {
+  return useQuery({
+    queryKey: ["employees", id],
+    enabled: Boolean(id),
+    queryFn: async () => (await api.get(`/employees/${id}`)).data.data
+  });
+}
+
 export function useCreateEmployee() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: async (payload: any) => (await api.post("/employees", payload)).data.data,
-    onSuccess: () => client.invalidateQueries({ queryKey: ["employees"] })
+    onSuccess: () =>
+      Promise.all([
+        client.invalidateQueries({ queryKey: ["employees"] }),
+        client.invalidateQueries({ queryKey: ["employees", "next-id"] })
+      ])
   });
 }
 
@@ -37,7 +49,11 @@ export function useUpdateEmployee() {
   return useMutation({
     mutationFn: async ({ id, payload }: { id: string; payload: any }) =>
       (await api.patch(`/employees/${id}`, payload)).data.data,
-    onSuccess: () => client.invalidateQueries({ queryKey: ["employees"] })
+    onSuccess: () =>
+      Promise.all([
+        client.invalidateQueries({ queryKey: ["employees"] }),
+        client.invalidateQueries({ queryKey: ["employees", "next-id"] })
+      ])
   });
 }
 
