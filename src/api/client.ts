@@ -1,4 +1,5 @@
 import axios from "axios";
+import { clearStoredAuthSession, readStoredAuthSession, writeStoredAuthSession } from "../utils/authSession";
 
 // BUG-25: Removed production URL fallback — missing VITE_API_URL must be set explicitly.
 // Without this, local dev would silently send requests to production.
@@ -55,16 +56,19 @@ function stopLoading(config?: RetryableRequest) {
 async function refreshAccessToken() {
   if (!refreshPromise) {
     refreshPromise = (async () => {
-      const refreshToken = localStorage.getItem("refreshToken");
+      const currentSession = readStoredAuthSession();
+      const refreshToken = currentSession.refreshToken;
       if (!refreshToken) return null;
       const { data } = await api.post("/auth/refresh", { refreshToken }, { skipAuth: true, skipLoader: true, skipGlobalErrorToast: true } as any);
       const nextAccessToken = data?.data?.accessToken;
       const nextRefreshToken = data?.data?.refreshToken;
       if (!nextAccessToken || !nextRefreshToken) return null;
-      localStorage.setItem("accessToken", nextAccessToken);
-      localStorage.setItem("refreshToken", nextRefreshToken);
-      if (data?.data?.user) localStorage.setItem("user", JSON.stringify(data.data.user));
-      if (data?.data?.business) localStorage.setItem("business", JSON.stringify(data.data.business));
+      writeStoredAuthSession({
+        accessToken: nextAccessToken,
+        refreshToken: nextRefreshToken,
+        user: data?.data?.user ?? currentSession.user,
+        business: data?.data?.business ?? currentSession.business
+      });
       return nextAccessToken as string;
     })().finally(() => {
       refreshPromise = null;
@@ -74,10 +78,7 @@ async function refreshAccessToken() {
 }
 
 function clearSessionAndRedirect() {
-  localStorage.removeItem("accessToken");
-  localStorage.removeItem("refreshToken");
-  localStorage.removeItem("user");
-  localStorage.removeItem("business");
+  clearStoredAuthSession();
   if (window.location.pathname !== "/login") {
     window.location.href = "/login";
   }
@@ -88,7 +89,7 @@ api.interceptors.request.use((config) => {
   if ((config as any).skipAuth) {
     return config;
   }
-  const token = localStorage.getItem("accessToken");
+  const token = readStoredAuthSession().accessToken;
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }

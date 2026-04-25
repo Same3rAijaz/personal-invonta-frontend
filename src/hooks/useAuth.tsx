@@ -1,6 +1,12 @@
 import React from "react";
 import { login as loginApi } from "../api/auth";
 import { api } from "../api/client";
+import {
+  AUTH_SESSION_CHANGED_EVENT,
+  clearStoredAuthSession,
+  readStoredAuthSession,
+  writeStoredAuthSession
+} from "../utils/authSession";
 
 type AuthState = {
   token: string | null;
@@ -29,27 +35,35 @@ function parseJwtExpiry(token: string) {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [token, setToken] = React.useState<string | null>(localStorage.getItem("accessToken"));
-  const [user, setUser] = React.useState<any | null>(() => {
-    const saved = localStorage.getItem("user");
-    return saved ? JSON.parse(saved) : null;
-  });
-  const [business, setBusiness] = React.useState<any | null>(() => {
-    const saved = localStorage.getItem("business");
-    return saved ? JSON.parse(saved) : null;
-  });
+  const [token, setToken] = React.useState<string | null>(() => readStoredAuthSession().accessToken);
+  const [user, setUser] = React.useState<any | null>(() => readStoredAuthSession().user);
+  const [business, setBusiness] = React.useState<any | null>(() => readStoredAuthSession().business);
 
   const clearSessionAndRedirect = React.useCallback(() => {
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
-    localStorage.removeItem("user");
-    localStorage.removeItem("business");
+    clearStoredAuthSession();
     setToken(null);
     setUser(null);
     setBusiness(null);
     if (window.location.pathname !== "/login") {
       window.location.href = "/login";
     }
+  }, []);
+
+  React.useEffect(() => {
+    const syncFromStorage = () => {
+      const session = readStoredAuthSession();
+      setToken(session.accessToken);
+      setUser(session.user);
+      setBusiness(session.business);
+    };
+
+    window.addEventListener(AUTH_SESSION_CHANGED_EVENT, syncFromStorage);
+    window.addEventListener("storage", syncFromStorage);
+
+    return () => {
+      window.removeEventListener(AUTH_SESSION_CHANGED_EVENT, syncFromStorage);
+      window.removeEventListener("storage", syncFromStorage);
+    };
   }, []);
 
   React.useEffect(() => {
@@ -72,7 +86,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!token || user?.role !== "ADMIN") return;
       try {
         const { data } = await api.get("/businesses/me");
-        localStorage.setItem("business", JSON.stringify(data.data));
+        writeStoredAuthSession({
+          accessToken: token,
+          refreshToken: readStoredAuthSession().refreshToken,
+          user,
+          business: data.data
+        });
         setBusiness(data.data);
       } catch {
         // Ignore refresh errors; user can re-login if needed.
@@ -83,33 +102,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string) => {
     const result = await loginApi(email, password);
-    localStorage.setItem("accessToken", result.accessToken);
-    localStorage.setItem("refreshToken", result.refreshToken);
-    localStorage.setItem("user", JSON.stringify(result.user));
-    if (result.business) {
-      localStorage.setItem("business", JSON.stringify(result.business));
-    }
+    writeStoredAuthSession({
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+      user: result.user,
+      business: result.business || null
+    });
     setToken(result.accessToken);
     setUser(result.user);
     setBusiness(result.business || null);
   };
 
   const logout = () => {
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
-    localStorage.removeItem("user");
-    localStorage.removeItem("business");
+    clearStoredAuthSession();
     setToken(null);
     setUser(null);
     setBusiness(null);
   };
 
   const updateUser = (nextUser: any | null) => {
-    if (nextUser) {
-      localStorage.setItem("user", JSON.stringify(nextUser));
-    } else {
-      localStorage.removeItem("user");
-    }
+    writeStoredAuthSession({
+      accessToken: token,
+      refreshToken: readStoredAuthSession().refreshToken,
+      user: nextUser,
+      business
+    });
     setUser(nextUser);
   };
 

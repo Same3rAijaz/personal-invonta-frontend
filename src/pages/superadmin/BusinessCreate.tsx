@@ -1,5 +1,6 @@
-import { Box, Button, Paper, Typography, Grid, MenuItem, Divider, FormControlLabel, Checkbox, Stack } from "@mui/material";
-import TextField from "../../components/CustomTextField";;
+import { Checkbox, FormControlLabel, Grid, MenuItem, Stack, Typography } from "@mui/material";
+import TextField from "../../components/CustomTextField";
+import SidebarLayout from "../../components/SidebarLayout";
 import { useForm } from "react-hook-form";
 import { useToast } from "../../hooks/useToast";
 import { useNavigate } from "react-router-dom";
@@ -89,7 +90,7 @@ export default function BusinessCreate({ onSuccess, onCancel }: { onSuccess?: ()
     return levels;
   }, [childrenByParent, selectedPathIds]);
 
-  const mutation = useMutation({
+  const createBusiness = useMutation({
     mutationFn: async (payload: any) => (await api.post("/superadmin/businesses", payload)).data.data,
     onSuccess: () => client.invalidateQueries({ queryKey: ["businesses"] })
   });
@@ -106,7 +107,7 @@ export default function BusinessCreate({ onSuccess, onCancel }: { onSuccess?: ()
       Object.keys(payload).forEach((key) => {
         if (key.startsWith("module_")) delete payload[key];
       });
-      await mutation.mutateAsync({ ...payload, enabledModules });
+      await createBusiness.mutateAsync({ ...payload, enabledModules });
       notify("Business created", "success");
       if (onSuccess) onSuccess(); else navigate("/superadmin/businesses");
     } catch (err: any) {

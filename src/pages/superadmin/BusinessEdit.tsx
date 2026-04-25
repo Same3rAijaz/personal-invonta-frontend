@@ -1,5 +1,6 @@
-import { Box, Button, Paper, Typography, Grid, MenuItem, Divider, FormControlLabel, Checkbox, Stack } from "@mui/material";
-import TextField from "../../components/CustomTextField";;
+import { Checkbox, FormControlLabel, Grid, MenuItem, Stack, Typography } from "@mui/material";
+import TextField from "../../components/CustomTextField";
+import SidebarLayout from "../../components/SidebarLayout";
 import { useEffect, useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useToast } from "../../hooks/useToast";
@@ -135,7 +136,7 @@ export default function BusinessEdit({ explicitId, onSuccess, onCancel }: { expl
     return levels;
   }, [childrenByParent, selectedPathIds]);
 
-  const mutation = useMutation({
+  const updateBusiness = useMutation({
     mutationFn: async (payload: any) => (await api.patch(`/superadmin/businesses/${id}`, payload)).data.data,
     onSuccess: () => client.invalidateQueries({ queryKey: ["businesses"] })
   });
@@ -149,7 +150,7 @@ export default function BusinessEdit({ explicitId, onSuccess, onCancel }: { expl
       Object.keys(payload).forEach((key) => {
         if (key.startsWith("module_")) delete payload[key];
       });
-      await mutation.mutateAsync({ ...payload, enabledModules });
+      await updateBusiness.mutateAsync({ ...payload, enabledModules });
       notify("Business updated", "success");
       if (onSuccess) onSuccess(); else navigate("/superadmin/businesses");
     } catch (err: any) {
@@ -292,4 +293,3 @@ export default function BusinessEdit({ explicitId, onSuccess, onCancel }: { expl
     </SidebarLayout>
   );
 }
-
