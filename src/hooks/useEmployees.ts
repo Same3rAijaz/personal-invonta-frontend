@@ -17,6 +17,13 @@ export function useEmployees(params?: { page?: number; limit?: number; search?: 
   });
 }
 
+export function useNextEmployeeId() {
+  return useQuery({
+    queryKey: ["employees", "next-id"],
+    queryFn: async () => (await api.get("/employees/next-id")).data.data
+  });
+}
+
 export function useCreateEmployee() {
   const client = useQueryClient();
   return useMutation({
