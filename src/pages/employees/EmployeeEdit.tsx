@@ -1,13 +1,13 @@
 import { Alert, Checkbox, FormControlLabel, Grid, MenuItem, Stack, Typography } from "@mui/material";
-import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useEffect, useMemo, useState } from "react";
+import { Controller, useForm } from "react-hook-form";
 import { useNavigate, useParams } from "react-router-dom";
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import { IconButton, InputAdornment } from "@mui/material";
 import TextField from "../../components/CustomTextField";
 import SidebarLayout from "../../components/SidebarLayout";
-import { useEmployees, useUpdateEmployee } from "../../hooks/useEmployees";
+import { useEmployee, useUpdateEmployee } from "../../hooks/useEmployees";
 import { useToast } from "../../hooks/useToast";
 import { useAuth } from "../../hooks/useAuth";
 import {
@@ -28,13 +28,14 @@ function toDateOnly(value?: string | Date | null) {
 export default function EmployeeEdit({ explicitId, onSuccess, onCancel }: { explicitId?: string; onSuccess?: () => void; onCancel?: () => void } = {}) {
   const params = useParams();
   const id = explicitId || params.id;
-  const { data } = useEmployees({ page: 1, limit: 1000 });
+  const { data: employee, isLoading } = useEmployee(id);
   const updateEmployee = useUpdateEmployee();
   const { notify } = useToast();
   const navigate = useNavigate();
   const { business, user } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const {
+    control,
     register,
     handleSubmit,
     reset,
@@ -59,7 +60,6 @@ export default function EmployeeEdit({ explicitId, onSuccess, onCancel }: { expl
     }
   });
 
-  const employee = (data?.items || []).find((item: any) => item._id === id);
   const salaryType = watch("salaryType");
   const loginEmail = watch("loginEmail");
   const loginPassword = watch("loginPassword");
@@ -69,8 +69,16 @@ export default function EmployeeEdit({ explicitId, onSuccess, onCancel }: { expl
     String(employee?.linkedUserRole || "").toUpperCase() === "ADMIN";
   const canEdit = user?.role === "SUPER_ADMIN" || !isBusinessAdminEmployee;
 
+  const availableModules = useMemo(() => {
+    const baseModules = business?.enabledModules?.length ? business.enabledModules : [...SYSTEM_MODULE_OPTIONS];
+    return Array.from(new Set([...(baseModules || []), ...((employee?.allowedModules as string[]) || [])]));
+  }, [business?.enabledModules, employee?.allowedModules]);
+
   useEffect(() => {
     if (!employee) return;
+    const moduleDefaults = Object.fromEntries(
+      availableModules.map((moduleName) => [`module_${moduleName}`, (employee.allowedModules || []).includes(moduleName)])
+    );
     reset({
       name: employee.name || "",
       employeeId: employee.employeeId || "",
@@ -93,9 +101,9 @@ export default function EmployeeEdit({ explicitId, onSuccess, onCancel }: { expl
       taxPercent: Number(employee.taxPercent || 0),
       payrollNotes: employee.payrollNotes || "",
       isActive: employee.isActive ?? true,
-      ...Object.fromEntries((employee.allowedModules || []).map((moduleName: string) => [`module_${moduleName}`, true]))
+      ...moduleDefaults
     });
-  }, [employee, reset]);
+  }, [availableModules, employee, reset]);
 
   const onSubmit = async (values: any) => {
     if (!id) return;
@@ -130,11 +138,9 @@ export default function EmployeeEdit({ explicitId, onSuccess, onCancel }: { expl
     }
   };
 
-  if (!employee) {
+  if (!employee || isLoading) {
     return <Typography>Loading...</Typography>;
   }
-
-  const availableModules = business?.enabledModules?.length ? business.enabledModules : [...SYSTEM_MODULE_OPTIONS];
 
   return (
     <SidebarLayout title="Edit Employee" onCancel={onCancel} isSubmitting={updateEmployee.isPending} submitLabel="Update Employee">
@@ -184,13 +190,19 @@ export default function EmployeeEdit({ explicitId, onSuccess, onCancel }: { expl
           <TextField fullWidth label="Role / Title" disabled={!canEdit} {...register("role")} />
         </Grid>
         <Grid item xs={12} md={6}>
-          <TextField select fullWidth label="Employment Type" disabled={!canEdit} {...register("employmentType")}>
-            {EMPLOYMENT_TYPE_OPTIONS.map((item) => (
-              <MenuItem key={item} value={item}>
-                {humanizeToken(item)}
-              </MenuItem>
-            ))}
-          </TextField>
+          <Controller
+            name="employmentType"
+            control={control}
+            render={({ field }) => (
+              <TextField select fullWidth label="Employment Type" disabled={!canEdit} {...field} value={field.value || ""}>
+                {EMPLOYMENT_TYPE_OPTIONS.map((item) => (
+                  <MenuItem key={item} value={item}>
+                    {humanizeToken(item)}
+                  </MenuItem>
+                ))}
+              </TextField>
+            )}
+          />
         </Grid>
         <Grid item xs={12} md={6}>
           <TextField fullWidth label="Department" disabled={!canEdit} {...register("department")} />
@@ -208,13 +220,19 @@ export default function EmployeeEdit({ explicitId, onSuccess, onCancel }: { expl
           </Typography>
         </Grid>
         <Grid item xs={12} md={4}>
-          <TextField select fullWidth label="Salary Type" disabled={!canEdit} {...register("salaryType")}>
-            {SALARY_TYPE_OPTIONS.map((item) => (
-              <MenuItem key={item} value={item}>
-                {humanizeToken(item)}
-              </MenuItem>
-            ))}
-          </TextField>
+          <Controller
+            name="salaryType"
+            control={control}
+            render={({ field }) => (
+              <TextField select fullWidth label="Salary Type" disabled={!canEdit} {...field} value={field.value || ""}>
+                {SALARY_TYPE_OPTIONS.map((item) => (
+                  <MenuItem key={item} value={item}>
+                    {humanizeToken(item)}
+                  </MenuItem>
+                ))}
+              </TextField>
+            )}
+          />
         </Grid>
         <Grid item xs={12} md={4}>
           <TextField
@@ -308,8 +326,26 @@ export default function EmployeeEdit({ explicitId, onSuccess, onCancel }: { expl
         </Grid>
         <Grid item xs={12}>
           <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap>
-            <FormControlLabel control={<Checkbox disabled={!canEdit} {...register("overtimeEligible")} />} label="Eligible for overtime" />
-            <FormControlLabel control={<Checkbox disabled={!canEdit} {...register("prorateMonthlyByAttendance")} />} label="Prorate monthly salary by attendance" />
+            <Controller
+              name="overtimeEligible"
+              control={control}
+              render={({ field }) => (
+                <FormControlLabel
+                  control={<Checkbox disabled={!canEdit} checked={Boolean(field.value)} onChange={(event) => field.onChange(event.target.checked)} />}
+                  label="Eligible for overtime"
+                />
+              )}
+            />
+            <Controller
+              name="prorateMonthlyByAttendance"
+              control={control}
+              render={({ field }) => (
+                <FormControlLabel
+                  control={<Checkbox disabled={!canEdit} checked={Boolean(field.value)} onChange={(event) => field.onChange(event.target.checked)} />}
+                  label="Prorate monthly salary by attendance"
+                />
+              )}
+            />
           </Stack>
         </Grid>
 
@@ -376,16 +412,31 @@ export default function EmployeeEdit({ explicitId, onSuccess, onCancel }: { expl
           </Typography>
           <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap>
             {availableModules.map((moduleName: string) => (
-              <FormControlLabel
+              <Controller
                 key={moduleName}
-                control={<Checkbox disabled={!canEdit} {...register(`module_${moduleName}`)} />}
-                label={labelizeModule(moduleName)}
+                name={`module_${moduleName}`}
+                control={control}
+                render={({ field }) => (
+                  <FormControlLabel
+                    control={<Checkbox disabled={!canEdit} checked={Boolean(field.value)} onChange={(event) => field.onChange(event.target.checked)} />}
+                    label={labelizeModule(moduleName)}
+                  />
+                )}
               />
             ))}
           </Stack>
         </Grid>
         <Grid item xs={12}>
-          <FormControlLabel control={<Checkbox disabled={!canEdit} {...register("isActive")} />} label="Active employee" />
+          <Controller
+            name="isActive"
+            control={control}
+            render={({ field }) => (
+              <FormControlLabel
+                control={<Checkbox disabled={!canEdit} checked={Boolean(field.value)} onChange={(event) => field.onChange(event.target.checked)} />}
+                label="Active employee"
+              />
+            )}
+          />
         </Grid>
       </Grid>
     </SidebarLayout>
