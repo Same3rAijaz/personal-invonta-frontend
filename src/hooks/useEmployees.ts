@@ -1,11 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 
-export function useEmployees(params?: { page?: number; limit?: number; search?: string }) {
+export function useEmployees(params?: { page?: number; limit?: number; search?: string; semantic?: boolean }) {
   return useQuery({
-    queryKey: ["employees", params?.page, params?.limit, params?.search],
+    queryKey: ["employees", params?.page, params?.limit, params?.search, params?.semantic],
     queryFn: async () => {
-      if (params?.search) {
+      if (params?.semantic && params?.search) {
         return (
           await api.get("/employees/semantic-search", {
             params: { query: params.search, limit: params.limit }

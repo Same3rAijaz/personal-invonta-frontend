@@ -9,6 +9,7 @@ import { api } from "../../api/client";
 import React from "react";
 import { useCities, useCountries, useStates } from "../../hooks/useGeo";
 import { DEFAULT_CITY, DEFAULT_COUNTRY, DEFAULT_STATE } from "../../constants/locationDefaults";
+import { SYSTEM_MODULE_OPTIONS, labelizeModule } from "../../constants/hr";
 import { PublicCategoryNode } from "../../api/public";
 
 export default function BusinessCreate({ onSuccess, onCancel }: { onSuccess?: () => void, onCancel?: () => void } = {}) {
@@ -95,8 +96,7 @@ export default function BusinessCreate({ onSuccess, onCancel }: { onSuccess?: ()
     onSuccess: () => client.invalidateQueries({ queryKey: ["businesses"] })
   });
 
-  const availableModules = ["products", "inventory", "warehouses", "customers", "vendors", "purchasing", "sales", "reports", "udhaar"];
-  const labelize = (value: string) => (value === "hr" ? "HR" : value.charAt(0).toUpperCase() + value.slice(1));
+  const availableModules = [...SYSTEM_MODULE_OPTIONS];
 
   const onSubmit = async (values: any) => {
     try {
@@ -218,7 +218,7 @@ export default function BusinessCreate({ onSuccess, onCancel }: { onSuccess?: ()
                 <FormControlLabel
                   key={mod}
                   control={<Checkbox {...register(`module_${mod}`)} />}
-                  label={labelize(mod)}
+                  label={labelizeModule(mod)}
                 />
               ))}
             </Stack>

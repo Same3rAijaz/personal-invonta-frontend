@@ -9,10 +9,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { useCities, useCountries, useStates } from "../../hooks/useGeo";
 import { DEFAULT_CITY, DEFAULT_COUNTRY, DEFAULT_STATE } from "../../constants/locationDefaults";
+import { SYSTEM_MODULE_OPTIONS, labelizeModule } from "../../constants/hr";
 import { PublicCategoryNode } from "../../api/public";
 
-const AVAILABLE_MODULES = ["products", "inventory", "warehouses", "customers", "vendors", "purchasing", "sales", "reports", "udhaar"];
-const labelize = (value: string) => (value === "hr" ? "HR" : value.charAt(0).toUpperCase() + value.slice(1));
+const AVAILABLE_MODULES = [...SYSTEM_MODULE_OPTIONS];
 
 export default function BusinessEdit({ explicitId, onSuccess, onCancel }: { explicitId?: string, onSuccess?: () => void, onCancel?: () => void } = {}) {
   const params = useParams();
@@ -278,7 +278,7 @@ export default function BusinessEdit({ explicitId, onSuccess, onCancel }: { expl
                           onChange={(e) => field.onChange(e.target.checked)}
                         />
                       }
-                      label={labelize(mod)}
+                      label={labelizeModule(mod)}
                     />
                   )}
                 />
