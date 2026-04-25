@@ -1,9 +1,8 @@
 import React from "react";
 import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, InputLabel, MenuItem, Select } from "@mui/material";
-import TextField from "../components/CustomTextField";;
+import TextField from "../components/CustomTextField";
 import { useDeleteEmployee, useEmployees, useResetEmployeePassword } from "../hooks/useEmployees";
 import DataTable from "../components/DataTable";
-import { useNavigate } from "react-router-dom";
 import PageHeader from "../components/PageHeader";
 import { Drawer } from "@mui/material";
 import EmployeeCreate from "./employees/EmployeeCreate";
@@ -15,6 +14,7 @@ import { useAuth } from "../hooks/useAuth";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { useConfirmDialog } from "../hooks/useConfirmDialog";
 import RowActionMenu from "../components/RowActionMenu";
+import { humanizeToken } from "../constants/hr";
 
 export default function Employees() {
   const [page, setPage] = React.useState(0);
@@ -23,7 +23,6 @@ export default function Employees() {
   const debouncedSearch = useDebouncedValue(search.trim());
   const { data, isLoading } = useEmployees({ page: page + 1, limit: rowsPerPage, search: debouncedSearch || undefined });
   const deleteEmployee = useDeleteEmployee();
-  const navigate = useNavigate();
   const { user } = useAuth();
   const canManageBusinessAdmin = user?.role === "SUPER_ADMIN";
   const rows = data?.items || [];
@@ -117,8 +116,11 @@ export default function Employees() {
         columns={[
           { key: "name", label: "Name" },
           { key: "employeeId", label: "Employee ID" },
-          { key: "role", label: "Role" },
-          { key: "isActive", label: "Active" },
+          { key: "designation", label: "Designation", render: (row: any) => row.designation || row.role || "-" },
+          { key: "employmentType", label: "Employment", render: (row: any) => humanizeToken(row.employmentType) },
+          { key: "salaryType", label: "Salary Type", render: (row: any) => humanizeToken(row.salaryType) },
+          { key: "login", label: "Portal Login", render: (row: any) => (row.userId ? "Enabled" : "Not linked") },
+          { key: "isActive", label: "Active", render: (row: any) => (row.isActive ? "Yes" : "No") },
           {
             key: "actions",
             label: "Actions",

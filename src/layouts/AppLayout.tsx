@@ -22,6 +22,8 @@ import ShoppingCartRoundedIcon from '@mui/icons-material/ShoppingCartRounded';
 import MonetizationOnRoundedIcon from '@mui/icons-material/MonetizationOnRounded';
 import KeyboardReturnRoundedIcon from '@mui/icons-material/KeyboardReturnRounded';
 import PeopleRoundedIcon from '@mui/icons-material/PeopleRounded';
+import AccessTimeRoundedIcon from '@mui/icons-material/AccessTimeRounded';
+import EventAvailableRoundedIcon from '@mui/icons-material/EventAvailableRounded';
 import HandshakeRoundedIcon from '@mui/icons-material/HandshakeRounded';
 import GroupsRoundedIcon from '@mui/icons-material/GroupsRounded';
 import AssessmentRoundedIcon from '@mui/icons-material/AssessmentRounded';
@@ -34,6 +36,7 @@ import SettingsSuggestRoundedIcon from '@mui/icons-material/SettingsSuggestRound
 import SmartToyRoundedIcon from '@mui/icons-material/SmartToyRounded';
 import CreditCardIcon from '@mui/icons-material/CreditCard';
 import ForwardToInboxIcon from '@mui/icons-material/ForwardToInbox';
+import PaymentsRoundedIcon from '@mui/icons-material/PaymentsRounded';
 
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import AssistantPanel from "../components/Assistant/AssistantPanel";
@@ -341,6 +344,9 @@ export default function AppLayout() {
     purchasing: ["purchasing"],
     sales: ["sales"],
     employees: ["hr"],
+    attendance: ["hr"],
+    leaves: ["hr"],
+    payroll: ["hr"],
     reports: ["reports"],
     udhaar: ["udhaar"]
   };
@@ -396,7 +402,10 @@ export default function AppLayout() {
           id: "people",
           label: "People",
           items: [
-            ...(isAllowed("employees") ? [{ label: "Employees", to: "/employees", icon: <PeopleRoundedIcon /> }] : [])
+            ...(isAllowed("employees") ? [{ label: "Employees", to: "/employees", icon: <PeopleRoundedIcon /> }] : []),
+            ...(isAllowed("attendance") ? [{ label: "Attendance", to: "/attendance", icon: <AccessTimeRoundedIcon /> }] : []),
+            ...(isAllowed("leaves") ? [{ label: "Leaves", to: "/leaves", icon: <EventAvailableRoundedIcon /> }] : []),
+            ...(isAllowed("payroll") ? [{ label: "Payroll", to: "/payroll", icon: <PaymentsRoundedIcon /> }] : [])
           ]
         },
         {
