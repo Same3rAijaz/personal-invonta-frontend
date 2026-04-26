@@ -17,35 +17,90 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../../api/client";
 import { useThemeMode } from "../../contexts/ThemeContext";
 
-// Quick actions shown as chips
 const QUICK_ACTIONS = [
   { label: "Business summary", msg: "business summary" },
-  { label: "List products", msg: "show all products" },
-  { label: "Add product", msg: "add a product" },
-  { label: "List customers", msg: "show all customers" },
-  { label: "Add customer", msg: "create a customer" },
-  { label: "Attendance log", msg: "show attendance" },
-  { label: "Go to sales", msg: "go to sales" },
-  { label: "Go to reports", msg: "go to reports" },
+  { label: "List products",    msg: "show all products" },
+  { label: "Add product",      msg: "add a product" },
+  { label: "List customers",   msg: "show all customers" },
+  { label: "Add customer",     msg: "create a customer" },
+  { label: "Attendance log",   msg: "show attendance" },
+  { label: "Go to sales",      msg: "go to sales" },
+  { label: "Go to reports",    msg: "go to reports" },
 ];
 
-// Renders a message with basic formatting: **bold**, bullet lines
+const IDLE_PROMPT = { ur: "کیا آپ کو کسی چیز کی ضرورت ہے؟", en: "Is there anything I can help you with?" };
+
+// ── Voice helpers ──────────────────────────────────────────────────────────────
+
+/** Strip markdown + action tokens so TTS speaks clean plain text */
+function cleanForSpeech(text: string): string {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, "$1")
+    .replace(/\*(.+?)\*/g, "$1")
+    .replace(/^[-•·]\s+/gm, "")
+    .replace(/NAV:\/\S*/g, "")
+    .replace(/CREATE:\{[\s\S]*?\}/g, "")
+    .replace(/LIST:\{[\s\S]*?\}/g, "")
+    .replace(/GET:\{[\s\S]*?\}/g, "")
+    .replace(/UPDATE:\{[\s\S]*?\}/g, "")
+    .replace(/DELETE:\{[\s\S]*?\}/g, "")
+    .replace(/STATS:\{[\s\S]*?\}/g, "")
+    .replace(/ATTENDANCE:\{[\s\S]*?\}/g, "")
+    .replace(/\n+/g, ". ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+/** Pick the best available TTS voice for the given language */
+function selectBestVoice(voices: SpeechSynthesisVoice[], lang: "ur" | "en"): SpeechSynthesisVoice | null {
+  if (!voices.length) return null;
+
+  if (lang === "ur") {
+    const urPrefs = ["Huzaifa", "Maryam", "ur-PK", "ur-IN", "ur"];
+    for (const p of urPrefs) {
+      const v = voices.find(v => v.name.includes(p) || v.lang.startsWith(p));
+      if (v) return v;
+    }
+    // fallback: Hindi or any English natural voice
+    return (
+      voices.find(v => v.lang.startsWith("hi")) ||
+      voices.find(v => v.name.includes("Google") && v.lang.startsWith("en")) ||
+      null
+    );
+  }
+
+  // English priority: natural / neural voices first
+  const enPrefs = [
+    // Microsoft Neural (Edge / Windows 11)
+    "Microsoft Aria",  "Microsoft Jenny", "Microsoft Guy",
+    "Microsoft Emma",  "Microsoft Eric",  "Microsoft Brian",
+    // Google
+    "Google US English", "Google UK English Female", "Google UK English Male",
+    // Apple
+    "Samantha", "Alex", "Karen", "Moira",
+    // Generic
+    "en-US", "en-GB",
+  ];
+  for (const p of enPrefs) {
+    const v = voices.find(v => v.name.includes(p) || v.lang === p || v.lang.startsWith(p));
+    if (v) return v;
+  }
+  return voices.find(v => v.lang.startsWith("en")) || null;
+}
+
+// ── Formatted message renderer ─────────────────────────────────────────────────
+
 function FormattedMessage({ text, color }: { text: string; color: string }) {
-  const lines = text.split("\n");
   return (
     <Box>
-      {lines.map((line, i) => {
+      {text.split("\n").map((line, i) => {
         const isBullet = /^[-•·]\s/.test(line);
         const parts = line.replace(/^[-•·]\s/, "").split(/\*\*(.+?)\*\*/g);
         return (
-          <Box key={i} sx={{ display: "flex", gap: isBullet ? 0.7 : 0, mb: lines.length > 1 ? 0.15 : 0 }}>
+          <Box key={i} sx={{ display: "flex", gap: isBullet ? 0.7 : 0, mb: 0.15 }}>
             {isBullet && <Box component="span" sx={{ color, opacity: 0.5, fontSize: "0.75rem", mt: "2px", flexShrink: 0 }}>•</Box>}
             <Typography component="span" sx={{ fontSize: "0.855rem", lineHeight: 1.65, color, display: "block" }}>
-              {parts.map((part, j) =>
-                j % 2 === 1
-                  ? <Box component="span" key={j} sx={{ fontWeight: 700 }}>{part}</Box>
-                  : part
-              )}
+              {parts.map((p, j) => j % 2 === 1 ? <Box component="span" key={j} sx={{ fontWeight: 700 }}>{p}</Box> : p)}
             </Typography>
           </Box>
         );
@@ -53,6 +108,28 @@ function FormattedMessage({ text, color }: { text: string; color: string }) {
     </Box>
   );
 }
+
+// ── Waveform bar animation ─────────────────────────────────────────────────────
+
+function WaveformBars({ color, count = 5 }: { color: string; count?: number }) {
+  return (
+    <Stack direction="row" spacing={0.4} alignItems="center" sx={{ height: 18 }}>
+      {Array.from({ length: count }).map((_, i) => (
+        <Box key={i} sx={{
+          width: 3, borderRadius: 2, background: color,
+          animation: "wavebar 1s ease-in-out infinite",
+          animationDelay: `${i * 0.12}s`,
+          "@keyframes wavebar": {
+            "0%,100%": { height: 4 },
+            "50%":      { height: 16 },
+          },
+        }} />
+      ))}
+    </Stack>
+  );
+}
+
+// ── Types ──────────────────────────────────────────────────────────────────────
 
 interface Message {
   id: string;
@@ -70,121 +147,203 @@ interface AssistantPanelProps {
 }
 
 declare global {
-  interface Window {
-    SpeechRecognition: any;
-    webkitSpeechRecognition: any;
-  }
+  interface Window { SpeechRecognition: any; webkitSpeechRecognition: any; }
 }
 
-const IDLE_PROMPT = { ur: "کیا آپ کو کسی چیز کی ضرورت ہے؟", en: "Is there anything you need?" };
+const sleep = (ms: number) => new Promise<void>(r => setTimeout(r, ms));
 
-const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+// ── Component ──────────────────────────────────────────────────────────────────
 
 export default function AssistantPanel({ open, onClose, voiceMode, setVoiceMode }: AssistantPanelProps) {
   const { mode } = useThemeMode();
   const navigate = useNavigate();
 
   const WELCOME: Message = {
-    id: "welcome", role: "assistant",
+    id: "welcome", role: "assistant", timestamp: new Date(),
     content: "Hello! I'm your **Invonta Assistant**.\n\nAsk me anything:\n- \"business summary\"\n- \"add a product\"\n- \"go to sales\"\n- \"check in Sara\"",
-    timestamp: new Date(),
   };
-  const [messages, setMessages] = useState<Message[]>([WELCOME]);
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [language, setLanguage] = useState<"ur" | "en">("ur");
-  const [ttsEnabled, setTtsEnabled] = useState(true);
+
+  const [messages,    setMessages]    = useState<Message[]>([WELCOME]);
+  const [input,       setInput]       = useState("");
+  const [loading,     setLoading]     = useState(false);
+  const [language,    setLanguage]    = useState<"ur" | "en">("ur");
+  const [ttsEnabled,  setTtsEnabled]  = useState(true);
   const [isRecording, setIsRecording] = useState(false);
-  const [isOffline, setIsOffline] = useState(false);
+  const [isSpeaking,  setIsSpeaking]  = useState(false);
+  const [isOffline,   setIsOffline]   = useState(false);
+  const [voices,      setVoices]      = useState<SpeechSynthesisVoice[]>([]);
+
   const [sttSupported] = useState(() => !!(window.SpeechRecognition || window.webkitSpeechRecognition));
 
-  // Refs — all mutable state the async loop needs without stale closures
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const recognitionRef = useRef<any>(null);
-  const historyRef = useRef<Array<{ role: string; content: string }>>([]);
-  const voiceModeRef = useRef(voiceMode);
-  const openRef = useRef(open);
-  const loadingRef = useRef(false);
-  const isRecordingRef = useRef(false);
-  const languageRef = useRef(language);
-  const ttsEnabledRef = useRef(ttsEnabled);
-  const loopActiveRef = useRef(false); // single loop guard
+  // ── Refs ─────────────────────────────────────────────────────────────────────
+  const messagesEndRef   = useRef<HTMLDivElement>(null);
+  const recognitionRef   = useRef<any>(null);
+  const bargeInRef       = useRef<any>(null);
+  const historyRef       = useRef<Array<{ role: string; content: string }>>([]);
+  const voiceModeRef     = useRef(voiceMode);
+  const openRef          = useRef(open);
+  const loadingRef       = useRef(false);
+  const isRecordingRef   = useRef(false);
+  const isSpeakingRef    = useRef(false);
+  const languageRef      = useRef(language);
+  const ttsEnabledRef    = useRef(ttsEnabled);
+  const voicesRef        = useRef(voices);
+  const loopActiveRef    = useRef(false);
 
-  useEffect(() => { voiceModeRef.current = voiceMode; }, [voiceMode]);
-  useEffect(() => { openRef.current = open; }, [open]);
-  useEffect(() => { languageRef.current = language; }, [language]);
+  useEffect(() => { voiceModeRef.current  = voiceMode;  }, [voiceMode]);
+  useEffect(() => { openRef.current       = open;       }, [open]);
+  useEffect(() => { languageRef.current   = language;   }, [language]);
   useEffect(() => { ttsEnabledRef.current = ttsEnabled; }, [ttsEnabled]);
+  useEffect(() => { voicesRef.current     = voices;     }, [voices]);
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading]);
+  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, loading]);
 
   useEffect(() => {
     historyRef.current = messages
-      .filter((m) => m.id !== "welcome")
-      .map((m) => ({ role: m.role, content: m.content }));
+      .filter(m => m.id !== "welcome")
+      .map(m => ({ role: m.role, content: m.content }));
   }, [messages]);
 
-  // ── Promise-based TTS ───────────────────────────────────────────────────
-  const speakAsync = useCallback((text: string): Promise<void> => {
-    return new Promise((resolve) => {
-      if (!window.speechSynthesis) return resolve();
-      window.speechSynthesis.cancel();
-      const utt = new SpeechSynthesisUtterance(text);
-      const voices = window.speechSynthesis.getVoices();
-      const lang = languageRef.current;
-      const match = voices.find((v) => v.lang.startsWith(lang === "ur" ? "ur" : "en"));
-      if (match) utt.voice = match;
-      utt.lang = lang === "ur" ? "ur-PK" : "en-US";
-      utt.rate = lang === "ur" ? 0.9 : 1.0;
-      utt.onend = () => resolve();
-      utt.onerror = () => resolve();
-      window.speechSynthesis.speak(utt);
-    });
+  // ── Load voices ───────────────────────────────────────────────────────────
+  useEffect(() => {
+    const load = () => {
+      const v = window.speechSynthesis?.getVoices() || [];
+      if (v.length) setVoices(v);
+    };
+    load();
+    window.speechSynthesis?.addEventListener("voiceschanged", load);
+    return () => window.speechSynthesis?.removeEventListener("voiceschanged", load);
   }, []);
 
-  // ── Promise-based STT (single utterance) ────────────────────────────────
+  // ── Stop barge-in recognition ─────────────────────────────────────────────
+  const stopBargeIn = useCallback(() => {
+    try { bargeInRef.current?.abort(); } catch { /* noop */ }
+    bargeInRef.current = null;
+  }, []);
+
+  // ── TTS with barge-in detection ───────────────────────────────────────────
+  /**
+   * Speaks `text` using the best available voice.
+   * Runs a parallel SpeechRecognition to detect if the user starts speaking.
+   * If barge-in detected → cancels TTS immediately and returns the transcript.
+   */
+  const speakAsync = useCallback((text: string): Promise<{ bargedIn: boolean; transcript: string }> => {
+    return new Promise((resolve) => {
+      if (!window.speechSynthesis) return resolve({ bargedIn: false, transcript: "" });
+
+      window.speechSynthesis.cancel();
+      stopBargeIn();
+
+      const utt      = new SpeechSynthesisUtterance(cleanForSpeech(text));
+      const best     = selectBestVoice(voicesRef.current, languageRef.current);
+      if (best) utt.voice = best;
+      utt.lang   = languageRef.current === "ur" ? "ur-PK" : "en-US";
+      utt.rate   = languageRef.current === "ur" ? 0.88 : 0.94;
+      utt.pitch  = 1.05;
+      utt.volume = 1.0;
+
+      let settled = false;
+      const done = (bargedIn: boolean, transcript = "") => {
+        if (!settled) {
+          settled = true;
+          stopBargeIn();
+          isSpeakingRef.current = false;
+          setIsSpeaking(false);
+          resolve({ bargedIn, transcript });
+        }
+      };
+
+      // ── Barge-in listener ──────────────────────────────────────────────
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (SR && sttSupported) {
+        try {
+          const bi = new SR();
+          bargeInRef.current  = bi;
+          bi.lang             = languageRef.current === "ur" ? "ur-PK" : "en-US";
+          bi.continuous       = true;
+          bi.interimResults   = true;
+          bi.maxAlternatives  = 1;
+
+          let bargeTranscript = "";
+          let bargeTriggered  = false;
+
+          bi.onresult = (e: any) => {
+            if (bargeTriggered) return;
+            const interim = Array.from(e.results as any[])
+              .map((r: any) => r[0].transcript)
+              .join(" ")
+              .trim();
+
+            // Only trigger if user said at least a couple chars to avoid echo
+            if (interim.length > 3) {
+              bargeTriggered  = true;
+              bargeTranscript = interim;
+              window.speechSynthesis.cancel();
+              done(true, bargeTranscript);
+            }
+          };
+
+          bi.onerror = () => { /* ignore mic errors during barge-in */ };
+          bi.onend   = () => { if (!bargeTriggered) { /* recognition ended normally */ } };
+          bi.start();
+        } catch { /* barge-in not available, degrade gracefully */ }
+      }
+
+      utt.onstart = () => { isSpeakingRef.current = true; setIsSpeaking(true); };
+      utt.onend   = () => done(false);
+      utt.onerror = () => done(false);
+      window.speechSynthesis.speak(utt);
+
+      // Chrome bug: speechSynthesis sometimes stalls — force resume every 10s
+      const keepAlive = setInterval(() => {
+        if (settled) { clearInterval(keepAlive); return; }
+        if (window.speechSynthesis.paused) window.speechSynthesis.resume();
+      }, 10000);
+    });
+  }, [stopBargeIn, sttSupported]);
+
+  // ── STT: listen once ──────────────────────────────────────────────────────
   const listenOnce = useCallback((): Promise<string | null> => {
     return new Promise((resolve) => {
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SR) return resolve(null);
-      if (isRecordingRef.current) { recognitionRef.current?.stop(); }
+
+      if (isRecordingRef.current) { try { recognitionRef.current?.stop(); } catch { /* noop */ } }
 
       const r = new SR();
       recognitionRef.current = r;
-      r.lang = languageRef.current === "ur" ? "ur-PK" : "en-US";
-      r.interimResults = false;
-      r.continuous = false;
-      r.maxAlternatives = 1;
+      r.lang             = languageRef.current === "ur" ? "ur-PK" : "en-US";
+      r.interimResults   = false;
+      r.continuous       = false;
+      r.maxAlternatives  = 1;
 
       let settled = false;
-      const done = (val: string | null) => { if (!settled) { settled = true; resolve(val); } };
+      const done = (val: string | null) => {
+        if (!settled) { settled = true; resolve(val); }
+      };
 
       r.onresult = (e: any) => done(e.results[0]?.[0]?.transcript?.trim() || null);
-      r.onerror = () => done(null);
-      r.onend = () => { isRecordingRef.current = false; setIsRecording(false); done(null); };
+      r.onerror  = () => done(null);
+      r.onend    = () => { isRecordingRef.current = false; setIsRecording(false); done(null); };
 
       try {
         r.start();
         isRecordingRef.current = true;
         setIsRecording(true);
-      } catch {
-        done(null);
-      }
+      } catch { done(null); }
     });
   }, []);
 
   const stopRecording = useCallback(() => {
-    try { recognitionRef.current?.stop(); } catch { /* ignore */ }
+    try { recognitionRef.current?.stop(); } catch { /* noop */ }
     isRecordingRef.current = false;
     setIsRecording(false);
   }, []);
 
-  // ── Send message ─────────────────────────────────────────────────────────
+  // ── Send a message ────────────────────────────────────────────────────────
   const sendMessage = useCallback(async (text: string): Promise<string> => {
     if (!text.trim()) return "";
-    const userMsg: Message = { id: `u-${Date.now()}`, role: "user", content: text, timestamp: new Date() };
-    setMessages((p) => [...p, userMsg]);
+    setMessages(p => [...p, { id: `u-${Date.now()}`, role: "user", content: text, timestamp: new Date() }]);
     loadingRef.current = true;
     setLoading(true);
 
@@ -198,114 +357,104 @@ export default function AssistantPanel({ open, onClose, voiceMode, setVoiceMode 
       }, { skipLoader: true } as any);
 
       const result = data?.data || data;
-      console.log("[Assistant] API Result:", result);
-      reply = result?.reply || "I could not process that.";
+      reply   = result?.reply  || "I could not process that.";
       offline = !!result?.offline;
       const action = result?.action;
 
       if (action?.type === "navigate" && action.route) {
-        console.log("[Assistant] Navigating to:", action.route);
         navigate(action.route);
-        onClose(); 
+        onClose();
       } else if (!action && reply.toLowerCase().includes("taking you to")) {
-        // Backup: Infer route from reply if AI forgets structured action
         const lower = reply.toLowerCase();
-        let target = "";
-        if (lower.includes("products")) target = "/products";
-        else if (lower.includes("sales")) target = "/sales";
-        else if (lower.includes("inventory")) target = "/inventory";
-        else if (lower.includes("purchasing")) target = "/purchasing";
-        else if (lower.includes("dashboard")) target = "/";
-        else if (lower.includes("customer")) target = "/partners";
-        else if (lower.includes("vendor")) target = "/partners";
-        
-        if (target) {
-          console.log("[Assistant] Inferred navigation to:", target);
-          navigate(target);
-          onClose();
-        }
+        const routeMap: [string, string][] = [
+          ["products", "/products"], ["sales", "/sales"],
+          ["inventory", "/inventory"], ["purchasing", "/purchasing"],
+          ["dashboard", "/"], ["customer", "/partners"], ["vendor", "/partners"],
+        ];
+        const found = routeMap.find(([kw]) => lower.includes(kw));
+        if (found) { navigate(found[1]); onClose(); }
       }
     } catch {
-      reply = "Connection failed.";
+      reply   = "Connection failed.";
       offline = true;
     }
 
     setIsOffline(offline);
-    const aMsg: Message = { id: `a-${Date.now()}`, role: "assistant", content: reply, timestamp: new Date(), offline };
-    setMessages((p) => [...p, aMsg]);
+    setMessages(p => [...p, { id: `a-${Date.now()}`, role: "assistant", content: reply, timestamp: new Date(), offline }]);
     loadingRef.current = false;
     setLoading(false);
     return reply;
   }, [navigate, onClose]);
 
-  const sendMessageRef = useRef(sendMessage);
-  const listenOnceRef = useRef(listenOnce);
-  const speakAsyncRef = useRef(speakAsync);
+  // Keep latest refs so the async loop always sees current versions
+  const sendMessageRef  = useRef(sendMessage);
+  const listenOnceRef   = useRef(listenOnce);
+  const speakAsyncRef   = useRef(speakAsync);
+  useEffect(() => { sendMessageRef.current  = sendMessage;  }, [sendMessage]);
+  useEffect(() => { listenOnceRef.current   = listenOnce;   }, [listenOnce]);
+  useEffect(() => { speakAsyncRef.current   = speakAsync;   }, [speakAsync]);
 
-  useEffect(() => { sendMessageRef.current = sendMessage; }, [sendMessage]);
-  useEffect(() => { listenOnceRef.current = listenOnce; }, [listenOnce]);
-  useEffect(() => { speakAsyncRef.current = speakAsync; }, [speakAsync]);
-
-  // ── Voice loop (async state machine) ────────────────────────────────────
+  // ── Voice loop ────────────────────────────────────────────────────────────
   const runVoiceLoop = useCallback(async () => {
-    if (loopActiveRef.current) return; // only one loop at a time
+    if (loopActiveRef.current) return;
     loopActiveRef.current = true;
 
     const SESSION_TIMEOUT_MS = 30000;
     let lastActivityMs = Date.now();
-    let shouldPrompt = false; 
+    let shouldPrompt   = false;
 
     while (voiceModeRef.current && !openRef.current) {
       if (shouldPrompt && ttsEnabledRef.current) {
         await speakAsyncRef.current(IDLE_PROMPT[languageRef.current]);
-        shouldPrompt = false; 
+        shouldPrompt = false;
       }
-      
+
       if (!voiceModeRef.current || openRef.current) break;
 
       const transcript = await listenOnceRef.current();
       if (!voiceModeRef.current || openRef.current) break;
 
       if (transcript) {
-        lastActivityMs = Date.now(); 
+        lastActivityMs = Date.now();
         const reply = await sendMessageRef.current(transcript);
-        
+
         if (!voiceModeRef.current || openRef.current) break;
-        
+
         if (ttsEnabledRef.current && reply) {
-          await speakAsyncRef.current(reply);
+          const { bargedIn, transcript: bargeText } = await speakAsyncRef.current(reply);
+          if (bargedIn && bargeText) {
+            // Process barge-in immediately without waiting for next loop turn
+            lastActivityMs = Date.now();
+            const nextReply = await sendMessageRef.current(bargeText);
+            if (ttsEnabledRef.current && nextReply) {
+              await speakAsyncRef.current(nextReply);
+            }
+          }
         }
-        
-        shouldPrompt = false; 
-        await sleep(1000); 
+
+        shouldPrompt = false;
+        await sleep(600);
       } else {
         const elapsed = Date.now() - lastActivityMs;
-        if (elapsed >= SESSION_TIMEOUT_MS) {
-          setVoiceMode(false);
-          break;
-        }
-
-        if (elapsed > 12000) {
-          shouldPrompt = true;
-        }
-
-        await sleep(1500); 
+        if (elapsed >= SESSION_TIMEOUT_MS) { setVoiceMode(false); break; }
+        if (elapsed > 12000) shouldPrompt = true;
+        await sleep(1200);
       }
     }
 
     loopActiveRef.current = false;
   }, [setVoiceMode]);
 
-  // Start loop when voice mode on and panel closed
+  // Start / stop voice loop
   useEffect(() => {
     if (voiceMode && !open) {
       runVoiceLoop();
-    } else if (!voiceMode || open) {
-      // Stop any ongoing recognition when panel opens or voice mode off
+    } else {
       stopRecording();
-      window.speechSynthesis?.cancel();
+      stopBargeIn();
+      if (!voiceMode) window.speechSynthesis?.cancel();
     }
-  }, [voiceMode, open, runVoiceLoop, stopRecording]);
+  }, [voiceMode, open, runVoiceLoop, stopRecording, stopBargeIn]);
 
   // Auto-listen when panel opens in voice mode
   useEffect(() => {
@@ -315,7 +464,13 @@ export default function AssistantPanel({ open, onClose, voiceMode, setVoiceMode 
         const transcript = await listenOnce();
         if (transcript && voiceModeRef.current) {
           const reply = await sendMessage(transcript);
-          if (ttsEnabledRef.current && reply) speakAsync(reply);
+          if (ttsEnabledRef.current && reply) {
+            const { bargedIn, transcript: bargeText } = await speakAsync(reply);
+            if (bargedIn && bargeText) {
+              const next = await sendMessage(bargeText);
+              if (ttsEnabledRef.current && next) speakAsync(next);
+            }
+          }
         }
       }, 500);
       return () => clearTimeout(t);
@@ -323,8 +478,10 @@ export default function AssistantPanel({ open, onClose, voiceMode, setVoiceMode 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, voiceMode]);
 
+  // ── Handlers ─────────────────────────────────────────────────────────────
   const handleClose = () => {
     stopRecording();
+    stopBargeIn();
     if (!voiceMode) window.speechSynthesis?.cancel();
     onClose();
   };
@@ -339,6 +496,7 @@ export default function AssistantPanel({ open, onClose, voiceMode, setVoiceMode 
     setVoiceMode(next);
     if (!next) {
       stopRecording();
+      stopBargeIn();
       window.speechSynthesis?.cancel();
     } else {
       setTtsEnabled(true);
@@ -349,22 +507,52 @@ export default function AssistantPanel({ open, onClose, voiceMode, setVoiceMode 
     if (isRecording) {
       stopRecording();
     } else {
+      if (isSpeaking) {
+        // barge in manually
+        window.speechSynthesis.cancel();
+        stopBargeIn();
+      }
       listenOnce().then(async (t) => {
         if (t) {
           const reply = await sendMessage(t);
-          if (ttsEnabledRef.current && reply) speakAsync(reply);
+          if (ttsEnabledRef.current && reply) {
+            const { bargedIn, transcript: bargeText } = await speakAsync(reply);
+            if (bargedIn && bargeText) {
+              const next = await sendMessage(bargeText);
+              if (ttsEnabledRef.current && next) speakAsync(next);
+            }
+          }
         }
       });
     }
   };
 
-  const isDark = mode === "dark";
-  const bg = isDark ? "#0d1117" : "#f8fafc";
-  const headerBg = "#0c1220";
-  const userBg = "linear-gradient(135deg, #0ea5e9, #6366f1)";
-  const aiBg = isDark ? "#1e293b" : "#ffffff";
-  const aiColor = isDark ? "#e2e8f0" : "#1e293b";
-  const aiBorder = isDark ? "1px solid rgba(255,255,255,0.07)" : "1px solid #e2e8f0";
+  // ── Style constants ───────────────────────────────────────────────────────
+  const isDark    = mode === "dark";
+  const bg        = isDark ? "#0d1117" : "#f8fafc";
+  const headerBg  = "#0c1220";
+  const userBg    = "linear-gradient(135deg, #0ea5e9, #6366f1)";
+  const aiBg      = isDark ? "#1e293b" : "#ffffff";
+  const aiColor   = isDark ? "#e2e8f0" : "#1e293b";
+  const aiBorder  = isDark ? "1px solid rgba(255,255,255,0.07)" : "1px solid #e2e8f0";
+
+  const statusLabel = isSpeaking
+    ? "🔊 Speaking..."
+    : isRecording
+      ? "🔴 Listening..."
+      : voiceMode
+        ? "🎙 Voice mode on"
+        : isOffline
+          ? "⚡ Offline mode"
+          : "⚡ AI Mode";
+
+  const statusColor = isSpeaking
+    ? "#38bdf8"
+    : isRecording
+      ? "#e11d48"
+      : voiceMode
+        ? "#f87171"
+        : "rgba(148,163,184,0.7)";
 
   return (
     <Drawer
@@ -384,15 +572,23 @@ export default function AssistantPanel({ open, onClose, voiceMode, setVoiceMode 
       }}
       ModalProps={{ keepMounted: true }}
     >
-      {/* ── Header Row 1 ── */}
+      {/* ── Header ── */}
       <Box sx={{ background: headerBg, flexShrink: 0 }}>
         <Box sx={{ px: 2, pt: 1.8, pb: 0.8, display: "flex", alignItems: "center", gap: 1.2 }}>
+          {/* Avatar with context-aware animation */}
           <Box sx={{
             width: 30, height: 30, borderRadius: "50%", flexShrink: 0,
-            background: voiceMode ? "linear-gradient(135deg,#e11d48,#6366f1)" : "linear-gradient(135deg,#0ea5e9,#6366f1)",
+            background: isSpeaking
+              ? "linear-gradient(135deg,#0ea5e9,#38bdf8)"
+              : voiceMode
+                ? "linear-gradient(135deg,#e11d48,#6366f1)"
+                : "linear-gradient(135deg,#0ea5e9,#6366f1)",
             display: "flex", alignItems: "center", justifyContent: "center",
-            animation: voiceMode ? "hGlow 1.6s ease-in-out infinite" : "none",
-            "@keyframes hGlow": { "0%,100%": { boxShadow: "0 0 0 0 rgba(225,29,72,0.6)" }, "50%": { boxShadow: "0 0 0 8px rgba(225,29,72,0)" } },
+            animation: (isRecording || isSpeaking) ? "hGlow 1.2s ease-in-out infinite" : "none",
+            "@keyframes hGlow": {
+              "0%,100%": { boxShadow: "0 0 0 0 rgba(14,165,233,0.55)" },
+              "50%":     { boxShadow: "0 0 0 9px rgba(14,165,233,0)" },
+            },
           }}>
             <SmartToyRoundedIcon sx={{ fontSize: 16, color: "#fff" }} />
           </Box>
@@ -411,11 +607,13 @@ export default function AssistantPanel({ open, onClose, voiceMode, setVoiceMode 
                 />
               )}
             </Stack>
-            <Typography sx={{ color: voiceMode ? "#f87171" : "rgba(148,163,184,0.7)", fontSize: "0.63rem", mt: 0.2 }}>
-              {voiceMode
-                ? (isRecording ? "🔴 Listening..." : "🎙 Voice mode on")
-                : (isOffline ? "⚡ Offline mode" : "⚡ AI Mode")}
-            </Typography>
+            <Stack direction="row" alignItems="center" spacing={0.8} sx={{ mt: 0.3 }}>
+              {isSpeaking && <WaveformBars color="#38bdf8" count={5} />}
+              {isRecording && !isSpeaking && <WaveformBars color="#e11d48" count={5} />}
+              <Typography sx={{ color: statusColor, fontSize: "0.63rem", fontWeight: 600 }}>
+                {statusLabel}
+              </Typography>
+            </Stack>
           </Box>
 
           <Stack direction="row" spacing={0.5}>
@@ -430,7 +628,7 @@ export default function AssistantPanel({ open, onClose, voiceMode, setVoiceMode 
           </Stack>
         </Box>
 
-        {/* ── Header Row 2: controls ── */}
+        {/* Controls row */}
         <Box sx={{ px: 2, pb: 1.4, display: "flex", alignItems: "center", gap: 1 }}>
           {/* Language toggle */}
           <Box sx={{ display: "flex", background: "rgba(255,255,255,0.06)", borderRadius: 2, p: "2px", gap: "2px" }}>
@@ -440,7 +638,7 @@ export default function AssistantPanel({ open, onClose, voiceMode, setVoiceMode 
                 background: language === lang ? "linear-gradient(135deg,#0ea5e9,#6366f1)" : "transparent",
                 transition: "background 0.18s",
               }}>
-                <Typography sx={{ fontSize: "0.68rem", fontWeight: 700, color: language === lang ? "#fff" : "rgba(148,163,184,0.55)", lineHeight: 1 }}>
+                <Typography sx={{ fontSize: "0.68rem", fontWeight: 700, lineHeight: 1, color: language === lang ? "#fff" : "rgba(148,163,184,0.55)" }}>
                   {lang === "ur" ? "اردو" : "EN"}
                 </Typography>
               </Box>
@@ -462,21 +660,25 @@ export default function AssistantPanel({ open, onClose, voiceMode, setVoiceMode 
           )}
 
           {/* TTS toggle */}
-          <Tooltip title={ttsEnabled ? "Mute" : "Unmute"}>
-            <IconButton size="small" onClick={() => { setTtsEnabled(v => !v); window.speechSynthesis?.cancel(); }} sx={{ color: ttsEnabled ? "#0ea5e9" : "#475569" }}>
+          <Tooltip title={ttsEnabled ? "Mute voice" : "Unmute voice"}>
+            <IconButton size="small" onClick={() => { setTtsEnabled(v => !v); window.speechSynthesis?.cancel(); stopBargeIn(); }} sx={{ color: ttsEnabled ? "#0ea5e9" : "#475569" }}>
               {ttsEnabled ? <VolumeUpRoundedIcon sx={{ fontSize: 17 }} /> : <VolumeOffRoundedIcon sx={{ fontSize: 17 }} />}
             </IconButton>
           </Tooltip>
         </Box>
 
-        {/* Loading bar */}
+        {/* Progress bar */}
         <Box sx={{
           height: 2,
           background: loading
             ? "linear-gradient(90deg,#0ea5e9,#6366f1,#0ea5e9)"
-            : voiceMode ? "rgba(248,113,113,0.25)" : "rgba(255,255,255,0.04)",
+            : isSpeaking
+              ? "linear-gradient(90deg,#38bdf8,#0ea5e9,#38bdf8)"
+              : voiceMode
+                ? "rgba(248,113,113,0.25)"
+                : "rgba(255,255,255,0.04)",
           backgroundSize: "200% 100%",
-          animation: loading ? "slide 1.2s linear infinite" : "none",
+          animation: (loading || isSpeaking) ? "slide 1.2s linear infinite" : "none",
           "@keyframes slide": { "0%": { backgroundPosition: "100% 0" }, "100%": { backgroundPosition: "-100% 0" } },
         }} />
       </Box>
@@ -506,15 +708,12 @@ export default function AssistantPanel({ open, onClose, voiceMode, setVoiceMode 
                   </Typography>
                 </Paper>
               </Box>
-              {/* Quick action chips after welcome message */}
               {msg.id.startsWith("welcome") && idx === 0 && (
                 <Box sx={{ mt: 1, display: "flex", flexWrap: "wrap", gap: 0.7 }}>
-                  {QUICK_ACTIONS.map((qa) => (
+                  {QUICK_ACTIONS.map(qa => (
                     <Chip
-                      key={qa.label}
-                      label={qa.label}
-                      size="small"
-                      onClick={() => { if (!loading) { sendMessage(qa.msg); } }}
+                      key={qa.label} label={qa.label} size="small"
+                      onClick={() => { if (!loading) sendMessage(qa.msg); }}
                       disabled={loading}
                       sx={{
                         fontSize: "0.72rem", cursor: "pointer", height: 24,
@@ -536,7 +735,7 @@ export default function AssistantPanel({ open, onClose, voiceMode, setVoiceMode 
           <Box sx={{ display: "flex" }}>
             <Paper elevation={0} sx={{ px: 1.8, py: 1.2, borderRadius: "16px 16px 16px 3px", background: aiBg, border: aiBorder }}>
               <Stack direction="row" spacing={0.4} alignItems="center">
-                {[0, 1, 2].map((i) => (
+                {[0, 1, 2].map(i => (
                   <Box key={i} sx={{
                     width: 6, height: 6, borderRadius: "50%", background: "#6366f1",
                     animation: "dot 1.2s ease-in-out infinite", animationDelay: `${i * 0.18}s`,
@@ -550,35 +749,70 @@ export default function AssistantPanel({ open, onClose, voiceMode, setVoiceMode 
         <div ref={messagesEndRef} />
       </Box>
 
-      {/* ── Input ── */}
-      <Box sx={{ px: 2, py: 1.4, flexShrink: 0, borderTop: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px solid #e2e8f0", background: isDark ? "#0d1117" : "#fff" }}>
-        {isRecording && (
+      {/* ── Input bar ── */}
+      <Box sx={{
+        px: 2, py: 1.4, flexShrink: 0,
+        borderTop: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px solid #e2e8f0",
+        background: isDark ? "#0d1117" : "#fff",
+      }}>
+        {(isRecording || isSpeaking) && (
           <Box sx={{ display: "flex", alignItems: "center", gap: 0.8, mb: 0.8 }}>
-            <Box sx={{ width: 6, height: 6, borderRadius: "50%", background: "#e11d48", animation: "blink 0.9s ease infinite", "@keyframes blink": { "0%,100%": { opacity: 1 }, "50%": { opacity: 0.2 } } }} />
-            <Typography sx={{ color: "#e11d48", fontSize: "0.72rem", fontWeight: 600 }}>
-              {language === "ur" ? "سن رہا ہوں..." : "Listening..."}
+            <Box sx={{
+              width: 6, height: 6, borderRadius: "50%",
+              background: isSpeaking ? "#38bdf8" : "#e11d48",
+              animation: "blink 0.9s ease infinite",
+              "@keyframes blink": { "0%,100%": { opacity: 1 }, "50%": { opacity: 0.2 } },
+            }} />
+            <Typography sx={{ fontSize: "0.72rem", fontWeight: 600, color: isSpeaking ? "#38bdf8" : "#e11d48" }}>
+              {isSpeaking
+                ? (language === "ur" ? "بول رہا ہوں — بولیں تو رک جاؤں گا" : "Speaking — talk to interrupt me")
+                : (language === "ur" ? "سن رہا ہوں..." : "Listening...")}
             </Typography>
           </Box>
         )}
 
         <Stack direction="row" spacing={0.8} alignItems="flex-end">
           {sttSupported && (
-            <IconButton onClick={handleManualMic} disabled={loading} size="small" sx={{
-              color: isRecording ? "#e11d48" : "#6366f1",
-              background: isRecording ? "rgba(225,29,72,0.09)" : "rgba(99,102,241,0.08)",
-              "&:hover": { background: isRecording ? "rgba(225,29,72,0.16)" : "rgba(99,102,241,0.14)" },
-              mb: 0.3, width: 38, height: 38,
-            }}>
-              {isRecording ? <MicOffRoundedIcon fontSize="small" /> : <MicRoundedIcon fontSize="small" />}
-            </IconButton>
+            <Tooltip title={isSpeaking ? "Interrupt & speak" : isRecording ? "Stop" : "Speak"}>
+              <IconButton
+                onClick={handleManualMic}
+                disabled={loading}
+                size="small"
+                sx={{
+                  color: isSpeaking ? "#38bdf8" : isRecording ? "#e11d48" : "#6366f1",
+                  background: isSpeaking
+                    ? "rgba(56,189,248,0.12)"
+                    : isRecording
+                      ? "rgba(225,29,72,0.09)"
+                      : "rgba(99,102,241,0.08)",
+                  "&:hover": {
+                    background: isSpeaking
+                      ? "rgba(56,189,248,0.2)"
+                      : isRecording
+                        ? "rgba(225,29,72,0.16)"
+                        : "rgba(99,102,241,0.14)",
+                  },
+                  mb: 0.3, width: 38, height: 38,
+                  animation: isRecording ? "pulse 1.2s ease infinite" : "none",
+                  "@keyframes pulse": { "0%,100%": { boxShadow: "0 0 0 0 rgba(225,29,72,0.4)" }, "50%": { boxShadow: "0 0 0 6px rgba(225,29,72,0)" } },
+                }}
+              >
+                {isRecording ? <MicOffRoundedIcon fontSize="small" /> : <MicRoundedIcon fontSize="small" />}
+              </IconButton>
+            </Tooltip>
           )}
 
           <TextField
             fullWidth multiline maxRows={3} size="small"
             placeholder={language === "ur" ? "یہاں لکھیں..." : "Type a message..."}
             value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); if (input.trim()) { sendMessage(input); setInput(""); } } }}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                if (input.trim()) { sendMessage(input); setInput(""); }
+              }
+            }}
             disabled={loading || isRecording}
             sx={{
               "& .MuiOutlinedInput-root": {

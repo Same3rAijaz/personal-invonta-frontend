@@ -67,6 +67,7 @@ import UdhaarReports from "./pages/udhaar/Reports";
 import Transactions from "./pages/superadmin/Transactions";
 import SubscriptionStatus from "./pages/superadmin/SubscriptionStatus";
 import MonthlyBilling from "./pages/superadmin/MonthlyBilling";
+import SubscriptionBlocked from "./pages/SubscriptionBlocked";
 import BorrowOrders from "./pages/borrows/BorrowOrders";
 import BorrowOrderCreate from "./pages/borrows/BorrowOrderCreate";
 import BorrowOrderDetail from "./pages/borrows/BorrowOrderDetail";
@@ -83,6 +84,7 @@ import Chat from "./pages/Chat";
 export default function App() {
   return (
     <Routes>
+      <Route path="/subscription-blocked" element={<SubscriptionBlocked />} />
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />

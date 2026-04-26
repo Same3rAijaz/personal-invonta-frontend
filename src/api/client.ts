@@ -105,6 +105,13 @@ api.interceptors.response.use(
     stopLoading(error?.config as RetryableRequest);
     const status = error?.response?.status;
     const originalRequest: RetryableRequest | undefined = error?.config;
+    if (status === 402) {
+      clearStoredAuthSession();
+      if (window.location.pathname !== "/subscription-blocked") {
+        window.location.href = "/subscription-blocked";
+      }
+      return Promise.reject(error);
+    }
     if (status === 401) {
       // Public/marketplace requests can opt out of business-auth redirects.
       if (originalRequest?.skipAuth) {
