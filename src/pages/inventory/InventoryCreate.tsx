@@ -3,12 +3,13 @@ import AddCircleOutline from "@mui/icons-material/AddCircleOutline";
 import SidebarLayout from "../../components/SidebarLayout";
 import TextField from "../../components/CustomTextField";
 import React from "react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { api } from "../../api/client";
 import { useToast } from "../../hooks/useToast";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useProducts } from "../../hooks/useProducts";
 import { useWarehouses } from "../../hooks/useWarehouses";
+import { useLocationsByWarehouse } from "../../hooks/useLocations";
 import { useQueryClient } from "@tanstack/react-query";
 import RelatedEntityDrawer from "../../components/RelatedEntityDrawer";
 
@@ -17,17 +18,30 @@ export default function InventoryCreate({ onSuccess, onCancel }: { onSuccess?: (
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const client = useQueryClient();
-  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<any>({
+  const { register, handleSubmit, watch, setValue, control, formState: { errors } } = useForm<any>({
     defaultValues: {
       action: searchParams.get("action") || "receive",
       productId: searchParams.get("productId") || "",
-      warehouseId: searchParams.get("warehouseId") || ""
+      warehouseId: searchParams.get("warehouseId") || "",
+      locationId: "",
+      toWarehouseId: "",
+      toLocationId: ""
     }
   });
   const action = watch("action");
   const { data: products } = useProducts({ page: 1, limit: 1000 });
   const { data: warehouses } = useWarehouses({ page: 1, limit: 1000 });
+  
+  const selectedWarehouseId = watch("warehouseId");
+  const selectedToWarehouseId = watch("toWarehouseId");
+  
+  const { data: fromLocations } = useLocationsByWarehouse(selectedWarehouseId);
+  const { data: toLocations } = useLocationsByWarehouse(selectedToWarehouseId);
+  
   const [warehouseDrawerOpen, setWarehouseDrawerOpen] = React.useState(false);
+  const [locationDrawerOpen, setLocationDrawerOpen] = React.useState(false);
+  const [toLocationDrawerOpen, setToLocationDrawerOpen] = React.useState(false);
+  const [creatingForWarehouse, setCreatingForWarehouse] = React.useState<string | undefined>();
 
   const selectedProductId = watch("productId");
 
@@ -49,32 +63,32 @@ export default function InventoryCreate({ onSuccess, onCancel }: { onSuccess?: (
 
   const onSubmit = async (values: any) => {
     try {
+      const baseItem = {
+        productId: values.productId,
+        warehouseId: values.warehouseId,
+        locationId: values.locationId || undefined,
+        qty: Number(values.qty),
+        unitCost: Number(values.unitCost)
+      };
+
       if (action === "stocktake") {
         await api.post("/inventory/stocktake", {
           items: [{
             productId: values.productId,
             warehouseId: values.warehouseId,
+            locationId: values.locationId || undefined,
             countedQty: Number(values.qty)
           }]
         });
       } else if (action === "transfer") {
         await api.post("/inventory/transfer", {
-          items: [{
-            productId: values.productId,
-            warehouseId: values.warehouseId,
-            qty: Number(values.qty),
-            unitCost: Number(values.unitCost)
-          }],
-          toWarehouseId: values.toWarehouseId
+          items: [baseItem],
+          toWarehouseId: values.toWarehouseId,
+          toLocationId: values.toLocationId || undefined
         });
       } else {
         await api.post(`/inventory/${action}`, {
-          items: [{
-            productId: values.productId,
-            warehouseId: values.warehouseId,
-            qty: Number(values.qty),
-            unitCost: Number(values.unitCost)
-          }]
+          items: [baseItem]
         });
       }
       await Promise.all([
@@ -126,41 +140,97 @@ export default function InventoryCreate({ onSuccess, onCancel }: { onSuccess?: (
             </TextField>
           </Grid>
           <Grid item xs={12} md={3}>
-            <TextField
-              select
-              fullWidth
-              label="Warehouse *"
-              {...register("warehouseId", { required: "Warehouse is required" })}
-              value={watch("warehouseId") || ""}
-              error={!!errors.warehouseId}
-              helperText={errors.warehouseId?.message as string}
-            >
-              <MenuItem 
-                value="CREATE_NEW" 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setWarehouseDrawerOpen(true);
-                }}
-                sx={{ 
-                  fontWeight: 700, 
-                  color: "primary.main",
-                  borderBottom: "1px solid", 
-                  borderColor: "divider",
-                  py: 1.5,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 1
-                }}
-              >
-                <AddCircleOutline fontSize="small" />
-                Create New Warehouse
-              </MenuItem>
-              {(warehouses?.items || []).map((item: any) => (
-                <MenuItem key={item._id} value={item._id}>
-                  {item.name}
-                </MenuItem>
-              ))}
-            </TextField>
+            <Controller
+              name="warehouseId"
+              control={control}
+              rules={{ required: "Warehouse is required" }}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  select
+                  fullWidth
+                  label="Warehouse *"
+                  error={!!errors.warehouseId}
+                  helperText={errors.warehouseId?.message as string}
+                  onChange={(e: any) => {
+                    field.onChange(e);
+                    setValue("locationId", "");
+                  }}
+                >
+                  <MenuItem
+                    value="CREATE_NEW"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setWarehouseDrawerOpen(true);
+                    }}
+                    sx={{
+                      fontWeight: 700,
+                      color: "primary.main",
+                      borderBottom: "1px solid",
+                      borderColor: "divider",
+                      py: 1.5,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1
+                    }}
+                  >
+                    <AddCircleOutline fontSize="small" />
+                    Create New Warehouse
+                  </MenuItem>
+                  {(warehouses?.items || []).map((item: any) => (
+                    <MenuItem key={item._id} value={item._id}>
+                      {item.name}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              )}
+            />
+          </Grid>
+          <Grid item xs={12} md={3}>
+            <Controller
+              name="locationId"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  select
+                  fullWidth
+                  label="Location (Optional)"
+                  disabled={!selectedWarehouseId}
+                  value={field.value || ""}
+                >
+                  <MenuItem value="">
+                    <em>Select a location</em>
+                  </MenuItem>
+                  <MenuItem
+                    value="CREATE_NEW"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCreatingForWarehouse(selectedWarehouseId);
+                      setLocationDrawerOpen(true);
+                    }}
+                    sx={{
+                      fontWeight: 700,
+                      color: "primary.main",
+                      borderBottom: "1px solid",
+                      borderColor: "divider",
+                      py: 1.5,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1
+                    }}
+                  >
+                    <AddCircleOutline fontSize="small" />
+                    Create New Location
+                  </MenuItem>
+                  {(fromLocations?.items || []).map((item: any) => (
+                    <MenuItem key={item._id} value={item._id}>
+                      {item.name} {item.code ? `(${item.code})` : ""}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              )}
+            />
           </Grid>
           <Grid item xs={12} md={3}>
             <TextField
@@ -182,42 +252,98 @@ export default function InventoryCreate({ onSuccess, onCancel }: { onSuccess?: (
           </Grid>
           {action === "transfer" ? (
             <>
-              <Grid item xs={12} md={12}>
-                <TextField 
-                  select
-                  fullWidth 
-                  label="To Warehouse *" 
-                  {...register("toWarehouseId", { required: action === "transfer" ? "Destination warehouse is required" : false })} 
-                  value={watch("toWarehouseId") || ""}
-                  error={action === "transfer" && !!errors.toWarehouseId}
-                  helperText={action === "transfer" ? errors.toWarehouseId?.message as string : undefined}
-                >
-                  <MenuItem 
-                    value="CREATE_NEW" 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setWarehouseDrawerOpen(true);
-                    }}
-                    sx={{ 
-                      fontWeight: 700, 
-                      color: "primary.main",
-                      borderBottom: "1px solid", 
-                      borderColor: "divider",
-                      py: 1.5,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 1
-                    }}
-                  >
-                    <AddCircleOutline fontSize="small" />
-                    Create New Warehouse
-                  </MenuItem>
-                  {(warehouses?.items || []).map((item: any) => (
-                    <MenuItem key={item._id} value={item._id}>
-                      {item.name}
-                    </MenuItem>
-                  ))}
-                </TextField>
+              <Grid item xs={12} md={6}>
+                <Controller
+                  name="toWarehouseId"
+                  control={control}
+                  rules={{ required: action === "transfer" ? "Destination warehouse is required" : false }}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      select
+                      fullWidth
+                      label="To Warehouse *"
+                      error={action === "transfer" && !!errors.toWarehouseId}
+                      helperText={action === "transfer" ? errors.toWarehouseId?.message as string : undefined}
+                      onChange={(e: any) => {
+                        field.onChange(e);
+                        setValue("toLocationId", "");
+                      }}
+                    >
+                      <MenuItem
+                        value="CREATE_NEW"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setWarehouseDrawerOpen(true);
+                        }}
+                        sx={{
+                          fontWeight: 700,
+                          color: "primary.main",
+                          borderBottom: "1px solid",
+                          borderColor: "divider",
+                          py: 1.5,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 1
+                        }}
+                      >
+                        <AddCircleOutline fontSize="small" />
+                        Create New Warehouse
+                      </MenuItem>
+                      {(warehouses?.items || []).map((item: any) => (
+                        <MenuItem key={item._id} value={item._id}>
+                          {item.name}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                  )}
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <Controller
+                  name="toLocationId"
+                  control={control}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      select
+                      fullWidth
+                      label="To Location (Optional)"
+                      disabled={!selectedToWarehouseId}
+                      value={field.value || ""}
+                    >
+                      <MenuItem value="">
+                        <em>Select a location</em>
+                      </MenuItem>
+                      <MenuItem
+                        value="CREATE_NEW"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCreatingForWarehouse(selectedToWarehouseId);
+                          setToLocationDrawerOpen(true);
+                        }}
+                        sx={{
+                          fontWeight: 700,
+                          color: "primary.main",
+                          borderBottom: "1px solid",
+                          borderColor: "divider",
+                          py: 1.5,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 1
+                        }}
+                      >
+                        <AddCircleOutline fontSize="small" />
+                        Create New Location
+                      </MenuItem>
+                      {(toLocations?.items || []).map((item: any) => (
+                        <MenuItem key={item._id} value={item._id}>
+                          {item.name} {item.code ? `(${item.code})` : ""}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                  )}
+                />
               </Grid>
             </>
           ) : null}
@@ -236,6 +362,36 @@ export default function InventoryCreate({ onSuccess, onCancel }: { onSuccess?: (
           if (action === "transfer") {
             setValue("toWarehouseId", nextId, { shouldDirty: true, shouldValidate: true });
           }
+        }}
+      />
+      <RelatedEntityDrawer
+        open={locationDrawerOpen}
+        type="location"
+        warehouseId={creatingForWarehouse}
+        onClose={() => {
+          setLocationDrawerOpen(false);
+          setCreatingForWarehouse(undefined);
+          if (watch("locationId") === "CREATE_NEW") setValue("locationId", "", { shouldValidate: true });
+        }}
+        onCreated={(entity) => {
+          const nextId = String(entity?._id || "");
+          setValue("locationId", nextId, { shouldDirty: true, shouldValidate: true });
+          setCreatingForWarehouse(undefined);
+        }}
+      />
+      <RelatedEntityDrawer
+        open={toLocationDrawerOpen}
+        type="location"
+        warehouseId={creatingForWarehouse}
+        onClose={() => {
+          setToLocationDrawerOpen(false);
+          setCreatingForWarehouse(undefined);
+          if (watch("toLocationId") === "CREATE_NEW") setValue("toLocationId", "", { shouldValidate: true });
+        }}
+        onCreated={(entity) => {
+          const nextId = String(entity?._id || "");
+          setValue("toLocationId", nextId, { shouldDirty: true, shouldValidate: true });
+          setCreatingForWarehouse(undefined);
         }}
       />
     </SidebarLayout>
