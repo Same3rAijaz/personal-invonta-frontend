@@ -221,21 +221,140 @@ export default function AssistantPanel({ open, onClose, voiceMode, setVoiceMode 
     bargeInRef.current = null;
   }, []);
 
-  // ── TTS with barge-in detection ───────────────────────────────────────────
-  /**
-   * Speaks `text` using the best available voice.
-   * Runs a parallel SpeechRecognition to detect if the user starts speaking.
-   * If barge-in detected → cancels TTS immediately and returns the transcript.
-   */
-  const speakAsync = useCallback((text: string): Promise<{ bargedIn: boolean; transcript: string }> => {
+  // ── Kokoro TTS (free, runs in-browser via ONNX) ───────────────────────────
+  const kokoroRef        = useRef<any>(null);
+  const kokoroLoadingRef = useRef(false);
+  const [kokoroStatus, setKokoroStatus] = useState<"idle" | "loading" | "ready" | "failed">("idle");
+
+  const loadKokoro = useCallback(async () => {
+    if (kokoroRef.current || kokoroLoadingRef.current) return;
+    kokoroLoadingRef.current = true;
+    setKokoroStatus("loading");
+    try {
+      const { KokoroTTS } = await import("kokoro-js");
+      kokoroRef.current = await KokoroTTS.from_pretrained(
+        "onnx-community/Kokoro-82M-v1.0_fp16",
+        { dtype: "fp16" },
+      );
+      setKokoroStatus("ready");
+    } catch {
+      setKokoroStatus("failed");
+    } finally {
+      kokoroLoadingRef.current = false;
+    }
+  }, []);
+
+  // Warm up Kokoro as soon as TTS is enabled or voice mode turns on
+  useEffect(() => {
+    if (ttsEnabled || voiceMode) loadKokoro();
+  }, [ttsEnabled, voiceMode, loadKokoro]);
+
+  // ── Shared barge-in starter ───────────────────────────────────────────────
+  const startBargeIn = useCallback((
+    lang: string,
+    onBarge: (transcript: string) => void,
+  ) => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR || !sttSupported) return;
+    try {
+      const bi = new SR();
+      bargeInRef.current = bi;
+      bi.lang            = lang;
+      bi.continuous      = true;
+      bi.interimResults  = true;
+      bi.maxAlternatives = 1;
+      let triggered = false;
+      bi.onresult = (e: any) => {
+        if (triggered) return;
+        const interim = Array.from(e.results as any[])
+          .map((r: any) => r[0].transcript).join(" ").trim();
+        if (interim.length > 3) { triggered = true; onBarge(interim); }
+      };
+      bi.onerror = () => {};
+      bi.start();
+    } catch { /* barge-in unavailable */ }
+  }, [sttSupported]);
+
+  // ── Play a Float32Array via Web Audio API with barge-in ───────────────────
+  const playAudioBuffer = useCallback((
+    samples: Float32Array,
+    sampleRate: number,
+    lang: string,
+  ): Promise<{ bargedIn: boolean; transcript: string }> => {
+    return new Promise((resolve) => {
+      let audioCtx: AudioContext | null = null;
+      let source: AudioBufferSourceNode | null = null;
+      let settled = false;
+
+      const done = (bargedIn: boolean, transcript = "") => {
+        if (settled) return;
+        settled = true;
+        stopBargeIn();
+        try { source?.stop(); } catch { /* noop */ }
+        try { audioCtx?.close(); } catch { /* noop */ }
+        isSpeakingRef.current = false;
+        setIsSpeaking(false);
+        resolve({ bargedIn, transcript });
+      };
+
+      try {
+        audioCtx = new AudioContext();
+        const buf = audioCtx.createBuffer(1, samples.length, sampleRate);
+        buf.getChannelData(0).set(samples);
+        source = audioCtx.createBufferSource();
+        source.buffer = buf;
+        source.connect(audioCtx.destination);
+        source.onended = () => done(false);
+
+        isSpeakingRef.current = true;
+        setIsSpeaking(true);
+        source.start();
+
+        startBargeIn(lang, (transcript) => done(true, transcript));
+      } catch {
+        done(false);
+      }
+    });
+  }, [stopBargeIn, startBargeIn]);
+
+  // ── Kokoro speak ──────────────────────────────────────────────────────────
+  const speakWithKokoro = useCallback(async (
+    text: string,
+  ): Promise<{ bargedIn: boolean; transcript: string } | null> => {
+    if (!kokoroRef.current) return null;
+    // Kokoro only handles English well; for Urdu fall through to browser TTS
+    if (languageRef.current === "ur") return null;
+
+    const cleaned = cleanForSpeech(text);
+    if (!cleaned) return null;
+
+    isSpeakingRef.current = true;
+    setIsSpeaking(true);
+
+    try {
+      const result = await kokoroRef.current.generate(cleaned, { voice: "af_heart" });
+      // result.audio: Float32Array, result.sampling_rate: 24000
+      const lang = "en-US";
+      return await playAudioBuffer(result.audio, result.sampling_rate, lang);
+    } catch {
+      isSpeakingRef.current = false;
+      setIsSpeaking(false);
+      return null;
+    }
+  }, [playAudioBuffer]);
+
+  // ── Browser TTS fallback (Urdu + when Kokoro isn't ready) ────────────────
+  const speakWithBrowserTts = useCallback((
+    text: string,
+  ): Promise<{ bargedIn: boolean; transcript: string }> => {
     return new Promise((resolve) => {
       if (!window.speechSynthesis) return resolve({ bargedIn: false, transcript: "" });
 
       window.speechSynthesis.cancel();
       stopBargeIn();
 
-      const utt      = new SpeechSynthesisUtterance(cleanForSpeech(text));
-      const best     = selectBestVoice(voicesRef.current, languageRef.current);
+      const utt  = new SpeechSynthesisUtterance(cleanForSpeech(text));
+      const best = selectBestVoice(voicesRef.current, languageRef.current);
       if (best) utt.voice = best;
       utt.lang   = languageRef.current === "ur" ? "ur-PK" : "en-US";
       utt.rate   = languageRef.current === "ur" ? 0.88 : 0.94;
@@ -244,63 +363,37 @@ export default function AssistantPanel({ open, onClose, voiceMode, setVoiceMode 
 
       let settled = false;
       const done = (bargedIn: boolean, transcript = "") => {
-        if (!settled) {
-          settled = true;
-          stopBargeIn();
-          isSpeakingRef.current = false;
-          setIsSpeaking(false);
-          resolve({ bargedIn, transcript });
-        }
+        if (settled) return;
+        settled = true;
+        stopBargeIn();
+        isSpeakingRef.current = false;
+        setIsSpeaking(false);
+        resolve({ bargedIn, transcript });
       };
 
-      // ── Barge-in listener ──────────────────────────────────────────────
-      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (SR && sttSupported) {
-        try {
-          const bi = new SR();
-          bargeInRef.current  = bi;
-          bi.lang             = languageRef.current === "ur" ? "ur-PK" : "en-US";
-          bi.continuous       = true;
-          bi.interimResults   = true;
-          bi.maxAlternatives  = 1;
-
-          let bargeTranscript = "";
-          let bargeTriggered  = false;
-
-          bi.onresult = (e: any) => {
-            if (bargeTriggered) return;
-            const interim = Array.from(e.results as any[])
-              .map((r: any) => r[0].transcript)
-              .join(" ")
-              .trim();
-
-            // Only trigger if user said at least a couple chars to avoid echo
-            if (interim.length > 3) {
-              bargeTriggered  = true;
-              bargeTranscript = interim;
-              window.speechSynthesis.cancel();
-              done(true, bargeTranscript);
-            }
-          };
-
-          bi.onerror = () => { /* ignore mic errors during barge-in */ };
-          bi.onend   = () => { if (!bargeTriggered) { /* recognition ended normally */ } };
-          bi.start();
-        } catch { /* barge-in not available, degrade gracefully */ }
-      }
-
-      utt.onstart = () => { isSpeakingRef.current = true; setIsSpeaking(true); };
+      const lang = languageRef.current === "ur" ? "ur-PK" : "en-US";
+      utt.onstart = () => {
+        isSpeakingRef.current = true;
+        setIsSpeaking(true);
+        startBargeIn(lang, (transcript) => { window.speechSynthesis.cancel(); done(true, transcript); });
+      };
       utt.onend   = () => done(false);
       utt.onerror = () => done(false);
       window.speechSynthesis.speak(utt);
 
-      // Chrome bug: speechSynthesis sometimes stalls — force resume every 10s
       const keepAlive = setInterval(() => {
         if (settled) { clearInterval(keepAlive); return; }
         if (window.speechSynthesis.paused) window.speechSynthesis.resume();
       }, 10000);
     });
-  }, [stopBargeIn, sttSupported]);
+  }, [stopBargeIn, startBargeIn]);
+
+  // ── TTS dispatcher: Kokoro first, browser fallback ───────────────────────
+  const speakAsync = useCallback(async (text: string): Promise<{ bargedIn: boolean; transcript: string }> => {
+    const kokoroResult = await speakWithKokoro(text);
+    if (kokoroResult !== null) return kokoroResult;
+    return speakWithBrowserTts(text);
+  }, [speakWithKokoro, speakWithBrowserTts]);
 
   // ── STT: listen once ──────────────────────────────────────────────────────
   const listenOnce = useCallback((): Promise<string | null> => {
@@ -308,23 +401,34 @@ export default function AssistantPanel({ open, onClose, voiceMode, setVoiceMode 
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SR) return resolve(null);
 
-      if (isRecordingRef.current) { try { recognitionRef.current?.stop(); } catch { /* noop */ } }
+      try { recognitionRef.current?.stop(); } catch { /* noop */ }
 
       const r = new SR();
       recognitionRef.current = r;
-      r.lang             = languageRef.current === "ur" ? "ur-PK" : "en-US";
-      r.interimResults   = false;
-      r.continuous       = false;
-      r.maxAlternatives  = 1;
+      r.lang            = languageRef.current === "ur" ? "ur-PK" : "en-US";
+      r.interimResults  = false;
+      r.continuous      = false;
+      r.maxAlternatives = 1;
 
       let settled = false;
       const done = (val: string | null) => {
-        if (!settled) { settled = true; resolve(val); }
+        if (settled) return;
+        settled = true;
+        clearTimeout(noSpeechTimer);
+        isRecordingRef.current = false;
+        setIsRecording(false);
+        resolve(val);
       };
 
-      r.onresult = (e: any) => done(e.results[0]?.[0]?.transcript?.trim() || null);
+      // Safety timeout — Chrome sometimes fires no events at all (permission prompt, device busy)
+      const noSpeechTimer = setTimeout(() => done(null), 8000);
+
+      r.onresult = (e: any) => {
+        const t = e.results[0]?.[0]?.transcript?.trim() || null;
+        done(t);
+      };
       r.onerror  = () => done(null);
-      r.onend    = () => { isRecordingRef.current = false; setIsRecording(false); done(null); };
+      r.onend    = () => done(null);
 
       try {
         r.start();
@@ -394,7 +498,7 @@ export default function AssistantPanel({ open, onClose, voiceMode, setVoiceMode 
   useEffect(() => { listenOnceRef.current   = listenOnce;   }, [listenOnce]);
   useEffect(() => { speakAsyncRef.current   = speakAsync;   }, [speakAsync]);
 
-  // ── Voice loop ────────────────────────────────────────────────────────────
+  // ── Voice loop (runs whether panel is open or closed) ────────────────────
   const runVoiceLoop = useCallback(async () => {
     if (loopActiveRef.current) return;
     loopActiveRef.current = true;
@@ -403,27 +507,26 @@ export default function AssistantPanel({ open, onClose, voiceMode, setVoiceMode 
     let lastActivityMs = Date.now();
     let shouldPrompt   = false;
 
-    while (voiceModeRef.current && !openRef.current) {
-      if (shouldPrompt && ttsEnabledRef.current) {
+    while (voiceModeRef.current) {
+      if (shouldPrompt && ttsEnabledRef.current && !openRef.current) {
         await speakAsyncRef.current(IDLE_PROMPT[languageRef.current]);
         shouldPrompt = false;
       }
 
-      if (!voiceModeRef.current || openRef.current) break;
+      if (!voiceModeRef.current) break;
 
       const transcript = await listenOnceRef.current();
-      if (!voiceModeRef.current || openRef.current) break;
+      if (!voiceModeRef.current) break;
 
       if (transcript) {
         lastActivityMs = Date.now();
         const reply = await sendMessageRef.current(transcript);
 
-        if (!voiceModeRef.current || openRef.current) break;
+        if (!voiceModeRef.current) break;
 
         if (ttsEnabledRef.current && reply) {
           const { bargedIn, transcript: bargeText } = await speakAsyncRef.current(reply);
           if (bargedIn && bargeText) {
-            // Process barge-in immediately without waiting for next loop turn
             lastActivityMs = Date.now();
             const nextReply = await sendMessageRef.current(bargeText);
             if (ttsEnabledRef.current && nextReply) {
@@ -433,50 +536,28 @@ export default function AssistantPanel({ open, onClose, voiceMode, setVoiceMode 
         }
 
         shouldPrompt = false;
-        await sleep(600);
+        await sleep(400);
       } else {
         const elapsed = Date.now() - lastActivityMs;
         if (elapsed >= SESSION_TIMEOUT_MS) { setVoiceMode(false); break; }
-        if (elapsed > 12000) shouldPrompt = true;
-        await sleep(1200);
+        if (elapsed > 12000 && !openRef.current) shouldPrompt = true;
+        await sleep(800);
       }
     }
 
     loopActiveRef.current = false;
   }, [setVoiceMode]);
 
-  // Start / stop voice loop
+  // Start / stop voice loop — runs regardless of panel open state
   useEffect(() => {
-    if (voiceMode && !open) {
+    if (voiceMode) {
       runVoiceLoop();
     } else {
       stopRecording();
       stopBargeIn();
-      if (!voiceMode) window.speechSynthesis?.cancel();
+      window.speechSynthesis?.cancel();
     }
-  }, [voiceMode, open, runVoiceLoop, stopRecording, stopBargeIn]);
-
-  // Auto-listen when panel opens in voice mode
-  useEffect(() => {
-    if (open && voiceMode && !loadingRef.current) {
-      const t = setTimeout(async () => {
-        if (!openRef.current || !voiceModeRef.current) return;
-        const transcript = await listenOnce();
-        if (transcript && voiceModeRef.current) {
-          const reply = await sendMessage(transcript);
-          if (ttsEnabledRef.current && reply) {
-            const { bargedIn, transcript: bargeText } = await speakAsync(reply);
-            if (bargedIn && bargeText) {
-              const next = await sendMessage(bargeText);
-              if (ttsEnabledRef.current && next) speakAsync(next);
-            }
-          }
-        }
-      }, 500);
-      return () => clearTimeout(t);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, voiceMode]);
+  }, [voiceMode, runVoiceLoop, stopRecording, stopBargeIn]);
 
   // ── Handlers ─────────────────────────────────────────────────────────────
   const handleClose = () => {
@@ -537,14 +618,18 @@ export default function AssistantPanel({ open, onClose, voiceMode, setVoiceMode 
   const aiBorder  = isDark ? "1px solid rgba(255,255,255,0.07)" : "1px solid #e2e8f0";
 
   const statusLabel = isSpeaking
-    ? "🔊 Speaking..."
+    ? "Speaking..."
     : isRecording
-      ? "🔴 Listening..."
-      : voiceMode
-        ? "🎙 Voice mode on"
-        : isOffline
-          ? "⚡ Offline mode"
-          : "⚡ AI Mode";
+      ? "Listening..."
+      : kokoroStatus === "loading"
+        ? "Loading voice model..."
+        : voiceMode
+          ? "Voice mode on"
+          : isOffline
+            ? "Offline mode"
+            : kokoroStatus === "ready"
+              ? "AI Mode · Kokoro voice"
+              : "AI Mode";
 
   const statusColor = isSpeaking
     ? "#38bdf8"

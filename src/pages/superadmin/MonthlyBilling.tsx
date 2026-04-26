@@ -6,6 +6,8 @@ import {
   TextField, Tooltip, Typography
 } from "@mui/material";
 import TaskAltRoundedIcon from "@mui/icons-material/TaskAltRounded";
+import BlockRoundedIcon from "@mui/icons-material/BlockRounded";
+import LockOpenRoundedIcon from "@mui/icons-material/LockOpenRounded";
 import PageHeader from "../../components/PageHeader";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
@@ -102,6 +104,24 @@ export default function MonthlyBilling() {
       });
     }
   };
+
+  const blockBusiness = useMutation({
+    mutationFn: async (id: string) =>
+      (await api.patch(`/superadmin/businesses/${id}/block`, { reason: "Monthly subscription payment not received." })).data.data,
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: ["monthly-billing"] });
+      client.invalidateQueries({ queryKey: ["businesses"] });
+    }
+  });
+
+  const unblockBusiness = useMutation({
+    mutationFn: async (id: string) =>
+      (await api.patch(`/superadmin/businesses/${id}/unblock`)).data.data,
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: ["monthly-billing"] });
+      client.invalidateQueries({ queryKey: ["businesses"] });
+    }
+  });
 
   const approveSingle = useMutation({
     mutationFn: async ({ id, note }: { id: string; note?: string }) =>
@@ -301,18 +321,60 @@ export default function MonthlyBilling() {
                         <Chip size="small" label={cfg.label} color={cfg.color} />
                       </TableCell>
                       <TableCell>
-                        {status === "approved" ? (
-                          <Typography variant="caption" color="text.secondary">—</Typography>
-                        ) : (
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            color="success"
-                            onClick={() => { setSingleDialog({ open: true, id, name: row.name }); setSingleNote(""); }}
-                          >
-                            Approve
-                          </Button>
-                        )}
+                        <Stack direction="row" spacing={0.8} alignItems="center">
+                          {status !== "approved" && (
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              color="success"
+                              startIcon={<TaskAltRoundedIcon fontSize="small" />}
+                              onClick={() => { setSingleDialog({ open: true, id, name: row.name }); setSingleNote(""); }}
+                            >
+                              Approve
+                            </Button>
+                          )}
+                          {status === "blocked" ? (
+                            <Tooltip title="Unblock business">
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                color="primary"
+                                startIcon={<LockOpenRoundedIcon fontSize="small" />}
+                                onClick={async () => {
+                                  try {
+                                    await unblockBusiness.mutateAsync(id);
+                                    notify(`${row.name} unblocked`, "success");
+                                  } catch {
+                                    notify("Failed to unblock", "error");
+                                  }
+                                }}
+                                disabled={unblockBusiness.isPending}
+                              >
+                                Unblock
+                              </Button>
+                            </Tooltip>
+                          ) : (
+                            <Tooltip title="Block business immediately">
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                color="error"
+                                startIcon={<BlockRoundedIcon fontSize="small" />}
+                                onClick={async () => {
+                                  try {
+                                    await blockBusiness.mutateAsync(id);
+                                    notify(`${row.name} blocked`, "success");
+                                  } catch {
+                                    notify("Failed to block", "error");
+                                  }
+                                }}
+                                disabled={blockBusiness.isPending}
+                              >
+                                Block
+                              </Button>
+                            </Tooltip>
+                          )}
+                        </Stack>
                       </TableCell>
                     </TableRow>
                   );

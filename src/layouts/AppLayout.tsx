@@ -188,6 +188,24 @@ export default function AppLayout() {
       setupFCM();
   }, [business?._id]);
 
+  // ── Real-time block detection via Firebase ────────────────────────────────
+  // Works for ADMIN (business._id) and STAFF (user.businessId)
+  const blockWatchId = business?._id || user?.businessId;
+  useEffect(() => {
+    if (!blockWatchId || user?.role === "SUPER_ADMIN") return;
+    const unsub = onSnapshot(
+      doc(db, "business_blocks", blockWatchId),
+      (snap) => {
+        if (snap.exists()) {
+          logout();
+          navigate("/login");
+        }
+      },
+      (err) => { console.warn("Block listener error:", err.message); }
+    );
+    return () => unsub();
+  }, [blockWatchId]);
+
   const handleLogout = async () => {
       try {
           if (business?._id) {
