@@ -8,6 +8,9 @@ import ProductView from "./pages/products/ProductView";
 import Warehouses from "./pages/Warehouses";
 import WarehouseCreate from "./pages/warehouses/WarehouseCreate";
 import WarehouseEdit from "./pages/warehouses/WarehouseEdit";
+import Locations from "./pages/Locations";
+import LocationCreate from "./pages/locations/LocationCreate";
+import LocationEdit from "./pages/locations/LocationEdit";
 import Customers from "./pages/Customers";
 import CustomerCreate from "./pages/customers/CustomerCreate";
 import CustomerEdit from "./pages/customers/CustomerEdit";
@@ -111,6 +114,9 @@ export default function App() {
             <Route path="/warehouses" element={<Warehouses />} />
             <Route path="/warehouses/new" element={<WarehouseCreate />} />
             <Route path="/warehouses/:id/edit" element={<WarehouseEdit />} />
+            <Route path="/locations" element={<Locations />} />
+            <Route path="/locations/new" element={<LocationCreate />} />
+            <Route path="/locations/:id/edit" element={<LocationEdit />} />
             <Route path="/customers" element={<Customers />} />
             <Route path="/customers/new" element={<CustomerCreate />} />
             <Route path="/customers/:id/edit" element={<CustomerEdit />} />
