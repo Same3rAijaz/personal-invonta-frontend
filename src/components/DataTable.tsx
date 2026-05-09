@@ -126,10 +126,11 @@ export default function DataTable<T extends { id?: string }>({
     <Paper sx={{ borderRadius: 1, overflow: "hidden", width: "100%", maxWidth: "100%" }}>
       <Box
         sx={{
-          px: 2,
-          py: 1.5,
+          px: { xs: 1.5, sm: 2 },
+          py: { xs: 1.25, sm: 1.5 },
           display: "flex",
-          alignItems: "center",
+          flexDirection: { xs: "column", sm: "row" },
+          alignItems: { xs: "stretch", sm: "center" },
           justifyContent: "space-between",
           gap: 1.5,
           flexWrap: "wrap",
@@ -148,7 +149,7 @@ export default function DataTable<T extends { id?: string }>({
           direction={{ xs: "column", sm: "row" }}
           spacing={1}
           sx={{
-            ml: "auto",
+            ml: { xs: 0, sm: "auto" },
             minWidth: 0,
             width: { xs: "100%", sm: "auto" },
             maxWidth: "100%",
@@ -184,7 +185,7 @@ export default function DataTable<T extends { id?: string }>({
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
         transformOrigin={{ vertical: "top", horizontal: "right" }}
       >
-        <Box sx={{ p: 1.5, width: 280, display: "flex", flexDirection: "column", gap: 1.2 }}>
+        <Box sx={{ p: 1.5, width: { xs: "min(88vw, 320px)", sm: 280 }, display: "flex", flexDirection: "column", gap: 1.2 }}>
           {effectiveFilterFields.map((field) => {
             if (field.type === "numberRange") {
               return (
@@ -284,14 +285,14 @@ export default function DataTable<T extends { id?: string }>({
         </Box>
       </Menu>
 
-      <TableContainer sx={{ width: "100%", maxHeight: { xs: 420, md: 560 }, overflowX: "auto", overflowY: "auto" }}>
-        <Table size="small" stickyHeader sx={{ minWidth: "100%", width: "max-content" }}>
+      <TableContainer sx={{ width: "100%", maxHeight: { xs: 480, sm: 520, md: 560 }, overflowX: "auto", overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
+        <Table size="small" stickyHeader sx={{ minWidth: { xs: 600, md: "100%" }, width: "max-content" }}>
           <TableHead>
             <TableRow>
               {columns.map((col) => (
                 <TableCell
                   key={String(col.key)}
-                  sx={{ fontWeight: 700, textTransform: "uppercase", fontSize: "0.72rem", letterSpacing: 0.6, whiteSpace: "nowrap" }}
+                  sx={{ fontWeight: 700, textTransform: "uppercase", fontSize: { xs: "0.66rem", sm: "0.72rem" }, letterSpacing: 0.6, whiteSpace: "nowrap" }}
                 >
                   {col.label}
                 </TableCell>
@@ -349,16 +350,7 @@ export default function DataTable<T extends { id?: string }>({
           rowsPerPageOptions={[10, 20, 50, 100]}
           labelDisplayedRows={({ from, to, count }) => `${from}-${to} of ${count}`}
           sx={{
-            overflowX: "auto",
-            "& .MuiTablePagination-toolbar": {
-              flexWrap: "wrap",
-              rowGap: 1.2,
-              px: 2,
-              justifyContent: "flex-end"
-            },
-            "& .MuiTablePagination-spacer": {
-              display: "none"
-            }
+            "& .MuiTablePagination-toolbar": { justifyContent: { xs: "center", sm: "flex-end" } },
           }}
         />
       ) : null}

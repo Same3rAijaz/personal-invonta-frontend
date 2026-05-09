@@ -1,8 +1,10 @@
 import React from "react";
-import { Avatar, Box, Button, Card, Chip, Container, Divider, FormControl, Grid, IconButton, InputLabel, MenuItem, Pagination, Paper, Select, Stack, Typography } from "@mui/material";
+import { Avatar, Badge, Box, Button, Card, Chip, Container, Divider, Drawer, FormControl, Grid, IconButton, InputLabel, MenuItem, Pagination, Paper, Select, Stack, Typography } from "@mui/material";
 import TextField from "../../components/CustomTextField";;
 import { alpha, keyframes } from "@mui/material/styles";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
+import FilterListIcon from "@mui/icons-material/FilterList";
+import CloseIcon from "@mui/icons-material/Close";
 import ViewListIcon from "@mui/icons-material/ViewList";
 import GridViewIcon from "@mui/icons-material/GridView";
 import StorefrontIcon from "@mui/icons-material/Storefront";
@@ -72,7 +74,19 @@ export default function Marketplace() {
   const [viewMode, setViewMode] = React.useState<"list" | "grid">("list");
   const [page, setPage] = React.useState(1);
   const [semanticMode, setSemanticMode] = React.useState(true);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = React.useState(false);
   const { search: urlSearch } = useLocation();
+
+  const activeFilterCount = React.useMemo(() => {
+    let count = 0;
+    if (country) count++;
+    if (state) count++;
+    if (city) count++;
+    if (category) count++;
+    if (minPrice) count++;
+    if (maxPrice) count++;
+    return count;
+  }, [country, state, city, category, minPrice, maxPrice]);
 
   React.useEffect(() => {
     const params = new URLSearchParams(urlSearch);
@@ -297,6 +311,163 @@ export default function Marketplace() {
 
   const { isFavorited, toggle } = useFavorites();
 
+  const filtersPanel = (
+    <Stack spacing={1.5}>
+      {resultType !== "markets" ? (
+        <Paper sx={{ borderRadius: 1, p: 1.5, background: palette.surface, backgroundImage: 'none' }}>
+          <Typography variant="subtitle1" sx={{ color: palette.ink, fontWeight: 800, mb: 1.5, fontSize: 14 }}>
+            Categories
+          </Typography>
+          <Stack spacing={1}>
+            <Button
+              onClick={() => {
+                setCategory("");
+                setPage(1);
+              }}
+              sx={{ justifyContent: "flex-start", color: category ? palette.muted : palette.ink, fontWeight: category ? 500 : 700 }}
+            >
+              All categories
+            </Button>
+            {categories.map((item) => (
+              <Button
+                key={item._id}
+                onClick={() => {
+                  setCategory(item.path || (item.pathNames || [item.name]).join(" > "));
+                  setPage(1);
+                }}
+                sx={{
+                  justifyContent: "flex-start",
+                  pl: 1.4 + Number(item.level || 0) * 1.8,
+                  color: category === (item.path || (item.pathNames || [item.name]).join(" > ")) ? palette.ink : palette.muted,
+                  fontWeight: category === (item.path || (item.pathNames || [item.name]).join(" > ")) ? 700 : 500
+                }}
+              >
+                {item.name}
+              </Button>
+            ))}
+          </Stack>
+        </Paper>
+      ) : null}
+
+      <Paper sx={{ borderRadius: 1, p: 1.5, background: palette.surface, backgroundImage: 'none' }}>
+        <Typography variant="subtitle1" sx={{ color: palette.ink, fontWeight: 800, mb: 1, fontSize: 14 }}>
+          Location
+        </Typography>
+        <Stack spacing={1}>
+          <TextField
+            select
+            fullWidth
+            label="Country"
+            value={country}
+            onChange={(event) => {
+              setCountry(event.target.value);
+              setState("");
+              setCity("");
+              setPage(1);
+            }}
+          >
+            <MenuItem value="">Select Country</MenuItem>
+            {countryOptions.map((item: string) => (
+              <MenuItem key={item} value={item}>
+                {item}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            select
+            fullWidth
+            label="State"
+            value={state}
+            disabled={!country}
+            onChange={(event) => {
+              setState(event.target.value);
+              setCity("");
+              setPage(1);
+            }}
+          >
+            <MenuItem value="">Select State</MenuItem>
+            {stateOptions.map((item: string) => (
+              <MenuItem key={item} value={item}>
+                {item}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            select
+            fullWidth
+            label="City"
+            value={city}
+            disabled={!country || !state}
+            onChange={(event) => {
+              setCity(event.target.value);
+              setPage(1);
+            }}
+          >
+            <MenuItem value="">Select City</MenuItem>
+            {cityOptions.map((item: string) => (
+              <MenuItem key={item} value={item}>
+                {item}
+              </MenuItem>
+            ))}
+          </TextField>
+        </Stack>
+      </Paper>
+
+      {resultType === "products" ? (
+        <Paper sx={{ borderRadius: 1, p: 1.5, background: palette.surface, backgroundImage: 'none' }}>
+          <Typography variant="subtitle1" sx={{ color: palette.ink, fontWeight: 800, mb: 1, fontSize: 14 }}>
+            Price
+          </Typography>
+          <Stack direction="row" spacing={1}>
+            <TextField
+              fullWidth
+              label="Min"
+              type="number"
+              value={minPrice}
+              onChange={(event) => {
+                setMinPrice(event.target.value);
+                setPage(1);
+              }}
+            />
+            <TextField
+              fullWidth
+              label="Max"
+              type="number"
+              value={maxPrice}
+              onChange={(event) => {
+                setMaxPrice(event.target.value);
+                setPage(1);
+              }}
+            />
+          </Stack>
+        </Paper>
+      ) : null}
+
+      <Paper sx={{ borderRadius: 1, p: 1.5, background: palette.surface, backgroundImage: 'none' }}>
+        <Typography variant="subtitle1" sx={{ color: palette.ink, fontWeight: 800, mb: 1, fontSize: 14 }}>
+          Filters
+        </Typography>
+        <FormControl fullWidth size="small" sx={{ mb: 1.5 }}>
+          <InputLabel>Sort by</InputLabel>
+          <Select
+            value={currentSortValue}
+            label="Sort by"
+            onChange={(event) => handleSortChange(event.target.value)}
+          >
+            <MenuItem value="newest">{resultType === "markets" ? "Newest markets" : "Most relevant"}</MenuItem>
+            {resultType === "products" ? <MenuItem value="price_asc">Price: Low to High</MenuItem> : null}
+            {resultType === "products" ? <MenuItem value="price_desc">Price: High to Low</MenuItem> : null}
+            <MenuItem value="name_asc">Name A-Z</MenuItem>
+            {resultType === "markets" ? <MenuItem value="name_desc">Name Z-A</MenuItem> : null}
+          </Select>
+        </FormControl>
+        <Button fullWidth variant="outlined" onClick={resetFilters}>
+          Clear All
+        </Button>
+      </Paper>
+    </Stack>
+  );
+
   return (
     <Box sx={{ minHeight: "100vh", backgroundColor: palette.canvas }}>
       <MarketplaceHeader
@@ -330,186 +501,65 @@ export default function Marketplace() {
 
       <ParallaxHero palette={palette} />
 
-      <Container maxWidth="xl" sx={{ py: 4 }}>
+      <Container maxWidth="xl" sx={{ py: { xs: 2, md: 4 } }}>
         <Typography variant="body2" sx={{ color: palette.muted, mb: 1 }}>
           Home
         </Typography>
-        <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 2.5 }}>
+        <Stack
+          direction="row"
+          spacing={1.5}
+          alignItems="center"
+          flexWrap="wrap"
+          sx={{ mb: 2, rowGap: 1 }}
+        >
           <Typography variant="h5" sx={{ color: palette.ink, fontWeight: 800, fontSize: { xs: 18, md: 22 } }}>
             {resultType === "shops" ? "Shops in Marketplace" : resultType === "markets" ? "Markets Directory" : "Products in Marketplace"}
           </Typography>
           <Chip label={`${total.toLocaleString()} Results`} size="small" sx={{ bgcolor: alpha(palette.accent, 0.18), color: palette.ink, fontWeight: 700, fontSize: 12 }} />
+
+          {/* Mobile-only filters trigger */}
+          <Box sx={{ flexGrow: 1 }} />
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={
+              <Badge color="primary" badgeContent={activeFilterCount} invisible={activeFilterCount === 0}>
+                <FilterListIcon fontSize="small" />
+              </Badge>
+            }
+            onClick={() => setMobileFiltersOpen(true)}
+            sx={{
+              display: { xs: "inline-flex", md: "none" },
+              fontWeight: 700,
+              borderColor: palette.line,
+              color: palette.ink,
+              ml: "auto",
+            }}
+          >
+            Filters
+          </Button>
         </Stack>
 
         <Grid container spacing={2} alignItems="flex-start">
-          <Grid item xs={12} md={2.8}>
-            {resultType !== "markets" ? (
-              <Paper sx={{ borderRadius: 1, p: 1.5, mb: 1.5, background: palette.surface, backgroundImage: 'none' }}>
-                <Typography variant="subtitle1" sx={{ color: palette.ink, fontWeight: 800, mb: 1.5, fontSize: 14 }}>
-                  Categories
-                </Typography>
-                <Stack spacing={1}>
-                  <Button
-                    onClick={() => {
-                      setCategory("");
-                      setPage(1);
-                    }}
-                    sx={{ justifyContent: "flex-start", color: category ? palette.muted : palette.ink, fontWeight: category ? 500 : 700 }}
-                  >
-                    All categories
-                  </Button>
-                  {categories.map((item) => (
-                    <Button
-                      key={item._id}
-                      onClick={() => {
-                        setCategory(item.path || (item.pathNames || [item.name]).join(" > "));
-                        setPage(1);
-                      }}
-                      sx={{
-                        justifyContent: "flex-start",
-                        pl: 1.4 + Number(item.level || 0) * 1.8,
-                        color: category === (item.path || (item.pathNames || [item.name]).join(" > ")) ? palette.ink : palette.muted,
-                        fontWeight: category === (item.path || (item.pathNames || [item.name]).join(" > ")) ? 700 : 500
-                      }}
-                    >
-                      {item.name}
-                    </Button>
-                  ))}
-                </Stack>
-              </Paper>
-            ) : null}
-
-            <Paper sx={{ borderRadius: 1, p: 1.5, mb: 1.5, background: palette.surface, backgroundImage: 'none' }}>
-              <Typography variant="subtitle1" sx={{ color: palette.ink, fontWeight: 800, mb: 1, fontSize: 14 }}>
-                Location
-              </Typography>
-              <Stack spacing={1}>
-                <TextField
-                  select
-                  fullWidth
-                  label="Country"
-                  value={country}
-                  onChange={(event) => {
-                    setCountry(event.target.value);
-                    setState("");
-                    setCity("");
-                    setPage(1);
-                  }}
-                >
-                  <MenuItem value="">Select Country</MenuItem>
-                  {countryOptions.map((item: string) => (
-                    <MenuItem key={item} value={item}>
-                      {item}
-                    </MenuItem>
-                  ))}
-                </TextField>
-                <TextField
-                  select
-                  fullWidth
-                  label="State"
-                  value={state}
-                  disabled={!country}
-                  onChange={(event) => {
-                    setState(event.target.value);
-                    setCity("");
-                    setPage(1);
-                  }}
-                >
-                  <MenuItem value="">Select State</MenuItem>
-                  {stateOptions.map((item: string) => (
-                    <MenuItem key={item} value={item}>
-                      {item}
-                    </MenuItem>
-                  ))}
-                </TextField>
-                <TextField
-                  select
-                  fullWidth
-                  label="City"
-                  value={city}
-                  disabled={!country || !state}
-                  onChange={(event) => {
-                    setCity(event.target.value);
-                    setPage(1);
-                  }}
-                >
-                  <MenuItem value="">Select City</MenuItem>
-                  {cityOptions.map((item: string) => (
-                    <MenuItem key={item} value={item}>
-                      {item}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </Stack>
-            </Paper>
-
-            {resultType === "products" ? (
-              <Paper sx={{ borderRadius: 1, p: 1.5, mb: 1.5, background: palette.surface, backgroundImage: 'none' }}>
-                <Typography variant="subtitle1" sx={{ color: palette.ink, fontWeight: 800, mb: 1, fontSize: 14 }}>
-                  Price
-                </Typography>
-                <Stack direction="row" spacing={1}>
-                  <TextField
-                    fullWidth
-                    label="Min"
-                    type="number"
-                    value={minPrice}
-                    onChange={(event) => {
-                      setMinPrice(event.target.value);
-                      setPage(1);
-                    }}
-                  />
-                  <TextField
-                    fullWidth
-                    label="Max"
-                    type="number"
-                    value={maxPrice}
-                    onChange={(event) => {
-                      setMaxPrice(event.target.value);
-                      setPage(1);
-                    }}
-                  />
-                </Stack>
-              </Paper>
-            ) : null}
-
-            {resultType !== "markets" && (
-              <Box sx={{ mb: 1.5 }} />
-            )}
-
-            <Paper sx={{ borderRadius: 1, p: 1.5, background: palette.surface, backgroundImage: 'none' }}>
-              <Typography variant="subtitle1" sx={{ color: palette.ink, fontWeight: 800, mb: 1, fontSize: 14 }}>
-                Filters
-              </Typography>
-              <FormControl fullWidth size="small" sx={{ mb: 1.5 }}>
-                <InputLabel>Sort by</InputLabel>
-                <Select
-                  value={currentSortValue}
-                  label="Sort by"
-                  onChange={(event) => handleSortChange(event.target.value)}
-                >
-                  <MenuItem value="newest">{resultType === "markets" ? "Newest markets" : "Most relevant"}</MenuItem>
-                  {resultType === "products" ? <MenuItem value="price_asc">Price: Low to High</MenuItem> : null}
-                  {resultType === "products" ? <MenuItem value="price_desc">Price: High to Low</MenuItem> : null}
-                  <MenuItem value="name_asc">Name A-Z</MenuItem>
-                  {resultType === "markets" ? <MenuItem value="name_desc">Name Z-A</MenuItem> : null}
-                </Select>
-              </FormControl>
-              <Button fullWidth variant="outlined" onClick={resetFilters}>
-                Clear All
-              </Button>
-            </Paper>
+          <Grid item xs={12} md={2.8} sx={{ display: { xs: "none", md: "block" } }}>
+            {filtersPanel}
           </Grid>
 
           <Grid item xs={12} md={9.2}>
-            <Stack 
-              direction={{ xs: "column", sm: "row" }} 
-              justifyContent="space-between" 
-              alignItems={{ xs: "flex-start", sm: "center" }} 
-              spacing={{ xs: 1.5, sm: 0 }} 
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              justifyContent="space-between"
+              alignItems={{ xs: "stretch", sm: "center" }}
+              spacing={{ xs: 1.2, sm: 0 }}
               sx={{ mb: 1.8, px: 0.5 }}
             >
-              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" sx={{ width: { xs: "100%", sm: "auto" } }}>
+              <Stack
+                direction="row"
+                spacing={{ xs: 0.5, sm: 1 }}
+                alignItems="center"
+                flexWrap="nowrap"
+                sx={{ width: { xs: "100%", sm: "auto" }, overflowX: "auto" }}
+              >
                 <Button
                   variant={resultType === "products" ? "contained" : "outlined"}
                   onClick={() => {
@@ -517,7 +567,7 @@ export default function Marketplace() {
                     setPage(1);
                   }}
                   size="small"
-                  sx={{ minWidth: { xs: "auto", sm: 90 }, flex: { xs: 1, sm: "none" }, fontSize: 13 }}
+                  sx={{ minWidth: { xs: 0, sm: 90 }, flex: { xs: 1, sm: "none" }, fontSize: { xs: 12, sm: 13 }, whiteSpace: "nowrap", px: { xs: 1.25, sm: 2 } }}
                 >
                   Products
                 </Button>
@@ -528,7 +578,7 @@ export default function Marketplace() {
                     setPage(1);
                   }}
                   size="small"
-                  sx={{ minWidth: { xs: "auto", sm: 90 }, flex: { xs: 1, sm: "none" }, fontSize: 13 }}
+                  sx={{ minWidth: { xs: 0, sm: 90 }, flex: { xs: 1, sm: "none" }, fontSize: { xs: 12, sm: 13 }, whiteSpace: "nowrap", px: { xs: 1.25, sm: 2 } }}
                 >
                   Shops
                 </Button>
@@ -539,17 +589,18 @@ export default function Marketplace() {
                     setPage(1);
                   }}
                   size="small"
-                  sx={{ minWidth: { xs: "auto", sm: 90 }, flex: { xs: 1, sm: "none" }, fontSize: 13 }}
+                  sx={{ minWidth: { xs: 0, sm: 90 }, flex: { xs: 1, sm: "none" }, fontSize: { xs: 12, sm: 13 }, whiteSpace: "nowrap", px: { xs: 1.25, sm: 2 } }}
                 >
                   Markets
                 </Button>
                 {resultType === "products" ? (
-                  <Stack direction="row" spacing={0.5} alignItems="center" sx={{ ml: { xs: 0, sm: 1 }, mt: { xs: 0.5, sm: 0 } }}>
-                    <Typography sx={{ color: palette.ink, fontWeight: 700, fontSize: 13 }}>View</Typography>
+                  <Stack direction="row" spacing={0.5} alignItems="center" sx={{ ml: { xs: 0.5, sm: 1 }, flexShrink: 0 }}>
+                    <Typography sx={{ color: palette.ink, fontWeight: 700, fontSize: 13, display: { xs: "none", sm: "block" } }}>View</Typography>
                     <IconButton
                       size="small"
                       onClick={() => setViewMode("list")}
                       sx={{ bgcolor: viewMode === "list" ? alpha(palette.accent, 0.18) : "transparent" }}
+                      aria-label="List view"
                     >
                       <ViewListIcon fontSize="small" />
                     </IconButton>
@@ -557,6 +608,7 @@ export default function Marketplace() {
                       size="small"
                       onClick={() => setViewMode("grid")}
                       sx={{ bgcolor: viewMode === "grid" ? alpha(palette.accent, 0.18) : "transparent" }}
+                      aria-label="Grid view"
                     >
                       <GridViewIcon fontSize="small" />
                     </IconButton>
@@ -973,12 +1025,83 @@ export default function Marketplace() {
 
             {pages > 1 ? (
               <Stack direction="row" justifyContent="center" sx={{ mt: 3 }}>
-                <Pagination page={page} count={pages} color="primary" onChange={(_event, value) => setPage(value)} />
+                <Pagination
+                  page={page}
+                  count={pages}
+                  color="primary"
+                  size="small"
+                  siblingCount={0}
+                  boundaryCount={1}
+                  onChange={(_event, value) => setPage(value)}
+                  sx={{
+                    "& .MuiPaginationItem-root": { fontSize: { xs: "0.78rem", sm: "0.875rem" } },
+                  }}
+                />
               </Stack>
             ) : null}
           </Grid>
         </Grid>
       </Container>
+
+      {/* Mobile filters drawer (md and below) */}
+      <Drawer
+        anchor="right"
+        open={mobileFiltersOpen}
+        onClose={() => setMobileFiltersOpen(false)}
+        PaperProps={{
+          sx: {
+            width: { xs: "100vw", sm: 380 },
+            maxWidth: "100%",
+            background: palette.canvas,
+            display: "flex",
+            flexDirection: "column",
+          },
+        }}
+        ModalProps={{ keepMounted: false }}
+      >
+        <Box
+          sx={{
+            position: "sticky",
+            top: 0,
+            zIndex: 2,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            px: 2,
+            py: 1.5,
+            background: palette.surface,
+            borderBottom: `1px solid ${palette.line}`,
+          }}
+        >
+          <Typography sx={{ fontWeight: 800, color: palette.ink }}>
+            Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
+          </Typography>
+          <IconButton onClick={() => setMobileFiltersOpen(false)} aria-label="Close filters">
+            <CloseIcon />
+          </IconButton>
+        </Box>
+        <Box sx={{ p: 1.5, overflowY: "auto", flexGrow: 1 }}>{filtersPanel}</Box>
+        <Box
+          sx={{
+            position: "sticky",
+            bottom: 0,
+            zIndex: 2,
+            p: 1.5,
+            background: palette.surface,
+            borderTop: `1px solid ${palette.line}`,
+            display: "flex",
+            gap: 1,
+          }}
+        >
+          <Button fullWidth variant="outlined" onClick={resetFilters}>
+            Reset
+          </Button>
+          <Button fullWidth variant="contained" onClick={() => setMobileFiltersOpen(false)}>
+            Show {total.toLocaleString()} results
+          </Button>
+        </Box>
+      </Drawer>
+
       <PublicFooter />
     </Box>
   );

@@ -239,17 +239,44 @@ export default function MarketplaceShopDetail() {
             <Grid container spacing={1.8} alignItems="flex-start">
               <Grid item xs={12} md={8.5}>
                 <Paper sx={{ borderRadius: 1.5, overflow: "hidden", background: palette.surface, backgroundImage: 'none' }}>
-                  <Box sx={{ position: "relative", minHeight: 205, bgcolor: alpha(palette.ink, 0.08) }}>
+                  <Box sx={{ position: "relative", minHeight: { xs: 160, sm: 205 }, bgcolor: alpha(palette.ink, 0.08) }}>
                     {shop.bannerUrl ? (
-                      <Box component="img" src={shop.bannerUrl} sx={{ width: "100%", height: 205, objectFit: "cover", display: "block" }} />
+                      <Box component="img" src={shop.bannerUrl} sx={{ width: "100%", height: { xs: 160, sm: 205 }, objectFit: "cover", display: "block" }} />
                     ) : null}
-                    <Stack direction="row" spacing={1.2} alignItems="flex-end" sx={{ position: "absolute", left: 12, bottom: 10 }}>
-                      <Avatar src={shop.logoUrl || undefined} sx={{ width: 62, height: 62, border: "2px solid #fff" }} />
-                      <Box>
-                        <Typography sx={{ color: "#fff", textShadow: "0 2px 8px rgba(0,0,0,0.5)", fontSize: 26, fontWeight: 800, lineHeight: 1.1 }}>
+                    {/* Gradient overlay so banner text stays legible on bright photos */}
+                    <Box sx={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.55) 100%)" }} />
+                    <Stack
+                      direction="row"
+                      spacing={1.2}
+                      alignItems="flex-end"
+                      sx={{ position: "absolute", left: 12, right: 12, bottom: 10, minWidth: 0 }}
+                    >
+                      <Avatar src={shop.logoUrl || undefined} sx={{ width: { xs: 50, sm: 62 }, height: { xs: 50, sm: 62 }, border: "2px solid #fff", flexShrink: 0 }} />
+                      <Box sx={{ minWidth: 0, flexGrow: 1 }}>
+                        <Typography
+                          sx={{
+                            color: "#fff",
+                            textShadow: "0 2px 8px rgba(0,0,0,0.5)",
+                            fontSize: { xs: 20, sm: 26 },
+                            fontWeight: 800,
+                            lineHeight: 1.1,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
                           {shop.name}
                         </Typography>
-                        <Typography sx={{ color: "#fff", textShadow: "0 1px 6px rgba(0,0,0,0.45)", fontSize: 13 }}>
+                        <Typography
+                          sx={{
+                            color: "#fff",
+                            textShadow: "0 1px 6px rgba(0,0,0,0.45)",
+                            fontSize: { xs: 12, sm: 13 },
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
                           {shop.tagline || "Digital storefront"}
                         </Typography>
                       </Box>
@@ -257,14 +284,14 @@ export default function MarketplaceShopDetail() {
                   </Box>
 
                   <Box sx={{ p: 1 }}>
-                    <Stack direction="row" spacing={0.8}>
+                    <Stack direction="row" spacing={0.8} sx={{ overflowX: "auto" }}>
                       {(["products", "about", "reviews"] as ShopTab[]).map((tab) => (
                         <Button
                           key={tab}
                           size="small"
                           variant={activeTab === tab ? "contained" : "text"}
                           onClick={() => setActiveTab(tab)}
-                          sx={{ textTransform: "none", fontWeight: activeTab === tab ? 700 : 600 }}
+                          sx={{ textTransform: "none", fontWeight: activeTab === tab ? 700 : 600, flexShrink: 0 }}
                         >
                           {tab === "products" ? "Products" : tab === "about" ? "About" : "Reviews"}
                         </Button>

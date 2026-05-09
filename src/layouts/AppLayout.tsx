@@ -13,6 +13,7 @@ import DashboardRoundedIcon from '@mui/icons-material/DashboardRounded';
 import ShoppingBagRoundedIcon from '@mui/icons-material/ShoppingBagRounded';
 import InventoryRoundedIcon from '@mui/icons-material/InventoryRounded';
 import WarehouseRoundedIcon from '@mui/icons-material/WarehouseRounded';
+import RoomRoundedIcon from '@mui/icons-material/RoomRounded';
 import StoreRoundedIcon from '@mui/icons-material/StoreRounded';
 import BusinessRoundedIcon from '@mui/icons-material/BusinessRounded';
 import CategoryRoundedIcon from '@mui/icons-material/CategoryRounded';
@@ -413,7 +414,7 @@ export default function AppLayout() {
             ...(isAllowed("products") ? [{ label: "Products", to: "/products", icon: <ShoppingBagRoundedIcon /> }] : []),
             ...(isAllowed("inventory") ? [{ label: "Inventory", to: "/inventory", icon: <InventoryRoundedIcon /> }] : []),
             ...(isAllowed("warehouses") ? [{ label: "Warehouses", to: "/warehouses", icon: <WarehouseRoundedIcon /> }] : []),
-            ...(isAllowed("warehouses") ? [{ label: "Locations", to: "/locations", icon: <WarehouseRoundedIcon /> }] : []),
+            ...(isAllowed("warehouses") ? [{ label: "Locations", to: "/locations", icon: <RoomRoundedIcon /> }] : []),
             ...(isAllowed("purchasing") ? [{ label: "Purchasing", to: "/purchasing", icon: <ShoppingCartRoundedIcon /> }] : []),
             ...(isAllowed("sales") ? [{ label: "Sales", to: "/sales", icon: <MonetizationOnRoundedIcon /> }] : []),
             ...(isAllowed("sales") ? [{ label: "Sales Returns", to: "/sales/returns", icon: <KeyboardReturnRoundedIcon /> }] : []),
@@ -677,8 +678,14 @@ export default function AppLayout() {
           color: mode === "dark" ? "#f8fafc" : "#0f172a"
         }}
       >
-        <Toolbar sx={{ minHeight: 74, px: { xs: 2, md: 4 } }}>
-          <IconButton color="inherit" edge="start" onClick={() => setMobileOpen(!mobileOpen)} sx={{ mr: 2, display: { md: "none" } }}>
+        <Toolbar
+          sx={{
+            minHeight: { xs: 60, sm: 64, md: 74 },
+            px: { xs: 1.25, sm: 2, md: 4 },
+            gap: { xs: 0.5, sm: 1 },
+          }}
+        >
+          <IconButton color="inherit" edge="start" onClick={() => setMobileOpen(!mobileOpen)} sx={{ mr: { xs: 0.5, sm: 1, md: 2 }, display: { md: "none" } }}>
             <MenuIcon />
           </IconButton>
 
@@ -686,37 +693,54 @@ export default function AppLayout() {
             {collapsed ? <FormatIndentIncreaseIcon /> : <FormatIndentDecreaseIcon />}
           </IconButton>
 
-          <Box sx={{ flexGrow: 1 }} />
+          <Box sx={{ flexGrow: 1, minWidth: 0 }} />
 
-          <Stack direction="row" spacing={2} alignItems="center">
-            <IconButton sx={{ color: "#64748b" }}>
+          <Stack
+            direction="row"
+            spacing={{ xs: 0.25, sm: 1, md: 2 }}
+            alignItems="center"
+            sx={{ flexShrink: 0 }}
+          >
+            <IconButton component={Link} to="/notifications" sx={{ color: "#64748b" }}>
                <Badge badgeContent={unreadCount} color="error" overlap="circular">
                  <NotificationsRoundedIcon />
                </Badge>
             </IconButton>
 
-            <IconButton component={Link} to="/referrals" sx={{ color: "#64748b" }}>
+            {/* Hide secondary actions on phones — they live inside the avatar menu instead. */}
+            <IconButton component={Link} to="/referrals" sx={{ color: "#64748b", display: { xs: "none", sm: "inline-flex" } }}>
                <FavoriteRoundedIcon />
             </IconButton>
 
-            <Divider orientation="vertical" flexItem sx={{ my: 2 }} />
+            <Divider orientation="vertical" flexItem sx={{ my: 2, display: { xs: "none", sm: "block" } }} />
 
             <Box
               onClick={handleMenu}
-              sx={{ 
-                p: 0.5, pl: { sm: 1.5 }, pr: 1, 
-                borderRadius: 24, 
-                backgroundColor: "rgba(15,23,42,0.02)", 
+              sx={{
+                p: 0.5,
+                pl: { xs: 0.5, sm: 1.5 },
+                pr: { xs: 0.5, sm: 1 },
+                borderRadius: 24,
+                backgroundColor: "rgba(15,23,42,0.02)",
                 display: "flex",
                 alignItems: "center",
-                cursor: "pointer"
+                cursor: "pointer",
+                maxWidth: { xs: 56, sm: 240 },
               }}
             >
-              <Box sx={{ textAlign: "right", display: { xs: "none", sm: "block" }, mr: 1.5 }}>
-                <Typography variant="body2" sx={{ fontWeight: 700, color: "text.primary", lineHeight: 1.2 }}>
+              <Box
+                sx={{
+                  textAlign: "right",
+                  display: { xs: "none", sm: "block" },
+                  mr: 1.5,
+                  minWidth: 0,
+                  overflow: "hidden",
+                }}
+              >
+                <Typography variant="body2" sx={{ fontWeight: 700, color: "text.primary", lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 160 }}>
                   {displayName}
                 </Typography>
-                <Typography variant="caption" sx={{ color: "text.secondary", display: "block", mt: 0.2 }}>
+                <Typography variant="caption" sx={{ color: "text.secondary", display: "block", mt: 0.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 160 }}>
                   {isSuperAdmin ? "Super Admin" : (business?.name === displayName ? "Business Account" : (business?.name || "Member"))}
                 </Typography>
               </Box>
@@ -736,27 +760,81 @@ export default function AppLayout() {
             </Box>
 
             <Tooltip title={`Switch to ${mode === 'light' ? 'Dark' : 'Light'} Mode`}>
-              <IconButton onClick={toggleTheme} sx={{ color: "#64748b" }}>
+              <IconButton onClick={toggleTheme} sx={{ color: "#64748b", display: { xs: "none", sm: "inline-flex" } }}>
                  {mode === 'light' ? <DarkModeRoundedIcon /> : <LightModeRoundedIcon />}
               </IconButton>
             </Tooltip>
 
             {!isSuperAdmin && (
               <Tooltip title="Account Settings">
-                <IconButton component={Link} to="/settings/profile" sx={{ color: "#64748b" }}>
+                <IconButton component={Link} to="/settings/profile" sx={{ color: "#64748b", display: { xs: "none", sm: "inline-flex" } }}>
                   <SettingsSuggestRoundedIcon />
                 </IconButton>
               </Tooltip>
             )}
 
             <Tooltip title="Logout">
-              <IconButton onClick={handleLogout} sx={{ color: "#e11d48", bgcolor: "rgba(225,29,72,0.05)", "&:hover": { bgcolor: "rgba(225,29,72,0.12)" } }}>
+              <IconButton
+                onClick={handleLogout}
+                sx={{
+                  color: "#e11d48",
+                  bgcolor: "rgba(225,29,72,0.05)",
+                  display: { xs: "none", sm: "inline-flex" },
+                  "&:hover": { bgcolor: "rgba(225,29,72,0.12)" },
+                }}
+              >
                 <LogoutIcon />
               </IconButton>
             </Tooltip>
           </Stack>
         </Toolbar>
       </AppBar>
+
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleClose}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        transformOrigin={{ vertical: "top", horizontal: "right" }}
+        PaperProps={{
+          sx: { minWidth: 220, mt: 1, borderRadius: 2 },
+        }}
+      >
+        <Box sx={{ px: 2, py: 1.2 }}>
+          <Typography variant="body2" sx={{ fontWeight: 700, lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {displayName}
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>
+            {isSuperAdmin ? "Super Admin" : (business?.name || "Member")}
+          </Typography>
+        </Box>
+        <Divider />
+        <MenuItem component={Link} to="/notifications" onClick={handleClose}>
+          <ListItemIcon><NotificationsRoundedIcon fontSize="small" /></ListItemIcon>
+          <ListItemText>Notifications{unreadCount > 0 ? ` (${unreadCount})` : ""}</ListItemText>
+        </MenuItem>
+        <MenuItem component={Link} to="/referrals" onClick={handleClose}>
+          <ListItemIcon><FavoriteRoundedIcon fontSize="small" /></ListItemIcon>
+          <ListItemText>Referrals</ListItemText>
+        </MenuItem>
+        {!isSuperAdmin && (
+          <MenuItem component={Link} to="/settings/profile" onClick={handleClose}>
+            <ListItemIcon><SettingsSuggestRoundedIcon fontSize="small" /></ListItemIcon>
+            <ListItemText>Account Settings</ListItemText>
+          </MenuItem>
+        )}
+        <MenuItem onClick={() => { toggleTheme(); handleClose(); }}>
+          <ListItemIcon>
+            {mode === "light" ? <DarkModeRoundedIcon fontSize="small" /> : <LightModeRoundedIcon fontSize="small" />}
+          </ListItemIcon>
+          <ListItemText>{mode === "light" ? "Dark mode" : "Light mode"}</ListItemText>
+        </MenuItem>
+        <Divider />
+        <MenuItem onClick={() => { handleClose(); handleLogout(); }} sx={{ color: "#e11d48" }}>
+          <ListItemIcon><LogoutIcon fontSize="small" sx={{ color: "#e11d48" }} /></ListItemIcon>
+          <ListItemText>Logout</ListItemText>
+        </MenuItem>
+      </Menu>
 
       <Box component="nav" sx={{ width: { md: drawerWidth }, flexShrink: { md: 0 }, transition: "width 0.3s cubic-bezier(0.4, 0, 0.2, 1)" }}>
         <Drawer
@@ -803,9 +881,9 @@ export default function AppLayout() {
           flexGrow: 1,
           minWidth: 0,
           width: { xs: "100%", md: `calc(100% - ${drawerWidth}px)` },
-          px: { xs: 2, sm: 3, md: 4 },
-          py: { xs: 3, sm: 4, md: 4 },
-          mt: { xs: "74px" },
+          px: { xs: 1.5, sm: 3, md: 4 },
+          py: { xs: 2, sm: 3, md: 4 },
+          mt: { xs: "60px", sm: "64px", md: "74px" },
           minHeight: "100vh",
           overflowX: "hidden",
           background: mode === "dark" ? "#020617" : "#eff6ff",
@@ -824,11 +902,11 @@ export default function AppLayout() {
             onClick={() => setAssistantOpen(true)}
             sx={{
               position: "fixed",
-              bottom: 28,
-              right: 28,
+              bottom: { xs: 18, sm: 28 },
+              right: { xs: 16, sm: 28 },
               zIndex: 1300,
-              width: 56,
-              height: 56,
+              width: { xs: 52, sm: 56 },
+              height: { xs: 52, sm: 56 },
               borderRadius: "50%",
               background: voiceMode
                 ? "linear-gradient(135deg, #e11d48 0%, #6366f1 100%)"
