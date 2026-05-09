@@ -1,4 +1,4 @@
-import { Box, Button, MenuItem } from "@mui/material";
+import { Box, Button, MenuItem, Stack } from "@mui/material";
 import TextField from "../components/CustomTextField";
 import React from "react";
 import { useDeleteLocation, useLocations } from "../hooks/useLocations";
@@ -68,15 +68,18 @@ export default function Locations() {
         rows={data?.items || []}
         loading={isLoading}
         actions={
-          <Box sx={{ display: "flex", gap: 1 }}>
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={1}
+            sx={{ width: { xs: "100%", sm: "auto" } }}
+          >
             <TextField
               select
               size="small"
-              label="Filter by Warehouse"
+              label="Warehouse"
               value={warehouseFilter}
               onChange={(e: any) => setWarehouseFilter(e.target.value)}
-              sx={{ minWidth: 180 }}
-              SelectProps={{ displayEmpty: true }}
+              sx={{ width: { xs: "100%", sm: 200 } }}
             >
               <MenuItem value="">All Warehouses</MenuItem>
               {(warehouses?.items || []).map((w: any) => (
@@ -88,9 +91,9 @@ export default function Locations() {
               placeholder="Search locations"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              sx={{ minWidth: 240 }}
+              sx={{ width: { xs: "100%", sm: 240 } }}
             />
-          </Box>
+          </Stack>
         }
         page={page}
         rowsPerPage={rowsPerPage}

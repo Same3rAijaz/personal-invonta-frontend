@@ -121,21 +121,35 @@ export default function MarketplaceHeader(props: MarketplaceHeaderProps) {
 
   return (
     <Box>
-      <AppBar 
-        position="static" 
-        elevation={0} 
-        sx={{ 
-          background: mode === "dark" 
-            ? "linear-gradient(90deg, #0f172a 0%, #1e293b 100%)" 
+      <AppBar
+        position="static"
+        elevation={0}
+        sx={{
+          background: mode === "dark"
+            ? "linear-gradient(90deg, #0f172a 0%, #1e293b 100%)"
             : `linear-gradient(90deg, ${theme.palette.primary.main} 0%, ${alpha(theme.palette.primary.main, 0.88)} 100%)`,
           borderBottom: mode === "dark" ? "1px solid rgba(255,255,255,0.08)" : "none"
         }}
       >
         <Container maxWidth="xl">
-          <Toolbar disableGutters sx={{ minHeight: 52, gap: 2, justifyContent: "space-between" }}>
-            <Stack direction="row" spacing={1.1} alignItems="center">
-              <Box component="img" src="/Invonta.png" alt="Invonta" sx={{ width: 34, height: 34 }} />
-              <Typography sx={{ color: "#fff", fontWeight: 800, fontSize: 22, lineHeight: 1 }}>
+          <Toolbar
+            disableGutters
+            sx={{
+              minHeight: { xs: 56, sm: 52 },
+              gap: { xs: 1, sm: 2 },
+              justifyContent: "space-between",
+            }}
+          >
+            <Stack
+              component={Link}
+              to="/marketplace"
+              direction="row"
+              spacing={1.1}
+              alignItems="center"
+              sx={{ textDecoration: "none", minWidth: 0 }}
+            >
+              <Box component="img" src="/Invonta.png" alt="Invonta" sx={{ width: { xs: 28, sm: 34 }, height: { xs: 28, sm: 34 } }} />
+              <Typography sx={{ color: "#fff", fontWeight: 800, fontSize: { xs: 18, sm: 22 }, lineHeight: 1 }}>
                 Invonta
               </Typography>
               <Typography sx={{ color: alpha("#fff", 0.9), fontWeight: 700, display: { xs: "none", md: "block" } }}>
@@ -143,7 +157,7 @@ export default function MarketplaceHeader(props: MarketplaceHeaderProps) {
               </Typography>
             </Stack>
 
-            <Stack direction="row" spacing={1.2} alignItems="center">
+            <Stack direction="row" spacing={{ xs: 0.5, sm: 1.2 }} alignItems="center" sx={{ flexShrink: 0 }}>
               {marketplaceAuth.isAuthenticated ? (
                 <>
                   <Button
@@ -156,18 +170,20 @@ export default function MarketplaceHeader(props: MarketplaceHeaderProps) {
                       color: "#ffffff",
                       borderColor: alpha("#ffffff", 0.35),
                       fontWeight: 700,
-                      px: 1.75,
+                      px: { xs: 1, sm: 1.75 },
+                      minWidth: { xs: 40, sm: "auto" },
                       textTransform: "none",
                       whiteSpace: "nowrap",
+                      "& .MuiButton-startIcon": { mr: { xs: 0, sm: 1 } },
                       "&:hover": {
                         borderColor: "#ffffff",
                         bgcolor: alpha("#ffffff", 0.08)
                       }
                     }}
                   >
-                    Favorites
+                    <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>Favorites</Box>
                   </Button>
-                  <Stack direction="row" spacing={1} alignItems="center">
+                  <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>
                     {marketplaceAuth.profile?.avatarUrl ? (
                       <Avatar src={marketplaceAuth.profile.avatarUrl} sx={{ width: 32, height: 32, fontSize: 12 }} />
                     ) : (
@@ -175,7 +191,15 @@ export default function MarketplaceHeader(props: MarketplaceHeaderProps) {
                         {initials}
                       </Avatar>
                     )}
-                    <Typography sx={{ color: "#ffffff", fontWeight: 700, maxWidth: 220 }} noWrap>
+                    <Typography
+                      sx={{
+                        color: "#ffffff",
+                        fontWeight: 700,
+                        display: { xs: "none", md: "block" },
+                        maxWidth: 220,
+                      }}
+                      noWrap
+                    >
                       {displayName}
                     </Typography>
                   </Stack>
@@ -183,9 +207,16 @@ export default function MarketplaceHeader(props: MarketplaceHeaderProps) {
                     size="small"
                     variant="outlined"
                     onClick={handleMarketplaceLogout}
-                    sx={{ color: "#ffffff", borderColor: alpha("#ffffff", 0.5) }}
+                    sx={{
+                      color: "#ffffff",
+                      borderColor: alpha("#ffffff", 0.5),
+                      px: { xs: 1, sm: 2 },
+                      minWidth: { xs: "auto", sm: 88 },
+                      whiteSpace: "nowrap",
+                    }}
                   >
-                    Sign out
+                    <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>Sign out</Box>
+                    <Box component="span" sx={{ display: { xs: "inline", sm: "none" } }}>Exit</Box>
                   </Button>
                 </>
               ) : (
@@ -206,12 +237,12 @@ export default function MarketplaceHeader(props: MarketplaceHeaderProps) {
                       color: "#0b1220",
                       bgcolor: "#ffffff",
                       fontWeight: 700,
-                      minWidth: { xs: 170, sm: 210 },
-                      px: { xs: 1.5, sm: 2.25 },
+                      minWidth: { xs: "auto", sm: 210 },
+                      px: { xs: 1.25, sm: 2.25 },
                       textTransform: "none",
                       transition: "all 160ms ease",
                       "& .MuiButton-startIcon": {
-                        margin: "0 8px 0 -4px"
+                        margin: { xs: 0, sm: "0 8px 0 -4px" }
                       },
                       "&:hover": { bgcolor: alpha("#ffffff", 0.92) },
                       "&.Mui-disabled": {
@@ -220,7 +251,12 @@ export default function MarketplaceHeader(props: MarketplaceHeaderProps) {
                       }
                     }}
                   >
-                    {isGoogleLoading ? "Connecting to Google..." : "Continue with Google"}
+                    <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
+                      {isGoogleLoading ? "Connecting to Google..." : "Continue with Google"}
+                    </Box>
+                    <Box component="span" sx={{ display: { xs: "inline", sm: "none" } }}>
+                      {isGoogleLoading ? "..." : "Sign in"}
+                    </Box>
                   </Button>
                   <Button
                     component={Link}
@@ -231,16 +267,18 @@ export default function MarketplaceHeader(props: MarketplaceHeaderProps) {
                       color: "#ffffff",
                       borderColor: alpha("#ffffff", 0.35),
                       fontWeight: 700,
-                      px: 2,
-                      fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                      px: { xs: 1.25, sm: 2 },
+                      fontSize: { xs: "0.72rem", sm: "0.875rem" },
                       textTransform: "none",
+                      whiteSpace: "nowrap",
                       "&:hover": {
                         borderColor: "#ffffff",
                         bgcolor: alpha("#ffffff", 0.08)
                       }
                     }}
                   >
-                    Business Login
+                    <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>Business Login</Box>
+                    <Box component="span" sx={{ display: { xs: "inline", sm: "none" } }}>Business</Box>
                   </Button>
                 </>
               )}
@@ -251,8 +289,8 @@ export default function MarketplaceHeader(props: MarketplaceHeaderProps) {
 
       {showSearchBar ? (
         <Box sx={{ borderBottom: `1px solid ${alpha(theme.palette.text.primary, 0.1)}`, bgcolor: theme.palette.background.paper }}>
-          <Container maxWidth="xl" sx={{ py: 1.5 }}>
-            <Stack direction={{ xs: "column", md: "row" }} spacing={1.2}>
+          <Container maxWidth="xl" sx={{ py: { xs: 1, sm: 1.5 } }}>
+            <Stack direction={{ xs: "column", md: "row" }} spacing={{ xs: 1, md: 1.2 }}>
               <TextField
                 select
                 label="Location"
@@ -310,15 +348,17 @@ export default function MarketplaceHeader(props: MarketplaceHeaderProps) {
                   sx={{
                     borderTopLeftRadius: 0,
                     borderBottomLeftRadius: 0,
-                    px: { xs: 2, sm: 4 },
-                    minWidth: { xs: 'auto', sm: 122 },
+                    px: { xs: 2, sm: 3, md: 4 },
+                    minWidth: { xs: 56, sm: 132 },
+                    flexShrink: 0,
+                    whiteSpace: "nowrap",
                     background: mode === "dark" ? "linear-gradient(135deg, #2563eb 0%, #4f46e5 100%)" : `linear-gradient(135deg, #0b1220 0%, #172542 100%)`,
                     "& .MuiButton-startIcon": {
                        margin: { xs: 0, sm: "0 8px 0 -4px" }
                      }
                   }}
                 >
-                  <Box component="span" sx={{ display: { xs: 'none', sm: 'block' } }}>
+                  <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' }, whiteSpace: "nowrap" }}>
                     Search
                   </Box>
                 </Button>

@@ -85,17 +85,18 @@ function PageLayout({ isDark, children }: { isDark: boolean; children: React.Rea
           </Box>
         </Grid>
 
-        {/* Right content panel */}
+        {/* Right content panel — let the page scroll natively on mobile, only constrain on desktop */}
         <Grid item xs={12} md={6} sx={{
           background: isDark ? "#020617" : "linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%)",
           display: "flex",
           alignItems: "flex-start",
-          px: { xs: 3, md: 8 },
-          py: { xs: 4, md: 4 },
-          height: "100vh",
-          overflowY: "auto"
+          px: { xs: 2, sm: 3, md: 8 },
+          py: { xs: 3, md: 4 },
+          height: { xs: "auto", md: "100vh" },
+          minHeight: { xs: "100vh", md: "auto" },
+          overflowY: { xs: "visible", md: "auto" },
         }}>
-          <Paper sx={{ p: { xs: 3, md: 5 }, borderRadius: 2, width: "100%", maxWidth: 640, mx: "auto" }}>
+          <Paper sx={{ p: { xs: 2.5, sm: 3, md: 5 }, borderRadius: 2, width: "100%", maxWidth: 640, mx: "auto" }}>
             {children}
           </Paper>
         </Grid>
