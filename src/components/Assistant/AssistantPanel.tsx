@@ -232,12 +232,16 @@ export default function AssistantPanel({ open, onClose, voiceMode, setVoiceMode 
     setKokoroStatus("loading");
     try {
       const { KokoroTTS } = await import("kokoro-js");
+      // Upstream repo "onnx-community/Kokoro-82M-v1.0_fp16" was consolidated
+      // into a single repo that exposes every quantization via the `dtype` option.
+      // The old id now returns 401 from Hugging Face.
       kokoroRef.current = await KokoroTTS.from_pretrained(
-        "onnx-community/Kokoro-82M-v1.0_fp16",
+        "onnx-community/Kokoro-82M-ONNX",
         { dtype: "fp16" },
       );
       setKokoroStatus("ready");
-    } catch {
+    } catch (err) {
+      console.warn("[Assistant] Kokoro TTS failed to load; falling back to browser TTS.", err);
       setKokoroStatus("failed");
     } finally {
       kokoroLoadingRef.current = false;
