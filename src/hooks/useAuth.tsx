@@ -19,19 +19,36 @@ type AuthState = {
 
 const AuthContext = React.createContext<AuthState | undefined>(undefined);
 
-function parseJwtExpiry(token: string) {
+function decodeJwtPayload(token: string | null | undefined): any | null {
+  if (!token) return null;
   try {
     const parts = token.split(".");
     if (parts.length < 2) return null;
     const normalized = parts[1].replace(/-/g, "+").replace(/_/g, "/");
     const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), "=");
-    const payload = JSON.parse(atob(padded));
-    const exp = Number(payload?.exp);
-    if (!Number.isFinite(exp)) return null;
-    return exp * 1000;
+    return JSON.parse(atob(padded));
   } catch {
     return null;
   }
+}
+
+function parseJwtExpiry(token: string) {
+  const payload = decodeJwtPayload(token);
+  const exp = Number(payload?.exp);
+  if (!Number.isFinite(exp)) return null;
+  return exp * 1000;
+}
+
+/**
+ * Returns the role claim from the JWT itself (NOT from the localStorage user
+ * object). This is what protected routes should use, because a user can
+ * trivially edit `localStorage.user.role` to "SUPER_ADMIN" but cannot forge
+ * a signed JWT. The backend is the ultimate source of truth — these client
+ * checks just keep honest users out of the wrong UI. (BUG-011.)
+ */
+export function getRoleFromToken(token: string | null | undefined): string | null {
+  const payload = decodeJwtPayload(token);
+  return payload?.role || null;
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -114,6 +131,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = () => {
+    // BUG-012: invalidate the session server-side before wiping local state.
+    // Fire-and-forget — even if the request fails (e.g. offline), we still
+    // clear the client so the user can't keep using the app with a token
+    // we've already decided is gone.
+    api.post("/auth/logout").catch(() => {
+      // network / 401 — already on our way out, ignore.
+    });
     clearStoredAuthSession();
     setToken(null);
     setUser(null);
