@@ -116,7 +116,12 @@ export default function PurchaseOrderEdit({ explicitId, onSuccess, onCancel }: {
             <TextField fullWidth label="Status" value={order.status} disabled />
           </Grid>
 
-          {fields.map((field, index) => (
+          {fields.map((field, index) => {
+            const rowPid = String(watch(`items.${index}.productId`) || "");
+            const sourceItem = (order.items || [])[index] as any;
+            const orphanLabel = sourceItem?.productDisplayName || sourceItem?.productName;
+            const showOrphan = Boolean(rowPid && !productMap.has(rowPid));
+            return (
             <Grid container spacing={2} item xs={12} key={field.id}>
               <Grid item xs={12} md={6}>
                 <TextField 
@@ -134,8 +139,17 @@ export default function PurchaseOrderEdit({ explicitId, onSuccess, onCancel }: {
                   })}
                   value={watch(`items.${index}.productId`) || ""}
                   error={!!(errors.items as any)?.[index]?.productId}
-                  helperText={(errors.items as any)?.[index]?.productId?.message as string}
+                  helperText={
+                    showOrphan
+                      ? "This product was removed from your catalog; the saved label is shown."
+                      : ((errors.items as any)?.[index]?.productId?.message as string)
+                  }
                 >
+                  {showOrphan ? (
+                    <MenuItem value={rowPid} sx={{ fontStyle: "italic", opacity: 0.95 }}>
+                      {orphanLabel || "Removed product (not in catalog)"}
+                    </MenuItem>
+                  ) : null}
                   {(products?.items || []).map((p: any) => (
                     <MenuItem key={p._id} value={p._id}>{p.name}</MenuItem>
                   ))}
@@ -167,7 +181,8 @@ export default function PurchaseOrderEdit({ explicitId, onSuccess, onCancel }: {
                 </IconButton>
               </Grid>
             </Grid>
-          ))}
+            );
+          })}
 
           <Grid item xs={12}>
             <Button startIcon={<AddCircleOutline />} onClick={() => append({ productId: "", qty: 1, unitCost: 0 })}>

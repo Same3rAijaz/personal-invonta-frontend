@@ -1,8 +1,8 @@
-import { Checkbox, FormControlLabel, Grid, MenuItem, Stack, Typography } from "@mui/material";
+import { Checkbox, FormControlLabel, Grid, MenuItem, Stack, Typography, Box, CircularProgress, Tooltip } from "@mui/material";
 import TextField from "../../components/CustomTextField";
 import SidebarLayout from "../../components/SidebarLayout";
 import { useEffect, useMemo } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { useToast } from "../../hooks/useToast";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -10,6 +10,7 @@ import { api } from "../../api/client";
 import { useCities, useCountries, useStates } from "../../hooks/useGeo";
 import { DEFAULT_CITY, DEFAULT_COUNTRY, DEFAULT_STATE } from "../../constants/locationDefaults";
 import { SYSTEM_MODULE_OPTIONS, labelizeModule } from "../../constants/hr";
+import { expandEnabledModules, applyModuleToggle, prerequisitesSentence, normModuleId } from "../../constants/moduleDependencies";
 import { PublicCategoryNode } from "../../api/public";
 
 const AVAILABLE_MODULES = [...SYSTEM_MODULE_OPTIONS];
@@ -32,7 +33,7 @@ export default function BusinessEdit({ explicitId, onSuccess, onCancel }: { expl
     queryKey: ["superadmin-categories-for-business-edit"],
     queryFn: async () => (await api.get("/superadmin/categories", { params: { page: 1, limit: 1000 } })).data.data
   });
-  const { register, handleSubmit, reset, control, watch, setValue, formState: { errors } } = useForm<any>({ defaultValues: { isActive: true, marketId: "" } });
+  const { register, handleSubmit, reset, control, watch, setValue, getValues, formState: { errors } } = useForm<any>({ defaultValues: { isActive: true, marketId: "" } });
   const country = watch("country");
   const state = watch("state");
   const city = watch("city");
@@ -41,12 +42,17 @@ export default function BusinessEdit({ explicitId, onSuccess, onCancel }: { expl
   const { data: stateOptions = [] } = useStates(country);
   const { data: cityOptions = [] } = useCities(country, state);
 
+  const moduleFieldNames = useMemo(() => AVAILABLE_MODULES.map((m) => `module_${m}`), []);
+  const moduleChecks = useWatch({ control, name: moduleFieldNames }) as boolean[] | undefined;
+
   const business = (businesses?.items || []).find((b: any) => b._id === id);
 
   useEffect(() => {
     if (business) {
+      const saved = new Set((business.enabledModules || []).map(normModuleId));
+      const expanded = expandEnabledModules(saved);
       const moduleDefaults = Object.fromEntries(
-        AVAILABLE_MODULES.map((mod) => [`module_${mod}`, (business.enabledModules || []).includes(mod)])
+        AVAILABLE_MODULES.map((mod) => [`module_${mod}`, expanded.has(mod)])
       );
       const normalizedMarketId =
         typeof business.marketId === "object" && business.marketId?._id
@@ -143,9 +149,15 @@ export default function BusinessEdit({ explicitId, onSuccess, onCancel }: { expl
 
   const onSubmit = async (values: any) => {
     try {
-      const enabledModules = Object.keys(values)
-        .filter((k) => k.startsWith("module_") && values[k])
-        .map((k) => k.replace("module_", ""));
+      const enabledModules = [
+        ...expandEnabledModules(
+          new Set(
+            Object.keys(values)
+              .filter((k) => k.startsWith("module_") && values[k])
+              .map((k) => normModuleId(k.replace("module_", "")))
+          )
+        )
+      ];
       const payload: any = { ...values };
       Object.keys(payload).forEach((key) => {
         if (key.startsWith("module_")) delete payload[key];
@@ -159,7 +171,30 @@ export default function BusinessEdit({ explicitId, onSuccess, onCancel }: { expl
   };
 
   if (!business) {
-    return <Typography>Loading...</Typography>;
+    return (
+      <SidebarLayout title="Edit Business" onCancel={onCancel} showFooter={false} submitLabel="">
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            minHeight: { xs: 280, sm: 360 },
+            gap: 2,
+            py: 6,
+            borderRadius: 2,
+            border: (theme) => `1px solid ${theme.palette.divider}`,
+            background: (theme) =>
+              theme.palette.mode === "dark" ? "rgba(15,23,42,0.45)" : "rgba(248,250,252,0.9)"
+          }}
+        >
+          <CircularProgress size={44} thickness={4} sx={{ color: "primary.main" }} />
+          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
+            Loading business…
+          </Typography>
+        </Box>
+      </SidebarLayout>
+    );
   }
 
   return (
@@ -263,25 +298,36 @@ export default function BusinessEdit({ explicitId, onSuccess, onCancel }: { expl
             </Grid>
           ))}
           <Grid item xs={12}>
-            <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>Enabled Modules</Typography>
+            <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>Enabled Modules</Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1.5 }}>
+              Turning on a module enables its prerequisites automatically. Turning one off also disables modules that depend on it.
+            </Typography>
             <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap>
-              {AVAILABLE_MODULES.map((mod) => (
-                <Controller
+              {AVAILABLE_MODULES.map((mod, idx) => (
+                <Tooltip
                   key={mod}
-                  name={`module_${mod}` as const}
-                  control={control}
-                  render={({ field }) => (
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          checked={!!field.value}
-                          onChange={(e) => field.onChange(e.target.checked)}
-                        />
-                      }
-                      label={labelizeModule(mod)}
-                    />
-                  )}
-                />
+                  title={prerequisitesSentence(mod) || "No prerequisite modules — safe to toggle alone"}
+                  placement="top"
+                  arrow
+                >
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={Boolean(moduleChecks?.[idx] ?? getValues(`module_${mod}`))}
+                        onChange={(e) => {
+                          const current = new Set(
+                            AVAILABLE_MODULES.filter((id) => !!getValues(`module_${id}`))
+                          );
+                          const next = applyModuleToggle(current, mod, e.target.checked);
+                          AVAILABLE_MODULES.forEach((id) =>
+                            setValue(`module_${id}`, next.has(id), { shouldDirty: true })
+                          );
+                        }}
+                      />
+                    }
+                    label={labelizeModule(mod)}
+                  />
+                </Tooltip>
               ))}
             </Stack>
           </Grid>
