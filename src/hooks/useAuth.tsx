@@ -100,7 +100,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   React.useEffect(() => {
     const fetchBusiness = async () => {
-      if (!token || user?.role !== "ADMIN") return;
+      // Refresh tenant snapshot for everyone tied to a business (not only ADMIN).
+      // Otherwise MANAGER/STAFF keep stale `enabledModules` after SuperAdmin edits — sidebar and API disagree (BUG: wrong module errors).
+      if (!token || !user?.businessId || user?.role === "SUPER_ADMIN") return;
       try {
         const { data } = await api.get("/businesses/me");
         writeStoredAuthSession({
@@ -115,7 +117,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     };
     fetchBusiness();
-  }, [token, user?.role]);
+  }, [token, user?.businessId, user?.role]);
 
   const login = async (email: string, password: string) => {
     const result = await loginApi(email, password);

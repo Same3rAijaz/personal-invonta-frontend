@@ -1,3 +1,4 @@
+/** Canonical tenant module IDs — must stay aligned with backend `@ModuleAccess("…")` decorators. */
 export const SYSTEM_MODULE_OPTIONS = [
   "products",
   "inventory",
@@ -6,6 +7,7 @@ export const SYSTEM_MODULE_OPTIONS = [
   "vendors",
   "purchasing",
   "sales",
+  "borrows",
   "hr",
   "reports",
   "udhaar"

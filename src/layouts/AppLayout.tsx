@@ -359,11 +359,11 @@ export default function AppLayout() {
     products: ["products"],
     inventory: ["inventory"],
     warehouses: ["warehouses"],
-    locations: ["warehouses"],
     customers: ["customers"],
     vendors: ["vendors"],
     purchasing: ["purchasing"],
     sales: ["sales"],
+    borrows: ["borrows"],
     employees: ["hr"],
     attendance: ["hr"],
     leaves: ["hr"],
@@ -414,11 +414,13 @@ export default function AppLayout() {
             ...(isAllowed("products") ? [{ label: "Products", to: "/products", icon: <ShoppingBagRoundedIcon /> }] : []),
             ...(isAllowed("inventory") ? [{ label: "Inventory", to: "/inventory", icon: <InventoryRoundedIcon /> }] : []),
             ...(isAllowed("warehouses") ? [{ label: "Warehouses", to: "/warehouses", icon: <WarehouseRoundedIcon /> }] : []),
-            ...(isAllowed("warehouses") ? [{ label: "Locations", to: "/locations", icon: <RoomRoundedIcon /> }] : []),
+            ...(isAllowed("inventory") && isAllowed("warehouses")
+              ? [{ label: "Locations", to: "/locations", icon: <RoomRoundedIcon /> }]
+              : []),
             ...(isAllowed("purchasing") ? [{ label: "Purchasing", to: "/purchasing", icon: <ShoppingCartRoundedIcon /> }] : []),
             ...(isAllowed("sales") ? [{ label: "Sales", to: "/sales", icon: <MonetizationOnRoundedIcon /> }] : []),
             ...(isAllowed("sales") ? [{ label: "Sales Returns", to: "/sales/returns", icon: <KeyboardReturnRoundedIcon /> }] : []),
-            ...(isAllowed("sales") ? [{ label: "Stock Loans", to: "/borrows", icon: <SwitchAccountIcon /> }] : []),
+            ...(isAllowed("borrows") ? [{ label: "Stock Loans", to: "/borrows", icon: <SwitchAccountIcon /> }] : []),
           ]
         },
         {
@@ -445,7 +447,7 @@ export default function AppLayout() {
           label: "Analytics",
           items: [
             ...(isAllowed("reports") ? [{ label: "Reports", to: "/reports", icon: <AssessmentRoundedIcon /> }] : []),
-            ...(isAllowed("sales") ? [{ label: "Loan Profit", to: "/borrows/profit-report", icon: <MonetizationOnRoundedIcon /> }] : []),
+            ...(isAllowed("borrows") ? [{ label: "Loan Profit", to: "/borrows/profit-report", icon: <MonetizationOnRoundedIcon /> }] : []),
             ...(isAllowed("udhaar") ? [{ label: "Udhaar", to: "/udhaar/parties", icon: <AccountBalanceWalletRoundedIcon /> }] : [])
           ]
         }

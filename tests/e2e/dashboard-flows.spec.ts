@@ -4,10 +4,11 @@ import { expect, test, type Page } from "@playwright/test";
 
 const screenshotDir = path.join(process.cwd(), "e2e-artifacts", "screenshots");
 
-const shopEmail = process.env.SHOP_EMAIL || "muhammadhassaanmh162@gmail.com";
-const shopPassword = process.env.SHOP_PASSWORD || "test12345";
-const superEmail = process.env.SUPER_EMAIL || "superadmin@example.com";
-const superPassword = process.env.SUPER_PASSWORD || "superadmin123";
+/** Set in env for CI/local runs — no defaults (avoids committing demo credentials). */
+const shopEmail = process.env.SHOP_EMAIL;
+const shopPassword = process.env.SHOP_PASSWORD;
+const superEmail = process.env.SUPER_EMAIL;
+const superPassword = process.env.SUPER_PASSWORD;
 
 const shopRoutes = [
   "/",
@@ -86,11 +87,13 @@ async function captureFlow(page: Page, prefix: string, routes: string[]) {
 }
 
 test("shop admin full dashboard/module flow", async ({ page }) => {
-  await login(page, shopEmail, shopPassword);
+  test.skip(!shopEmail || !shopPassword, "Set SHOP_EMAIL and SHOP_PASSWORD to run this test.");
+  await login(page, shopEmail!, shopPassword!);
   await captureFlow(page, "shop-admin", shopRoutes);
 });
 
 test("super admin full dashboard/module flow", async ({ page }) => {
-  await login(page, superEmail, superPassword);
+  test.skip(!superEmail || !superPassword, "Set SUPER_EMAIL and SUPER_PASSWORD to run this test.");
+  await login(page, superEmail!, superPassword!);
   await captureFlow(page, "super-admin", superAdminRoutes);
 });

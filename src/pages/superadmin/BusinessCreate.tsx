@@ -1,7 +1,7 @@
-import { Checkbox, FormControlLabel, Grid, MenuItem, Stack, Typography } from "@mui/material";
+import { Checkbox, FormControlLabel, Grid, MenuItem, Stack, Typography, Tooltip } from "@mui/material";
 import TextField from "../../components/CustomTextField";
 import SidebarLayout from "../../components/SidebarLayout";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { useToast } from "../../hooks/useToast";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -10,9 +10,14 @@ import React from "react";
 import { useCities, useCountries, useStates } from "../../hooks/useGeo";
 import { DEFAULT_CITY, DEFAULT_COUNTRY, DEFAULT_STATE } from "../../constants/locationDefaults";
 import { SYSTEM_MODULE_OPTIONS, labelizeModule } from "../../constants/hr";
+import { expandEnabledModules, applyModuleToggle, prerequisitesSentence, normModuleId } from "../../constants/moduleDependencies";
 import { PublicCategoryNode } from "../../api/public";
 
 export default function BusinessCreate({ onSuccess, onCancel }: { onSuccess?: () => void, onCancel?: () => void } = {}) {
+  const MODULE_DEFAULTS = React.useMemo(
+    () => Object.fromEntries(SYSTEM_MODULE_OPTIONS.map((m) => [`module_${m}`, false])),
+    []
+  );
   const { notify } = useToast();
   const navigate = useNavigate();
   const client = useQueryClient();
@@ -24,13 +29,14 @@ export default function BusinessCreate({ onSuccess, onCancel }: { onSuccess?: ()
     queryKey: ["superadmin-categories-for-business-create"],
     queryFn: async () => (await api.get("/superadmin/categories", { params: { page: 1, limit: 1000 } })).data.data
   });
-  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<any>({
+  const { register, handleSubmit, watch, setValue, control, getValues, formState: { errors } } = useForm<any>({
     defaultValues: {
       isActive: true,
       country: DEFAULT_COUNTRY,
       state: DEFAULT_STATE,
       city: DEFAULT_CITY,
-      businessCategoryId: ""
+      businessCategoryId: "",
+      ...MODULE_DEFAULTS
     }
   });
   const marketId = watch("marketId");
@@ -91,18 +97,25 @@ export default function BusinessCreate({ onSuccess, onCancel }: { onSuccess?: ()
     return levels;
   }, [childrenByParent, selectedPathIds]);
 
+  const moduleFieldNames = React.useMemo(() => SYSTEM_MODULE_OPTIONS.map((m) => `module_${m}`), []);
+  const moduleChecks = useWatch({ control, name: moduleFieldNames }) as boolean[] | undefined;
+
   const createBusiness = useMutation({
     mutationFn: async (payload: any) => (await api.post("/superadmin/businesses", payload)).data.data,
     onSuccess: () => client.invalidateQueries({ queryKey: ["businesses"] })
   });
 
-  const availableModules = [...SYSTEM_MODULE_OPTIONS];
-
   const onSubmit = async (values: any) => {
     try {
-      const enabledModules = Object.keys(values)
-        .filter((k) => k.startsWith("module_") && values[k])
-        .map((k) => k.replace("module_", ""));
+      const enabledModules = [
+        ...expandEnabledModules(
+          new Set(
+            Object.keys(values)
+              .filter((k) => k.startsWith("module_") && values[k])
+              .map((k) => normModuleId(k.replace("module_", "")))
+          )
+        )
+      ];
       const payload: any = { ...values };
       Object.keys(payload).forEach((key) => {
         if (key.startsWith("module_")) delete payload[key];
@@ -212,14 +225,36 @@ export default function BusinessCreate({ onSuccess, onCancel }: { onSuccess?: ()
             <TextField fullWidth label="Address" {...register("address")} />
           </Grid>
           <Grid item xs={12}>
-            <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>Enabled Modules</Typography>
+            <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>Enabled Modules</Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1.5 }}>
+              Turning on a module enables its prerequisites automatically. Turning one off also disables modules that depend on it.
+            </Typography>
             <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap>
-              {availableModules.map((mod) => (
-                <FormControlLabel
+              {SYSTEM_MODULE_OPTIONS.map((mod, idx) => (
+                <Tooltip
                   key={mod}
-                  control={<Checkbox {...register(`module_${mod}`)} />}
-                  label={labelizeModule(mod)}
-                />
+                  title={prerequisitesSentence(mod) || "No prerequisite modules — safe to toggle alone"}
+                  placement="top"
+                  arrow
+                >
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={Boolean(moduleChecks?.[idx] ?? getValues(`module_${mod}`))}
+                        onChange={(e) => {
+                          const current = new Set(
+                            SYSTEM_MODULE_OPTIONS.filter((id) => !!getValues(`module_${id}`))
+                          );
+                          const next = applyModuleToggle(current, mod, e.target.checked);
+                          SYSTEM_MODULE_OPTIONS.forEach((id) =>
+                            setValue(`module_${id}`, next.has(id), { shouldDirty: true })
+                          );
+                        }}
+                      />
+                    }
+                    label={labelizeModule(mod)}
+                  />
+                </Tooltip>
               ))}
             </Stack>
           </Grid>

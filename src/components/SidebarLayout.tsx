@@ -12,9 +12,11 @@ interface SidebarLayoutProps {
   children: React.ReactNode;
   submitLabel?: string;
   isSubmitting?: boolean;
+  /** When false, hides the footer action bar (e.g. loading state before form mounts). */
+  showFooter?: boolean;
 }
 
-export default function SidebarLayout({ title, breadcrumb, onCancel, onSubmit, children, submitLabel = "Save", isSubmitting }: SidebarLayoutProps) {
+export default function SidebarLayout({ title, breadcrumb, onCancel, onSubmit, children, submitLabel = "Save", isSubmitting, showFooter = true }: SidebarLayoutProps) {
   const { mode } = useThemeMode();
   const isDark = mode === "dark";
   // Auto-generate breadcrumb if none provided and title exists
@@ -77,7 +79,7 @@ export default function SidebarLayout({ title, breadcrumb, onCancel, onSubmit, c
         {children}
       </Box>
 
-      {/* Footer Area */}
+      {showFooter ? (
       <Box sx={{ 
         px: 4, py: 3, 
         background: isDark ? "rgba(15,23,42,0.85)" : "rgba(255,255,255,0.85)", 
@@ -108,6 +110,7 @@ export default function SidebarLayout({ title, breadcrumb, onCancel, onSubmit, c
           </Button>
         )}
       </Box>
+      ) : null}
     </Box>
   );
 }

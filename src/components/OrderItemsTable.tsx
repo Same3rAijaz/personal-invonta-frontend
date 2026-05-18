@@ -26,7 +26,13 @@ export default function OrderItemsTable({
         <TableBody>
           {normalizedItems.map((item: any, index: number) => {
             const productId = String(item.productId || "");
-            const productName = labelByProductId?.get(productId) || item.productName || productId || `Item ${index + 1}`;
+            const fromApi = item.productDisplayName || item.productName;
+            const fromCatalog = labelByProductId?.get(productId);
+            const looksLikeOid = /^[a-f\d]{24}$/i.test(productId);
+            const productName =
+              fromCatalog ||
+              fromApi ||
+              (looksLikeOid ? "Removed product" : productId || `Item ${index + 1}`);
             return (
               <TableRow key={`${productId || "item"}-${index}`}>
                 <TableCell sx={{ py: 0.75, whiteSpace: "normal" }}>{productName}</TableCell>
