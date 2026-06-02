@@ -221,38 +221,6 @@ export default function AssistantPanel({ open, onClose, voiceMode, setVoiceMode 
     bargeInRef.current = null;
   }, []);
 
-  // ── Kokoro TTS (free, runs in-browser via ONNX) ───────────────────────────
-  const kokoroRef        = useRef<any>(null);
-  const kokoroLoadingRef = useRef(false);
-  const [kokoroStatus, setKokoroStatus] = useState<"idle" | "loading" | "ready" | "failed">("idle");
-
-  const loadKokoro = useCallback(async () => {
-    if (kokoroRef.current || kokoroLoadingRef.current) return;
-    kokoroLoadingRef.current = true;
-    setKokoroStatus("loading");
-    try {
-      const { KokoroTTS } = await import("kokoro-js");
-      // Upstream repo "onnx-community/Kokoro-82M-v1.0_fp16" was consolidated
-      // into a single repo that exposes every quantization via the `dtype` option.
-      // The old id now returns 401 from Hugging Face.
-      kokoroRef.current = await KokoroTTS.from_pretrained(
-        "onnx-community/Kokoro-82M-ONNX",
-        { dtype: "fp16" },
-      );
-      setKokoroStatus("ready");
-    } catch (err) {
-      console.warn("[Assistant] Kokoro TTS failed to load; falling back to browser TTS.", err);
-      setKokoroStatus("failed");
-    } finally {
-      kokoroLoadingRef.current = false;
-    }
-  }, []);
-
-  // Warm up Kokoro as soon as TTS is enabled or voice mode turns on
-  useEffect(() => {
-    if (ttsEnabled || voiceMode) loadKokoro();
-  }, [ttsEnabled, voiceMode, loadKokoro]);
-
   // ── Shared barge-in starter ───────────────────────────────────────────────
   const startBargeIn = useCallback((
     lang: string,
@@ -279,75 +247,7 @@ export default function AssistantPanel({ open, onClose, voiceMode, setVoiceMode 
     } catch { /* barge-in unavailable */ }
   }, [sttSupported]);
 
-  // ── Play a Float32Array via Web Audio API with barge-in ───────────────────
-  const playAudioBuffer = useCallback((
-    samples: Float32Array,
-    sampleRate: number,
-    lang: string,
-  ): Promise<{ bargedIn: boolean; transcript: string }> => {
-    return new Promise((resolve) => {
-      let audioCtx: AudioContext | null = null;
-      let source: AudioBufferSourceNode | null = null;
-      let settled = false;
-
-      const done = (bargedIn: boolean, transcript = "") => {
-        if (settled) return;
-        settled = true;
-        stopBargeIn();
-        try { source?.stop(); } catch { /* noop */ }
-        try { audioCtx?.close(); } catch { /* noop */ }
-        isSpeakingRef.current = false;
-        setIsSpeaking(false);
-        resolve({ bargedIn, transcript });
-      };
-
-      try {
-        audioCtx = new AudioContext();
-        const buf = audioCtx.createBuffer(1, samples.length, sampleRate);
-        buf.getChannelData(0).set(samples);
-        source = audioCtx.createBufferSource();
-        source.buffer = buf;
-        source.connect(audioCtx.destination);
-        source.onended = () => done(false);
-
-        isSpeakingRef.current = true;
-        setIsSpeaking(true);
-        source.start();
-
-        startBargeIn(lang, (transcript) => done(true, transcript));
-      } catch {
-        done(false);
-      }
-    });
-  }, [stopBargeIn, startBargeIn]);
-
-  // ── Kokoro speak ──────────────────────────────────────────────────────────
-  const speakWithKokoro = useCallback(async (
-    text: string,
-  ): Promise<{ bargedIn: boolean; transcript: string } | null> => {
-    if (!kokoroRef.current) return null;
-    // Kokoro only handles English well; for Urdu fall through to browser TTS
-    if (languageRef.current === "ur") return null;
-
-    const cleaned = cleanForSpeech(text);
-    if (!cleaned) return null;
-
-    isSpeakingRef.current = true;
-    setIsSpeaking(true);
-
-    try {
-      const result = await kokoroRef.current.generate(cleaned, { voice: "af_heart" });
-      // result.audio: Float32Array, result.sampling_rate: 24000
-      const lang = "en-US";
-      return await playAudioBuffer(result.audio, result.sampling_rate, lang);
-    } catch {
-      isSpeakingRef.current = false;
-      setIsSpeaking(false);
-      return null;
-    }
-  }, [playAudioBuffer]);
-
-  // ── Browser TTS fallback (Urdu + when Kokoro isn't ready) ────────────────
+  // ── Browser TTS ──────────────────────────────────────────────────────────
   const speakWithBrowserTts = useCallback((
     text: string,
   ): Promise<{ bargedIn: boolean; transcript: string }> => {
@@ -392,12 +292,7 @@ export default function AssistantPanel({ open, onClose, voiceMode, setVoiceMode 
     });
   }, [stopBargeIn, startBargeIn]);
 
-  // ── TTS dispatcher: Kokoro first, browser fallback ───────────────────────
-  const speakAsync = useCallback(async (text: string): Promise<{ bargedIn: boolean; transcript: string }> => {
-    const kokoroResult = await speakWithKokoro(text);
-    if (kokoroResult !== null) return kokoroResult;
-    return speakWithBrowserTts(text);
-  }, [speakWithKokoro, speakWithBrowserTts]);
+  const speakAsync = speakWithBrowserTts;
 
   // ── STT: listen once ──────────────────────────────────────────────────────
   const listenOnce = useCallback((): Promise<string | null> => {
@@ -625,15 +520,11 @@ export default function AssistantPanel({ open, onClose, voiceMode, setVoiceMode 
     ? "Speaking..."
     : isRecording
       ? "Listening..."
-      : kokoroStatus === "loading"
-        ? "Loading voice model..."
-        : voiceMode
-          ? "Voice mode on"
-          : isOffline
-            ? "Offline mode"
-            : kokoroStatus === "ready"
-              ? "AI Mode · Kokoro voice"
-              : "AI Mode";
+      : voiceMode
+        ? "Voice mode on"
+        : isOffline
+          ? "Offline mode"
+          : "AI Mode";
 
   const statusColor = isSpeaking
     ? "#38bdf8"

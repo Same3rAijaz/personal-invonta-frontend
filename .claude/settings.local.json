@@ -5,7 +5,8 @@
       "Bash(npm install:*)",
       "Bash(npx tsc:*)",
       "Bash(npx nest:*)",
-      "Bash(grep -v \"^$\")"
+      "Bash(grep -v \"^$\")",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\Aqeel\\\\OneDrive\\\\Desktop\\\\ASASA tech\\\\invonta-backend\\\\src\" -Recurse | Where-Object { $_.PSIsContainer } | Select-Object -ExpandProperty FullName | ForEach-Object { $_.Substring\\(\"C:\\\\Users\\\\Aqeel\\\\OneDrive\\\\Desktop\\\\ASASA tech\\\\invonta-backend\\\\src\".Length\\).TrimStart\\('\\\\'\\) } | Sort-Object)"
     ]
   }
 }
