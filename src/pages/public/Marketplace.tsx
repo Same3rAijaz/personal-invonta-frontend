@@ -39,6 +39,7 @@ import { useFavorites } from "../../hooks/useFavorites";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import { useThemeMode } from "../../contexts/ThemeContext";
 import { useTheme } from "@mui/material";
+import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 
 
 const LIMIT = 12;
@@ -60,6 +61,7 @@ export default function Marketplace() {
     line: mode === "dark" ? "rgba(255,255,255,0.08)" : alpha("#0b1220", 0.14)
   };
   const [search, setSearch] = React.useState("");
+  const debouncedSearch = useDebouncedValue(search.trim(), 350);
   const [marketId, setMarketId] = React.useState("");
   const [country, setCountry] = React.useState("");
   const [state, setState] = React.useState("");
@@ -132,11 +134,11 @@ export default function Marketplace() {
   });
 
   const { data: productData, isLoading: isProductsLoading } = useQuery({
-    queryKey: ["public-products", page, LIMIT, search, marketId, country, state, city, category, minPrice, maxPrice, sort, semanticMode],
+    queryKey: ["public-products", page, LIMIT, debouncedSearch, marketId, country, state, city, category, minPrice, maxPrice, sort, semanticMode],
     queryFn: () => {
-      if (semanticMode && search.trim()) {
+      if (semanticMode && debouncedSearch.trim()) {
         return semanticSearchPublicProducts({
-          query: search,
+          query: debouncedSearch,
           page,
           limit: LIMIT,
           marketId: marketId || undefined,
@@ -151,7 +153,7 @@ export default function Marketplace() {
       return listPublicProducts({
         page,
         limit: LIMIT,
-        search: search || undefined,
+        search: debouncedSearch || undefined,
         marketId: marketId || undefined,
         country: country || undefined,
         state: state || undefined,
@@ -168,11 +170,11 @@ export default function Marketplace() {
   });
 
   const { data: shopData, isLoading: isShopsLoading } = useQuery({
-    queryKey: ["public-shops", page, LIMIT, search, marketId, country, state, city, category, shopSort, semanticMode],
+    queryKey: ["public-shops", page, LIMIT, debouncedSearch, marketId, country, state, city, category, shopSort, semanticMode],
     queryFn: () => {
-      if (semanticMode && search.trim()) {
+      if (semanticMode && debouncedSearch.trim()) {
         return semanticSearchPublicShops({
-          query: search,
+          query: debouncedSearch,
           limit: LIMIT,
           marketId: marketId || undefined,
           country: country || undefined,
@@ -184,7 +186,7 @@ export default function Marketplace() {
       return listPublicShops({
         page,
         limit: LIMIT,
-        search: search || undefined,
+        search: debouncedSearch || undefined,
         marketId: marketId || undefined,
         country: country || undefined,
         state: state || undefined,
