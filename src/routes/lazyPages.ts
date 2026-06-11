@@ -23,6 +23,7 @@ export const PurchaseOrderCreate = lazy(() => import("../pages/purchasing/Purcha
 export const PurchaseOrderEdit = lazy(() => import("../pages/purchasing/PurchaseOrderEdit"));
 export const Inventory = lazy(() => import("../pages/inventory/Inventory"));
 export const InventoryCreate = lazy(() => import("../pages/inventory/InventoryCreate"));
+export const InventoryCreateRoute = lazy(() => import("../pages/inventory/InventoryCreateRoute"));
 export const Sales = lazy(() => import("../pages/sales/SalesOrders"));
 export const SalesOrderCreate = lazy(() => import("../pages/sales/SalesOrderCreate"));
 export const SalesOrderEdit = lazy(() => import("../pages/sales/SalesOrderEdit"));
