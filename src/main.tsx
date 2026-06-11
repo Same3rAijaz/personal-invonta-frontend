@@ -10,7 +10,16 @@ import { MarketplaceAuthProvider } from "./hooks/useMarketplaceAuth";
 import { ToastProvider } from "./hooks/useToast";
 import { ApiActivityProvider } from "./hooks/useApiActivity";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60_000,
+      gcTime: 5 * 60_000,
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

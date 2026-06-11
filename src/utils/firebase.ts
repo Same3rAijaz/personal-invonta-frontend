@@ -26,6 +26,10 @@ if (apiKey) {
   }
 }
 
+export function getFirebaseApp() {
+  return app;
+}
+
 // ============================================================================
 // SAFE MOCK IMPLEMENTATION (Used if Firebase is not configured in .env)
 // ============================================================================

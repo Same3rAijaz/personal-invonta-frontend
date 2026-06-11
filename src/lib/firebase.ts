@@ -1,12 +1,15 @@
-import { initializeApp } from "firebase/app";
+import { getApps, initializeApp } from "firebase/app";
 import { Auth, getAuth } from "firebase/auth";
+import { getFirebaseApp } from "../utils/firebase";
 
 let firebaseAuth: Auth | null = null;
 
-export function getFirebaseAuth() {
-  if (firebaseAuth) return firebaseAuth;
+function getOrInitFirebaseApp() {
+  const existing = getFirebaseApp();
+  if (existing) return existing;
+  if (getApps().length) return getApps()[0];
 
-  const firebaseApp = initializeApp({
+  return initializeApp({
     apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
     authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
     projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
@@ -14,7 +17,10 @@ export function getFirebaseAuth() {
     storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
     messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID
   });
+}
 
-  firebaseAuth = getAuth(firebaseApp);
+export function getFirebaseAuth() {
+  if (firebaseAuth) return firebaseAuth;
+  firebaseAuth = getAuth(getOrInitFirebaseApp());
   return firebaseAuth;
 }

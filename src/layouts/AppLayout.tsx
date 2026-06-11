@@ -93,37 +93,61 @@ export default function AppLayout() {
     };
 
     updatePresence();
-    const interval = setInterval(updatePresence, 20000);
+    const interval = setInterval(updatePresence, 60_000);
     return () => clearInterval(interval);
   }, [business?._id, dndMode]);
 
-  // Real-time listener for ALL chat unread messages
+  // Real-time listener for chat unread messages (managed subscriptions — no leak)
   React.useEffect(() => {
     if (!user?._id || !business?._id) return;
+
+    const messageUnsubs = new Map<string, () => void>();
+    const unreadByChat = new Map<string, number>();
+    const seenMessageIds = new Set<string>();
+
+    const syncUnreadTotal = () => {
+      const total = Array.from(unreadByChat.values()).reduce((sum, n) => sum + n, 0);
+      setChatUnread(total);
+    };
 
     const chatsRef = collection(db, "chats");
     const q = query(chatsRef, where("members", "array-contains", business._id));
 
     const unsubChat = onSnapshot(q, (snapshot: any) => {
+        const skipToasts = isChatFirstRun.current;
         if (isChatFirstRun.current) {
             isChatFirstRun.current = false;
-            return;
         }
 
-        snapshot.docs.forEach(async (chatDoc: any) => {
+        const activeChatIds = new Set<string>();
+
+        snapshot.docs.forEach((chatDoc: any) => {
             const chatId = chatDoc.id;
             const chatData = chatDoc.data();
+            activeChatIds.add(chatId);
+
+            if (messageUnsubs.has(chatId)) return;
+
             const messagesRef = collection(db, "chats", chatId, "messages");
-            const mq = query(messagesRef); // Fetching all messages for memory filtering to avoid FCM single '!=' constraint
-            
-            onSnapshot(mq, (mSnap: any) => {
-                const unreadMsgs = mSnap.docs.filter((d: any) => d.data().status !== 'read' && d.data().senderId !== business._id);
-                const count = unreadMsgs.length;
-                if (count > 0 && !dndMode) { 
-                   const latest = unreadMsgs[unreadMsgs.length - 1].data();
-                   // Ensure it's a very fresh message to avoid duplicated toasts on re-renders
-                   const msgTime = latest.createdAt?.toMillis ? latest.createdAt.toMillis() : (latest.createdAt instanceof Date ? latest.createdAt.getTime() : Date.now());
+            const mq = query(messagesRef, where("status", "!=", "read"), limit(50));
+
+            const unsubMsg = onSnapshot(mq, (mSnap: any) => {
+                const unreadMsgs = mSnap.docs.filter(
+                  (d: any) => d.data().senderId !== business._id
+                );
+                unreadByChat.set(chatId, unreadMsgs.length);
+                syncUnreadTotal();
+
+                if (!skipToasts && unreadMsgs.length > 0 && !dndMode) {
+                   const latest = unreadMsgs[unreadMsgs.length - 1]?.data();
+                   if (!latest) return;
+                   const msgKey = `${chatId}:${latest.id || latest.text}`;
+                   if (seenMessageIds.has(msgKey)) return;
+                   const msgTime = latest.createdAt?.toMillis
+                     ? latest.createdAt.toMillis()
+                     : (latest.createdAt instanceof Date ? latest.createdAt.getTime() : Date.now());
                    if (Date.now() - msgTime < 4000) {
+                       seenMessageIds.add(msgKey);
                        toast(`New message from ${chatData.groupName || chatData.senderName || 'Chat'}: ${latest.text.substring(0, 30)}${latest.text.length > 30 ? '...' : ''}`, { 
                           icon: '💬',
                           duration: 4000
@@ -131,8 +155,17 @@ export default function AppLayout() {
                    }
                 }
             });
+            messageUnsubs.set(chatId, unsubMsg);
         });
-        setChatUnread(3); 
+
+        for (const [chatId, unsub] of messageUnsubs) {
+          if (!activeChatIds.has(chatId)) {
+            unsub();
+            messageUnsubs.delete(chatId);
+            unreadByChat.delete(chatId);
+          }
+        }
+        syncUnreadTotal();
     });
 
     // General Notifications (Friend Requests, Orders, etc)
@@ -151,6 +184,8 @@ export default function AppLayout() {
     return () => {
         unsubChat();
         unsubNotif();
+        messageUnsubs.forEach((unsub) => unsub());
+        messageUnsubs.clear();
     };
   }, [user?._id, business?._id, dndMode]);
 
@@ -187,6 +222,9 @@ export default function AppLayout() {
       };
 
       setupFCM();
+      return () => {
+        isFCMRequesting.current = false;
+      };
   }, [business?._id]);
 
   // ── Real-time block detection via Firebase ────────────────────────────────
@@ -246,13 +284,16 @@ export default function AppLayout() {
 
   React.useEffect(() => {
     if (isSuperAdmin) return;
+    const lastCheck = Number(sessionStorage.getItem("invonta:sub-check") || 0);
+    if (Date.now() - lastCheck < 5 * 60_000 && subscriptionMeta) return;
+
     let canceled = false;
 
     const checkSubscription = async () => {
       try {
         const [statusRes, txRes] = await Promise.all([
-          api.get("/subscriptions/status"),
-          api.get("/subscriptions/transactions", { params: { page: 1, limit: 50 } }),
+          api.get("/subscriptions/status", { skipLoader: true } as any),
+          api.get("/subscriptions/transactions", { params: { page: 1, limit: 50 }, skipLoader: true } as any),
         ]);
 
         if (canceled) return;
@@ -272,6 +313,7 @@ export default function AppLayout() {
           return paidDate.getFullYear() === now.getFullYear() && paidDate.getMonth() === now.getMonth();
         });
         setPaidThisMonth(hasPaidThisMonth);
+        sessionStorage.setItem("invonta:sub-check", String(Date.now()));
       } catch {
         if (canceled) return;
         const fallbackStatus = String(business?.subscriptionStatus || "pending").toLowerCase();
@@ -936,12 +978,14 @@ export default function AppLayout() {
         </Tooltip>
       )}
 
-      <AssistantPanel
-        open={assistantOpen}
-        onClose={() => setAssistantOpen(false)}
-        voiceMode={voiceMode}
-        setVoiceMode={setVoiceMode}
-      />
+      {(assistantOpen || voiceMode) && (
+        <AssistantPanel
+          open={assistantOpen}
+          onClose={() => setAssistantOpen(false)}
+          voiceMode={voiceMode}
+          setVoiceMode={setVoiceMode}
+        />
+      )}
 
       <Toaster position="top-right" reverseOrder={false} />
     </Box>

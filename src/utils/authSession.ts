@@ -7,6 +7,8 @@ export type StoredAuthSession = {
   business: any | null;
 };
 
+let sessionCache: StoredAuthSession | null = null;
+
 function parseStoredJson(key: string) {
   const raw = localStorage.getItem(key);
   if (!raw) return null;
@@ -17,13 +19,20 @@ function parseStoredJson(key: string) {
   }
 }
 
-export function readStoredAuthSession(): StoredAuthSession {
+function loadSessionFromStorage(): StoredAuthSession {
   return {
     accessToken: localStorage.getItem("accessToken"),
     refreshToken: localStorage.getItem("refreshToken"),
     user: parseStoredJson("user"),
     business: parseStoredJson("business"),
   };
+}
+
+export function readStoredAuthSession(): StoredAuthSession {
+  if (!sessionCache) {
+    sessionCache = loadSessionFromStorage();
+  }
+  return sessionCache;
 }
 
 export function dispatchAuthSessionChanged() {
@@ -48,6 +57,7 @@ export function writeStoredAuthSession(session: {
   if (session.business) localStorage.setItem("business", JSON.stringify(session.business));
   else localStorage.removeItem("business");
 
+  sessionCache = loadSessionFromStorage();
   dispatchAuthSessionChanged();
 }
 

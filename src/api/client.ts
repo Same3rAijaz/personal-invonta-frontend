@@ -9,7 +9,8 @@ if (!apiBase) {
 }
 
 export const api = axios.create({
-  baseURL: apiBase || "http://localhost:4000"
+  baseURL: apiBase || "http://localhost:4000",
+  timeout: 30_000,
 });
 
 type RetryableRequest = {
@@ -26,6 +27,82 @@ type RetryableRequest = {
 
 let refreshPromise: Promise<string | null> | null = null;
 let pendingRequests = 0;
+
+type RefreshQueueItem = {
+  resolve: (token: string) => void;
+  reject: (error: unknown) => void;
+};
+
+let refreshQueue: RefreshQueueItem[] = [];
+
+function processRefreshQueue(error: unknown, token: string | null = null) {
+  refreshQueue.forEach(({ resolve, reject }) => {
+    if (error || !token) reject(error);
+    else resolve(token);
+  });
+  refreshQueue = [];
+}
+
+async function refreshAccessToken() {
+  if (!refreshPromise) {
+    refreshPromise = (async () => {
+      const currentSession = readStoredAuthSession();
+      const refreshToken = currentSession.refreshToken;
+      if (!refreshToken) return null;
+      const { data } = await api.post("/auth/refresh", { refreshToken }, { skipAuth: true, skipLoader: true, skipGlobalErrorToast: true } as any);
+      const nextAccessToken = data?.data?.accessToken;
+      const nextRefreshToken = data?.data?.refreshToken;
+      if (!nextAccessToken || !nextRefreshToken) return null;
+      writeStoredAuthSession({
+        accessToken: nextAccessToken,
+        refreshToken: nextRefreshToken,
+        user: data?.data?.user ?? currentSession.user,
+        business: data?.data?.business ?? currentSession.business
+      });
+      return nextAccessToken as string;
+    })().finally(() => {
+      refreshPromise = null;
+    });
+  }
+  return refreshPromise;
+}
+
+async function handleUnauthorized(originalRequest: RetryableRequest) {
+  if (originalRequest._retry) {
+    return Promise.reject(new Error("Session expired"));
+  }
+  originalRequest._retry = true;
+
+  if (refreshPromise) {
+    return new Promise((resolve, reject) => {
+      refreshQueue.push({
+        resolve: (token) => {
+          originalRequest.headers = originalRequest.headers || {};
+          originalRequest.headers.Authorization = `Bearer ${token}`;
+          resolve(api.request(originalRequest));
+        },
+        reject,
+      });
+    });
+  }
+
+  try {
+    const nextAccessToken = await refreshAccessToken();
+    if (!nextAccessToken) {
+      processRefreshQueue(new Error("Session expired"), null);
+      clearSessionAndRedirect();
+      return Promise.reject(new Error("Session expired"));
+    }
+    processRefreshQueue(null, nextAccessToken);
+    originalRequest.headers = originalRequest.headers || {};
+    originalRequest.headers.Authorization = `Bearer ${nextAccessToken}`;
+    return api.request(originalRequest);
+  } catch (err) {
+    processRefreshQueue(err, null);
+    clearSessionAndRedirect();
+    return Promise.reject(err);
+  }
+}
 
 function emitLoading() {
   window.dispatchEvent(new CustomEvent("api:loading", { detail: { pending: pendingRequests } }));
@@ -51,30 +128,6 @@ function stopLoading(config?: RetryableRequest) {
   config.__loaderTracked = false;
   pendingRequests = Math.max(0, pendingRequests - 1);
   emitLoading();
-}
-
-async function refreshAccessToken() {
-  if (!refreshPromise) {
-    refreshPromise = (async () => {
-      const currentSession = readStoredAuthSession();
-      const refreshToken = currentSession.refreshToken;
-      if (!refreshToken) return null;
-      const { data } = await api.post("/auth/refresh", { refreshToken }, { skipAuth: true, skipLoader: true, skipGlobalErrorToast: true } as any);
-      const nextAccessToken = data?.data?.accessToken;
-      const nextRefreshToken = data?.data?.refreshToken;
-      if (!nextAccessToken || !nextRefreshToken) return null;
-      writeStoredAuthSession({
-        accessToken: nextAccessToken,
-        refreshToken: nextRefreshToken,
-        user: data?.data?.user ?? currentSession.user,
-        business: data?.data?.business ?? currentSession.business
-      });
-      return nextAccessToken as string;
-    })().finally(() => {
-      refreshPromise = null;
-    });
-  }
-  return refreshPromise;
 }
 
 function clearSessionAndRedirect() {
@@ -113,19 +166,12 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
     if (status === 401) {
-      // Public/marketplace requests can opt out of business-auth redirects.
       if (originalRequest?.skipAuth) {
         return Promise.reject(error);
       }
-      if (originalRequest && !originalRequest._retry && !String(originalRequest.url || "").includes("/auth/refresh")) {
-        originalRequest._retry = true;
+      if (originalRequest && !String(originalRequest.url || "").includes("/auth/refresh")) {
         try {
-          const nextAccessToken = await refreshAccessToken();
-          if (nextAccessToken) {
-            originalRequest.headers = originalRequest.headers || {};
-            originalRequest.headers.Authorization = `Bearer ${nextAccessToken}`;
-            return api.request(originalRequest);
-          }
+          return await handleUnauthorized(originalRequest);
         } catch {
           clearSessionAndRedirect();
           return Promise.reject(error);

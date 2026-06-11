@@ -1,9 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
+import { QUERY_STALE_TIME } from "../config/queryDefaults";
 
 export function useProducts(params?: { page?: number; limit?: number; search?: string; filters?: Record<string, string> }) {
   return useQuery({
     queryKey: ["products", params?.page, params?.limit, params?.search, params?.filters],
+    staleTime: QUERY_STALE_TIME,
     queryFn: async () => {
       const normalizedFilters =
         params?.filters && Object.keys(params.filters).length > 0

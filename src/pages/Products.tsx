@@ -26,7 +26,7 @@ export default function Products() {
     search: debouncedSearch || undefined,
     filters
   });
-  const { data: balancesData, isLoading: isBalancesLoading } = useInventoryBalances({ page: 1, limit: 5000 });
+  const { data: balancesData, isLoading: isBalancesLoading } = useInventoryBalances({ page: 1, limit: 500 });
   const deleteProduct = useDeleteProduct();
   const shareProduct = useShareProduct();
   const navigate = useNavigate();

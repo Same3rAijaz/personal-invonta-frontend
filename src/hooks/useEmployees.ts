@@ -1,9 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
+import { QUERY_STALE_TIME } from "../config/queryDefaults";
 
 export function useEmployees(params?: { page?: number; limit?: number; search?: string; semantic?: boolean }) {
   return useQuery({
     queryKey: ["employees", params?.page, params?.limit, params?.search, params?.semantic],
+    staleTime: QUERY_STALE_TIME,
     queryFn: async () => {
       if (params?.semantic && params?.search) {
         return (

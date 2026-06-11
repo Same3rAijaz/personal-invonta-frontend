@@ -100,17 +100,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   React.useEffect(() => {
     const fetchBusiness = async () => {
-      // Refresh tenant snapshot for everyone tied to a business (not only ADMIN).
-      // Otherwise MANAGER/STAFF keep stale `enabledModules` after SuperAdmin edits — sidebar and API disagree (BUG: wrong module errors).
       if (!token || !user?.businessId || user?.role === "SUPER_ADMIN") return;
+      const lastSync = Number(sessionStorage.getItem("invonta:business-sync") || 0);
+      if (Date.now() - lastSync < 5 * 60_000 && business) return;
       try {
-        const { data } = await api.get("/businesses/me");
+        const { data } = await api.get("/businesses/me", { skipLoader: true } as any);
         writeStoredAuthSession({
           accessToken: token,
           refreshToken: readStoredAuthSession().refreshToken,
           user,
           business: data.data
         });
+        sessionStorage.setItem("invonta:business-sync", String(Date.now()));
         setBusiness(data.data);
       } catch {
         // Ignore refresh errors; user can re-login if needed.
@@ -119,7 +120,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     fetchBusiness();
   }, [token, user?.businessId, user?.role]);
 
-  const login = async (email: string, password: string) => {
+  const login = React.useCallback(async (email: string, password: string) => {
     const result = await loginApi(email, password);
     writeStoredAuthSession({
       accessToken: result.accessToken,
@@ -127,26 +128,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user: result.user,
       business: result.business || null
     });
+    sessionStorage.removeItem("invonta:business-sync");
     setToken(result.accessToken);
     setUser(result.user);
     setBusiness(result.business || null);
-  };
+  }, []);
 
-  const logout = () => {
-    // BUG-012: invalidate the session server-side before wiping local state.
-    // Fire-and-forget — even if the request fails (e.g. offline), we still
-    // clear the client so the user can't keep using the app with a token
-    // we've already decided is gone.
-    api.post("/auth/logout").catch(() => {
-      // network / 401 — already on our way out, ignore.
-    });
+  const logout = React.useCallback(() => {
+    api.post("/auth/logout").catch(() => {});
     clearStoredAuthSession();
+    sessionStorage.removeItem("invonta:business-sync");
     setToken(null);
     setUser(null);
     setBusiness(null);
-  };
+  }, []);
 
-  const updateUser = (nextUser: any | null) => {
+  const updateUser = React.useCallback((nextUser: any | null) => {
     writeStoredAuthSession({
       accessToken: token,
       refreshToken: readStoredAuthSession().refreshToken,
@@ -154,10 +151,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       business
     });
     setUser(nextUser);
-  };
+  }, [token, business]);
+
+  const value = React.useMemo(
+    () => ({ token, user, business, login, logout, updateUser }),
+    [token, user, business, login, logout, updateUser]
+  );
 
   return (
-    <AuthContext.Provider value={{ token, user, business, login, logout, updateUser }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
