@@ -51,7 +51,7 @@ export default function App() {
               <Route path="/products/:id" element={<Pages.ProductView />} />
               <Route path="/products/:id/edit" element={<Pages.ProductEdit />} />
               <Route path="/inventory" element={<Pages.Inventory />} />
-              <Route path="/inventory/new" element={<Pages.InventoryCreate />} />
+              <Route path="/inventory/new" element={<Pages.InventoryCreateRoute />} />
               <Route path="/warehouses" element={<Pages.Warehouses />} />
               <Route path="/warehouses/new" element={<Pages.WarehouseCreate />} />
               <Route path="/warehouses/:id/edit" element={<Pages.WarehouseEdit />} />

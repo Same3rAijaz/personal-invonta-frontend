@@ -13,16 +13,36 @@ import { useLocationsByWarehouse } from "../../hooks/useLocations";
 import { useQueryClient } from "@tanstack/react-query";
 import RelatedEntityDrawer from "../../components/RelatedEntityDrawer";
 
-export default function InventoryCreate({ onSuccess, onCancel }: { onSuccess?: () => void, onCancel?: () => void } = {}) {
+export type InventoryInitialParams = {
+  action?: string;
+  productId?: string;
+  warehouseId?: string;
+};
+
+export default function InventoryCreate({
+  onSuccess,
+  onCancel,
+  initialParams
+}: {
+  onSuccess?: () => void;
+  onCancel?: () => void;
+  initialParams?: InventoryInitialParams;
+} = {}) {
   const { notify } = useToast();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const client = useQueryClient();
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const resolvedAction = initialParams?.action ?? searchParams.get("action") ?? "receive";
+  const resolvedProductId = initialParams?.productId ?? searchParams.get("productId") ?? "";
+  const resolvedWarehouseId = initialParams?.warehouseId ?? searchParams.get("warehouseId") ?? "";
+  const handleCancel = onCancel ?? (() => navigate("/inventory"));
+
   const { register, handleSubmit, watch, setValue, control, formState: { errors } } = useForm<any>({
     defaultValues: {
-      action: searchParams.get("action") || "receive",
-      productId: searchParams.get("productId") || "",
-      warehouseId: searchParams.get("warehouseId") || "",
+      action: resolvedAction,
+      productId: resolvedProductId,
+      warehouseId: resolvedWarehouseId,
       locationId: "",
       toWarehouseId: "",
       toLocationId: ""
@@ -46,13 +66,14 @@ export default function InventoryCreate({ onSuccess, onCancel }: { onSuccess?: (
   const selectedProductId = watch("productId");
 
   React.useEffect(() => {
+    if (initialParams) return;
     const actionValue = searchParams.get("action");
     const productIdValue = searchParams.get("productId");
     const warehouseIdValue = searchParams.get("warehouseId");
     if (actionValue) setValue("action", actionValue);
     if (productIdValue) setValue("productId", productIdValue);
     if (warehouseIdValue) setValue("warehouseId", warehouseIdValue);
-  }, [searchParams, setValue]);
+  }, [initialParams, searchParams, setValue]);
 
   React.useEffect(() => {
     const selectedProduct = (products?.items || []).find((item: any) => String(item._id) === String(selectedProductId || ""));
@@ -62,6 +83,7 @@ export default function InventoryCreate({ onSuccess, onCancel }: { onSuccess?: (
   }, [action, products?.items, selectedProductId, setValue]);
 
   const onSubmit = async (values: any) => {
+    setIsSubmitting(true);
     try {
       const baseItem = {
         productId: values.productId,
@@ -96,14 +118,22 @@ export default function InventoryCreate({ onSuccess, onCancel }: { onSuccess?: (
         client.invalidateQueries({ queryKey: ["products"] })
       ]);
       notify("Inventory updated", "success");
-      if (onSuccess) onSuccess(); else navigate("/inventory");
+      if (onSuccess) onSuccess();
+      else navigate("/inventory");
     } catch (err: any) {
       notify(err?.response?.data?.error?.message || "Failed", "error");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <SidebarLayout title="Create Inventory" onCancel={onCancel} isSubmitting={false} submitLabel="Save Inventory">
+    <SidebarLayout
+      title="Create Inventory"
+      onCancel={handleCancel}
+      isSubmitting={isSubmitting}
+      submitLabel="Save Inventory"
+    >
         <Grid container spacing={2} component="form" id="sidebar-form" onSubmit={handleSubmit(onSubmit)}>
           <Grid item xs={12} md={3}>
             <TextField
